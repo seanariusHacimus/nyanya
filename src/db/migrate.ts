@@ -1,14 +1,15 @@
 import "dotenv/config";
-import { PGlite } from "@electric-sql/pglite";
-import { drizzle } from "drizzle-orm/pglite";
-import { migrate } from "drizzle-orm/pglite/migrator";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
 
+/** Runtime migrator (used locally and in Railway pre-deploy) — no drizzle-kit needed. */
 async function main() {
-  const client = new PGlite(process.env.PGLITE_PATH ?? "./.pglite");
+  const client = postgres(process.env.DATABASE_URL!, { max: 1 });
   const db = drizzle(client);
   await migrate(db, { migrationsFolder: "./drizzle" });
   console.log("✓ migrations applied");
-  await client.close();
+  await client.end();
 }
 
 main().catch((err) => {

@@ -169,6 +169,19 @@ const SPECIALISTS: SpecSeed[] = [
 async function main() {
   const ctx = await auth.$context;
 
+  // Guard: never wipe an already-populated DB (e.g. on Railway redeploys).
+  // Set FORCE_SEED=true to reset and reseed.
+  const existing = await db
+    .select({ id: s.specialistProfiles.id })
+    .from(s.specialistProfiles)
+    .limit(1);
+  if (existing.length && process.env.FORCE_SEED !== "true") {
+    console.log(
+      "Seed skipped — data already present (set FORCE_SEED=true to reset).",
+    );
+    process.exit(0);
+  }
+
   console.log("Clearing existing data…");
   // CASCADE clears all referencing tables.
   await db.execute(

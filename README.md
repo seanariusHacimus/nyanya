@@ -46,6 +46,30 @@ npm run dev          # http://localhost:3000  (redirects to /ru)
 
 Mock SMS OTP code (phone verification): **`123456`**.
 
+## Deploy to Railway
+
+The repo is Railway-ready: `railway.json` runs **migrate + seed automatically before each deploy**. The seed is guarded — it only populates an *empty* DB, so redeploys won't wipe data (set `FORCE_SEED=true` to reset).
+
+1. **New Project → Deploy from GitHub repo** → select this repo.
+2. **New → Database → PostgreSQL** (adds a `Postgres` service).
+3. On the **app service → Variables**, set:
+   ```
+   DATABASE_URL        = ${{Postgres.DATABASE_URL}}
+   BETTER_AUTH_SECRET  = <a 32-byte random string>
+   BETTER_AUTH_URL     = https://${{RAILWAY_PUBLIC_DOMAIN}}
+   NEXT_PUBLIC_APP_URL = https://${{RAILWAY_PUBLIC_DOMAIN}}
+   PAYMENT_PROVIDER    = mock
+   SMS_PROVIDER        = mock
+   STORAGE_PROVIDER    = local
+   LISTING_FEE_UZS     = 149000
+   UNLOCK_FEE_UZS      = 29000
+   ```
+   Generate the secret: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+4. App service → **Settings → Networking → Generate Domain**, and **Settings → Region → Singapore** (closest Railway region to Uzbekistan). Redeploy so the domain is baked in.
+5. On deploy, the `railway.json` pre-deploy step migrates + seeds automatically. Open the domain → catalog populated, demo logins work.
+
+> Migrations (`src/db/migrate.ts`) and the seed run via `tsx` at deploy time, so `tsx` + `dotenv` are in `dependencies`; `drizzle-kit` stays dev-only (schema generation / studio).
+
 ## What works
 
 - **Parent journey** — choose a category on the home page → browse the catalog with filters (city, price, experience, language, English, car, live-in, night, newborns) → open a profile (contacts gated, with Trust Score, reviews, video-intro slot) → **pay to unlock contacts** (mock provider) → phone / Telegram / WhatsApp revealed → favorite & review.
