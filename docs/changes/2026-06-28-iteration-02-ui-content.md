@@ -47,6 +47,14 @@ Per request, the verification labels are no longer English brand terms. Localize
 
 The Trust *seal* label (`common.trust`) was already localized (Доверие / Ishonch / Trust). Verified in-browser: catalog badges render Cyrillic, no English brand terms remain.
 
+## Follow-up — fix clipped portraits
+
+The first crops were taken from the **top** cells of the 2×2 source collages, where each face sits against the image's top edge — so heads were clipped and a couple carried a watermark sliver. The hero (`hero.png`) had the same issue plus a watermark band.
+
+Re-cut all 7 portraits from the collages' **bottom** cells, which have full heads with real headroom and sit clear of the centred watermark. Produced 7 **distinct** 4:5 crops (1 hero + 6 cards, no repeated faces), resized to web sizes and PNG-optimised — `hero.png` alone dropped **1.65 MB → 184 KB**, the six faces ≈110–160 KB each. Filenames unchanged, so no DB/seed change.
+
+Verified through the real `next/image` pipeline (server-side, bypassing browser cache): all 7 render full-head, watermark-free. *Note:* a long-running `next dev` caches optimised variants in memory and won't notice a same-name source swap — restart dev (or hard-refresh) to see replacements locally; production serves the new files fresh. One spare clean crop (an older woman) remains available if we later want a photo for a caregiver instead of a monogram.
+
 ## Follow-ups
 
 - **Full ethnically-diverse generated faces** (male drivers, older caregivers, Russian/Tatar faces) still need fresh Higgsfield generation — currently blocked by the account's **grace-period generation cap** (credits available, but daily generation limit reached; did not reset overnight). Until then those specialists use monograms. Re-run portrait generation once the cap clears, then reseed.
