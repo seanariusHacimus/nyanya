@@ -30,7 +30,7 @@ export function SpecialistCard({ item }: { item: CatalogItem }) {
   return (
     <Link
       href={`/catalog/${item.id}`}
-      className="group block overflow-hidden rounded-2xl border border-line bg-card transition-all hover:border-champagne hover:shadow-[0_24px_60px_-32px_rgba(44,26,79,0.45)]"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card transition-all hover:border-champagne hover:shadow-[0_24px_60px_-32px_rgba(44,26,79,0.45)]"
     >
       <div className="relative">
         <SpecialistAvatar
@@ -47,7 +47,7 @@ export function SpecialistCard({ item }: { item: CatalogItem }) {
           <TrustSeal score={item.trustScore} size={62} />
         </div>
       </div>
-      <div className="p-4 pt-7">
+      <div className="flex flex-1 flex-col p-4 pt-7">
         <p className="text-[11px] uppercase tracking-[0.18em] text-gold-ink">
           {cat(item.category)}
         </p>
@@ -74,7 +74,7 @@ export function SpecialistCard({ item }: { item: CatalogItem }) {
             </span>
           )}
         </div>
-        <div className="mt-3 border-t border-line pt-3 text-sm">
+        <div className="mt-auto border-t border-line pt-3 text-sm">
           <span className="text-muted-foreground">{t("fromPrice")} </span>
           <span className="font-semibold text-ink">{formatUZS(item.priceAmount)}</span>
           <span className="text-muted-foreground"> {unit}</span>

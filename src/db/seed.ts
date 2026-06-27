@@ -9,46 +9,82 @@ import type { Category, VerificationLevel, PriceUnit } from "@/lib/constants";
 
 type Tri = { ru: string; uz: string; en: string };
 
+// Varied-length, natural testimonials (short / medium / long).
 const REVIEW_TEXTS: Tri[] = [
   {
-    ru: "Очень довольны! Ребёнок в надёжных руках.",
-    uz: "Juda mamnunmiz! Bola ishonchli qo'llarda.",
-    en: "Very happy! Our child is in good hands.",
+    ru: "Спасибо большое, всё на высшем уровне!",
+    uz: "Katta rahmat, hammasi yuqori darajada!",
+    en: "Thank you so much — top-notch service!",
   },
   {
-    ru: "Пунктуальная и ответственная. Рекомендую.",
-    uz: "Aniq va mas'uliyatli. Tavsiya qilaman.",
-    en: "Punctual and responsible. Highly recommend.",
+    ru: "Ребёнок сразу проникся доверием. Приходит вовремя, всегда на связи.",
+    uz: "Bola darrov ishonch bildirdi. O'z vaqtida keladi, doim aloqada.",
+    en: "Our child trusted her right away. Always on time and reachable.",
   },
   {
-    ru: "Прекрасный специалист, быстро нашли общий язык.",
-    uz: "Ajoyib mutaxassis, tezda til topishdik.",
-    en: "Wonderful specialist, we clicked right away.",
+    ru: "Искали специалиста несколько недель и наконец нашли. Очень внимательная, занимается развитием, готовит полезную еду. Ребёнок ждёт её прихода каждый день.",
+    uz: "Bir necha hafta qidirdik va nihoyat topdik. Juda e'tiborli, rivojlantirish bilan shug'ullanadi, foydali ovqat tayyorlaydi. Bola uni har kuni kutadi.",
+    en: "We searched for weeks and finally found the right person. Very attentive, focuses on development, cooks healthy meals. Our child looks forward to seeing her every day.",
   },
   {
-    ru: "Профессионал своего дела, всё чётко и по делу.",
-    uz: "O'z ishining ustasi, hammasi aniq va joyida.",
-    en: "A true professional — everything on point.",
+    ru: "Рекомендую от всей души.",
+    uz: "Chin dildan tavsiya qilaman.",
+    en: "Wholeheartedly recommend.",
   },
   {
-    ru: "Добрая и внимательная, ребёнок её обожает.",
-    uz: "Mehribon va e'tiborli, bola uni yaxshi ko'radi.",
-    en: "Kind and attentive — our child adores her.",
+    ru: "Профессионал с большой буквы. Чувствуется опыт и любовь к детям.",
+    uz: "Katta harf bilan professional. Tajriba va bolalarga mehr sezilib turadi.",
+    en: "A real professional — you can feel the experience and the love for kids.",
   },
   {
-    ru: "Спасибо за заботу и терпение.",
-    uz: "G'amxo'rlik va sabr uchun rahmat.",
-    en: "Thank you for the care and patience.",
+    ru: "Обращались на время отпуска, оставляли ребёнка на целый день. Никаких нареканий: чисто, спокойно, малыш накормлен и доволен. Будем сотрудничать на постоянной основе.",
+    uz: "Ta'til vaqtida murojaat qildik, bolani kun bo'yi qoldirdik. Hech qanday e'tiroz yo'q: toza, tinch, bola to'q va mamnun. Doimiy hamkorlik qilamiz.",
+    en: "We hired her during our vacation and left our child all day. No complaints at all — calm, clean, the little one was fed and happy. We'll work together regularly.",
   },
   {
-    ru: "Всё отлично, будем обращаться ещё.",
-    uz: "Hammasi a'lo, yana murojaat qilamiz.",
-    en: "All great — we'll book again.",
+    ru: "Всё понравилось, ребёнок счастлив.",
+    uz: "Hammasi yoqdi, bola baxtli.",
+    en: "Loved everything — our child is happy.",
   },
   {
-    ru: "Отзывчивый человек, помог в трудной ситуации.",
-    uz: "Yoqimli inson, qiyin vaziyatda yordam berdi.",
-    en: "A caring person who helped in a tough spot.",
+    ru: "Пунктуальная, ответственная, с хорошим английским. Помогает с уроками.",
+    uz: "Aniq, mas'uliyatli, ingliz tili yaxshi. Darslarga yordam beradi.",
+    en: "Punctual, responsible, good English. Helps with homework.",
+  },
+  {
+    ru: "Особенно ценим терпение и спокойствие. У нас непростой ребёнок, но они быстро нашли общий язык. Видно, что человек на своём месте.",
+    uz: "Ayniqsa sabr va vazminlikni qadrlaymiz. Bizning bola oson emas, lekin tez til topishdi. Inson o'z o'rnida ekani ko'rinib turibdi.",
+    en: "We especially value the patience and calm. Our child isn't easy, but they bonded quickly. You can tell this person is in the right place.",
+  },
+  {
+    ru: "Будем обращаться снова!",
+    uz: "Yana murojaat qilamiz!",
+    en: "We'll book again!",
+  },
+  {
+    ru: "Помогли в сложный период, когда не с кем было оставить ребёнка. Очень выручили.",
+    uz: "Bolani qoldiradigan odam yo'q paytda yordam berishdi. Juda qutqarishdi.",
+    en: "Helped during a hard time when we had no one to watch our child. A real lifesaver.",
+  },
+  {
+    ru: "Аккуратная, честная, ребёнок к ней тянется. Цена полностью оправдана.",
+    uz: "Ozoda, halol, bola unga intiladi. Narx to'liq oqlanadi.",
+    en: "Tidy, honest, our child is drawn to her. Worth every som.",
+  },
+  {
+    ru: "Долго не могли довериться чужому человеку, но здесь всё прозрачно: документы, отзывы, видео. После первой встречи все сомнения пропали.",
+    uz: "Uzoq vaqt begona odamga ishona olmadik, lekin bu yerda hammasi shaffof: hujjatlar, sharhlar, video. Birinchi uchrashuvdan keyin barcha shubhalar yo'qoldi.",
+    en: "It took us a while to trust a stranger, but here everything is transparent — documents, reviews, video. After the first meeting all our doubts were gone.",
+  },
+  {
+    ru: "Отличный специалист!",
+    uz: "Ajoyib mutaxassis!",
+    en: "Excellent specialist!",
+  },
+  {
+    ru: "Вежливая, опрятная, всегда улыбается. Ребёнок в надёжных руках.",
+    uz: "Muloyim, ozoda, doim tabassum qiladi. Bola ishonchli qo'llarda.",
+    en: "Polite, neat, always smiling. Our child is in safe hands.",
   },
 ];
 
@@ -111,7 +147,7 @@ const CITY_DATA = [
 
 const SPECIALISTS: SpecSeed[] = [
   {
-    key: "dilnoza", category: "nanny", fullName: "Дилноза Рахимова", photo: "/media/specialists/p1.png",
+    key: "dilnoza", category: "nanny", fullName: "Дилноза Рахимова", photo: "/media/specialists/face-01.png",
     age: 29, city: 0, district: 0, experienceYears: 8,
     education: { ru: "Высшее педагогическое", uz: "Oliy pedagogik", en: "Higher pedagogical degree" },
     languages: ["Русский", "Узбекский", "Английский"], price: 35000, priceUnit: "hour",
@@ -124,7 +160,7 @@ const SPECIALISTS: SpecSeed[] = [
     unlockCount: 31, monthsAgo: 14, ratings: [5, 5, 4, 5, 5], login: { email: "dilnoza@nanya.uz", password: "spec12345" },
   },
   {
-    key: "madina", category: "nanny", fullName: "Мадина Каримова", photo: "/media/specialists/p2.png",
+    key: "madina", category: "nanny", fullName: "Мадина Каримова", photo: "/media/specialists/face-02.png",
     age: 26, city: 0, district: 2, experienceYears: 5,
     education: { ru: "Среднее специальное, медучилище", uz: "O'rta maxsus, tibbiyot kolleji", en: "Vocational, medical college" },
     languages: ["Русский", "Узбекский"], price: 30000, priceUnit: "hour",
@@ -137,7 +173,7 @@ const SPECIALISTS: SpecSeed[] = [
     unlockCount: 18, monthsAgo: 9, ratings: [5, 4, 5],
   },
   {
-    key: "sevara", category: "nanny", fullName: "Севара Тошпулатова", photo: "/media/specialists/p3.png",
+    key: "sevara", category: "nanny", fullName: "Севара Тошпулатова", photo: "/media/hero.png",
     age: 31, city: 0, district: 1, experienceYears: 11,
     education: { ru: "Высшее, дошкольное образование", uz: "Oliy, maktabgacha ta'lim", en: "Higher, preschool education" },
     languages: ["Русский", "Узбекский", "Английский"], price: 45000, priceUnit: "hour",
@@ -150,7 +186,7 @@ const SPECIALISTS: SpecSeed[] = [
     unlockCount: 40, monthsAgo: 20, ratings: [5, 5, 5, 4, 5],
   },
   {
-    key: "kamola", category: "nanny", fullName: "Камола Саидова", photo: null,
+    key: "kamola", category: "nanny", fullName: "Камола Саидова", photo: "/media/specialists/face-04.png",
     age: 38, city: 0, district: 4, experienceYears: 15,
     education: { ru: "Среднее специальное", uz: "O'rta maxsus", en: "Vocational" },
     languages: ["Русский", "Узбекский"], price: 28000, priceUnit: "hour",
@@ -163,7 +199,7 @@ const SPECIALISTS: SpecSeed[] = [
     unlockCount: 12, monthsAgo: 16, ratings: [4, 5, 4],
   },
   {
-    key: "nigora", category: "nanny", fullName: "Нигора Алимова", photo: null,
+    key: "nigora", category: "nanny", fullName: "Нигора Алимова", photo: "/media/specialists/face-03.png",
     age: 24, city: 1, district: 0, experienceYears: 3,
     education: { ru: "Студентка педагогического вуза", uz: "Pedagogika oliygohi talabasi", en: "Pedagogy university student" },
     languages: ["Узбекский", "Русский"], price: 22000, priceUnit: "hour",
@@ -187,7 +223,7 @@ const SPECIALISTS: SpecSeed[] = [
     english: "none", verification: "verified", unlockCount: 9, monthsAgo: 11, ratings: [5, 5, 4],
   },
   {
-    key: "zulfiya", category: "caregiver", fullName: "Зульфия Рустамова", photo: null,
+    key: "zulfiya", category: "caregiver", fullName: "Ольга Соколова", photo: null,
     age: 50, city: 0, district: 2, experienceYears: 20,
     education: { ru: "Медицинское образование", uz: "Tibbiy ma'lumot", en: "Medical education" },
     languages: ["Русский", "Узбекский"], price: 400000, priceUnit: "day",
@@ -199,7 +235,7 @@ const SPECIALISTS: SpecSeed[] = [
     english: "none", verification: "premium_verified", unlockCount: 15, monthsAgo: 22, ratings: [5, 5, 5, 4],
   },
   {
-    key: "aziza", category: "tutor", fullName: "Азиза Мирзаева", photo: "/media/specialists/p4.png",
+    key: "aziza", category: "tutor", fullName: "Азиза Мирзаева", photo: "/media/specialists/face-05.png",
     age: 27, city: 0, district: 3, experienceYears: 6,
     education: { ru: "Высшее, английская филология", uz: "Oliy, ingliz filologiyasi", en: "Higher, English philology" },
     languages: ["Русский", "Узбекский", "Английский"], price: 60000, priceUnit: "hour",
@@ -211,7 +247,7 @@ const SPECIALISTS: SpecSeed[] = [
     english: "fluent", verification: "verified", unlockCount: 22, monthsAgo: 7, ratings: [5, 5, 4],
   },
   {
-    key: "bobur", category: "tutor", fullName: "Бобур Назаров", photo: null,
+    key: "bobur", category: "tutor", fullName: "Дмитрий Волков", photo: null,
     age: 34, city: 0, district: 1, experienceYears: 10,
     education: { ru: "Высшее, математика", uz: "Oliy, matematika", en: "Higher, mathematics" },
     languages: ["Узбекский", "Русский", "Английский"], price: 70000, priceUnit: "hour",
@@ -223,7 +259,7 @@ const SPECIALISTS: SpecSeed[] = [
     english: "basic", verification: "verified", unlockCount: 14, monthsAgo: 8, ratings: [5, 4, 5],
   },
   {
-    key: "laylo", category: "tutor", fullName: "Лайло Хамидова", photo: null,
+    key: "laylo", category: "tutor", fullName: "Лайло Хамидова", photo: "/media/specialists/face-06.png",
     age: 29, city: 2, district: 0, experienceYears: 5,
     education: { ru: "Высшее, начальные классы", uz: "Oliy, boshlang'ich sinflar", en: "Higher, primary education" },
     languages: ["Узбекский", "Русский"], price: 50000, priceUnit: "hour",
@@ -268,14 +304,25 @@ const LATIN_NAMES: Record<string, string> = {
   "Камола Саидова": "Kamola Saidova",
   "Нигора Алимова": "Nigora Alimova",
   "Гулнора Бекова": "Gulnora Bekova",
-  "Зульфия Рустамова": "Zulfiya Rustamova",
+  "Ольга Соколова": "Olga Sokolova",
   "Азиза Мирзаева": "Aziza Mirzaeva",
-  "Бобур Назаров": "Bobur Nazarov",
+  "Дмитрий Волков": "Dmitri Volkov",
   "Лайло Хамидова": "Laylo Khamidova",
   "Жасур Қодиров": "Jasur Qodirov",
   "Рустам Давронов": "Rustam Davronov",
 };
-const REVIEWER_NAMES = ["Aziz U.", "Kamola R.", "Jasur T.", "Nilufar S."];
+const REVIEWER_NAMES = [
+  "Aziz U.",
+  "Dilbar M.",
+  "Sherzod K.",
+  "Nilufar A.",
+  "Elena V.",
+  "Jamshid T.",
+  "Malika R.",
+  "Bekzod S.",
+  "Olga P.",
+  "Gulnoza H.",
+];
 
 async function main() {
   const ctx = await auth.$context;
@@ -347,7 +394,7 @@ async function main() {
   }
 
   const reviewerIds: string[] = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < REVIEWER_NAMES.length; i++) {
     const id = randomUUID();
     await db.insert(s.user).values({
       id,

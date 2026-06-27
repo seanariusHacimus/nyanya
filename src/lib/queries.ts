@@ -7,6 +7,7 @@ import {
   asc,
   ilike,
   arrayContains,
+  isNotNull,
   sql,
 } from "drizzle-orm";
 import { db } from "@/db";
@@ -185,6 +186,24 @@ export async function isFavorite(parentId: string, specialistId: string) {
     )
     .limit(1);
   return !!row;
+}
+
+/** Highest-trust active specialist with a real photo — for the home hero. */
+export async function getFeaturedSpecialist() {
+  const [row] = await db
+    .select(catalogFields)
+    .from(specialistProfiles)
+    .leftJoin(cities, eq(cities.id, specialistProfiles.cityId))
+    .leftJoin(districts, eq(districts.id, specialistProfiles.districtId))
+    .where(
+      and(
+        eq(specialistProfiles.status, "active"),
+        isNotNull(specialistProfiles.photoKey),
+      ),
+    )
+    .orderBy(desc(specialistProfiles.trustScore))
+    .limit(1);
+  return row ?? null;
 }
 
 export async function getSpecialistByUserId(userId: string) {

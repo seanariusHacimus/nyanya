@@ -276,6 +276,7 @@
     "all": "All",
     "error": "Error",
     "done": "Done",
-    "close": "Close"
+    "close": "Close",
+    "trust": "Trust"
   }
 }

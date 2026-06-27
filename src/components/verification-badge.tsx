@@ -21,8 +21,8 @@ export function VerificationBadge({
       className={cn(
         "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium",
         premium
-          ? "border-champagne/60 bg-champagne-soft/50 text-gold-ink"
-          : "border-royal/20 bg-royal/5 text-royal",
+          ? "border-transparent bg-gold-ink text-white shadow-sm"
+          : "border-transparent bg-royal text-white shadow-sm",
         className,
       )}
     >

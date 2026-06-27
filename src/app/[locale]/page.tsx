@@ -1,13 +1,28 @@
 import Image from "next/image";
-import { useTranslations } from "next-intl";
+import { getTranslations, getLocale } from "next-intl/server";
 import { ShieldCheck, Gauge, MessageCircle } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import { CategoryChooser } from "@/components/category-chooser";
 import { TrustSeal } from "@/components/trust-seal";
+import { VerificationBadge } from "@/components/verification-badge";
+import { getFeaturedSpecialist } from "@/lib/queries";
+import { localizedName } from "@/lib/format";
 
-export default function HomePage() {
-  const t = useTranslations("home");
-  const c = useTranslations("categories");
-  const common = useTranslations("common");
+export default async function HomePage() {
+  const t = await getTranslations("home");
+  const c = await getTranslations("categories");
+  const locale = await getLocale();
+  const featured = await getFeaturedSpecialist();
+
+  const heroPhoto = featured?.photoKey ?? "/media/hero.png";
+  const heroName = featured
+    ? localizedName(locale, featured.fullName, featured.fullNameLatin ?? "", featured.fullNameLatin ?? "")
+    : t("heroName");
+  const heroCity = featured
+    ? localizedName(locale, featured.cityNameRu ?? "", featured.cityNameUz ?? "", featured.cityNameEn ?? "")
+    : t("heroCity");
+  const heroCategory = c(featured?.category ?? "nanny");
+  const heroHref = featured ? `/catalog/${featured.id}` : "/catalog";
 
   const features = [
     { icon: ShieldCheck, title: t("feature1Title"), desc: t("feature1Desc") },
@@ -47,12 +62,12 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Visual: a premium specialist preview. Generated portrait drops in here later. */}
-          <div className="relative mx-auto w-full max-w-md lg:mr-0">
-            <div className="relative aspect-[4/5] overflow-hidden rounded-[1.4rem] border border-line shadow-[0_40px_80px_-30px_rgba(44,26,79,0.55)]">
+          {/* Featured specialist — clicks through to the profile */}
+          <Link href={heroHref} className="group relative mx-auto block w-full max-w-md lg:mr-0">
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[1.4rem] border border-line shadow-[0_40px_80px_-30px_rgba(44,26,79,0.55)] transition-transform duration-300 group-hover:-translate-y-1">
               <Image
-                src="/media/hero.png"
-                alt=""
+                src={heroPhoto}
+                alt={heroName}
                 fill
                 priority
                 sizes="(max-width: 1024px) 100vw, 460px"
@@ -63,22 +78,19 @@ export default function HomePage() {
                 className="absolute inset-0 bg-gradient-to-t from-royal-deep/80 via-royal-deep/10 to-transparent"
               />
               <div className="absolute left-5 top-5">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-champagne/40 bg-royal/85 px-2.5 py-1 text-xs font-medium text-champagne-soft backdrop-blur">
-                  <ShieldCheck className="size-3.5" />
-                  {common("premiumVerified")}
-                </span>
+                <VerificationBadge level={featured?.verificationLevel ?? "premium_verified"} />
               </div>
               <div className="absolute inset-x-0 bottom-0 p-6">
-                <p className="font-display text-3xl leading-none text-ivory">{t("heroName")}</p>
+                <p className="font-display text-3xl leading-none text-ivory">{heroName}</p>
                 <p className="mt-1.5 text-sm text-champagne-soft/85">
-                  {c("nanny")} · {t("heroCity")}
+                  {heroCategory} · {heroCity}
                 </p>
               </div>
             </div>
             <div className="absolute -bottom-5 -right-3 rounded-full bg-card p-1.5 shadow-[0_12px_30px_-8px_rgba(44,26,79,0.4)] sm:-right-5">
-              <TrustSeal score={98} size={104} />
+              <TrustSeal score={featured?.trustScore ?? 98} size={104} />
             </div>
-          </div>
+          </Link>
         </div>
       </section>
 
@@ -97,7 +109,7 @@ export default function HomePage() {
           {features.map((f) => (
             <div
               key={f.title}
-              className="rounded-2xl border border-line bg-card p-7 transition-shadow hover:shadow-[0_20px_50px_-30px_rgba(44,26,79,0.4)]"
+              className="flex flex-col rounded-2xl border border-line bg-card p-7 transition-shadow hover:shadow-[0_20px_50px_-30px_rgba(44,26,79,0.4)]"
             >
               <span className="grid size-12 place-items-center rounded-xl bg-royal/5 text-royal">
                 <f.icon className="size-6" strokeWidth={1.6} />

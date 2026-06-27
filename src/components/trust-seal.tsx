@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { clampScore } from "@/lib/format";
 
@@ -14,6 +15,7 @@ export function TrustSeal({
   size?: number;
   className?: string;
 }) {
+  const t = useTranslations("common");
   const value = clampScore(score);
   const r = 41;
   const circumference = 2 * Math.PI * r;
@@ -53,10 +55,10 @@ export function TrustSeal({
             {value}
           </div>
           <div
-            className="mt-1 uppercase tracking-[0.22em] text-gold-ink"
-            style={{ fontSize: Math.max(7, size * 0.085) }}
+            className="mt-0.5 whitespace-nowrap uppercase leading-none text-gold-ink"
+            style={{ fontSize: Math.max(6, size * 0.078), letterSpacing: "0.08em" }}
           >
-            Trust
+            {t("trust")}
           </div>
         </div>
       </div>

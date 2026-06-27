@@ -2,7 +2,6 @@ import { getTranslations, getLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import {
   Star,
-  BadgeCheck,
   GraduationCap,
   Languages as LanguagesIcon,
   MapPin,
@@ -112,12 +111,6 @@ export default async function SpecialistPage({
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <VerificationBadge level={spec.verificationLevel} />
-            {spec.verificationLevel !== "unverified" && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <BadgeCheck className="size-3.5 text-royal" />
-                {t("verifiedDocs")}
-              </span>
-            )}
           </div>
 
           <p className="mt-4 text-xs uppercase tracking-[0.22em] text-gold-ink">{cat(spec.category)}</p>

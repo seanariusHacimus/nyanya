@@ -5,5 +5,6 @@ For how the system is built, see `ARCHITECTURE.md`.
 
 | Date | Change | Log |
 |---|---|---|
+| 2026-06-28 | Iteration 02 — UI polish, content realism, featured hero | [link](changes/2026-06-28-iteration-02-ui-content.md) |
 | 2026-06-27 | Iteration 01 — security hardening, docs, image optimization | [link](changes/2026-06-27-iteration-01-security.md) |
 | 2026-06-27 | Initial MVP build (foundation → auth → catalog → unlock → admin) | see `ARCHITECTURE.md` |
