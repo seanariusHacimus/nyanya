@@ -15,7 +15,7 @@ export function localizedName(
   uz: string,
   en: string,
 ): string {
-  return locale === "uz" ? uz : locale === "en" ? en : ru;
+  return (locale === "uz" ? uz : locale === "en" ? en : ru) || ru;
 }
 
 /** Whole-year age from a YYYY-MM-DD birth date. */

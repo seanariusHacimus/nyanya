@@ -62,6 +62,8 @@ export default async function SpecialistPage({
     spec.englishLevel === "fluent" ? t("englishFluent") : spec.englishLevel === "basic" ? t("englishBasic") : t("englishNone");
   const currencyWord = common("perHour").split("/")[0];
   const priceLabel = `${formatUZS(UNLOCK_FEE)} ${currencyWord}`;
+  const description = localizedName(locale, spec.description ?? "", spec.descriptionUz ?? "", spec.descriptionEn ?? "");
+  const education = localizedName(locale, spec.education ?? "", spec.educationUz ?? "", spec.educationEn ?? "");
 
   const features = [
     spec.hasCar && { icon: Car, label: t("hasCar") },
@@ -71,7 +73,7 @@ export default async function SpecialistPage({
   ].filter(Boolean) as { icon: typeof Car; label: string }[];
 
   const attrs = [
-    spec.education && { icon: GraduationCap, label: t("education"), value: spec.education },
+    education && { icon: GraduationCap, label: t("education"), value: education },
     { icon: LanguagesIcon, label: t("languages"), value: spec.languages.join(", ") },
     { icon: Briefcase, label: t("experience"), value: `${spec.experienceYears} ${common("years")}` },
     { icon: Globe, label: t("english"), value: englishLabel },
@@ -151,10 +153,10 @@ export default async function SpecialistPage({
             <span className="text-sm text-muted-foreground">{unit}</span>
           </div>
 
-          {spec.description && (
+          {description && (
             <div className="mt-8">
               <h2 className="font-display text-xl font-semibold text-ink">{t("about")}</h2>
-              <p className="mt-2 leading-relaxed text-muted-foreground">{spec.description}</p>
+              <p className="mt-2 leading-relaxed text-muted-foreground">{description}</p>
             </div>
           )}
 
@@ -207,7 +209,11 @@ export default async function SpecialistPage({
                         ))}
                       </span>
                     </div>
-                    {r.text && <p className="mt-2 text-sm text-muted-foreground">{r.text}</p>}
+                    {localizedName(locale, r.text ?? "", r.textUz ?? "", r.textEn ?? "") && (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {localizedName(locale, r.text ?? "", r.textUz ?? "", r.textEn ?? "")}
+                      </p>
+                    )}
                   </li>
                 ))}
               </ul>
