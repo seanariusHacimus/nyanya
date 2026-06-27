@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NANYA.UZ
 
-## Getting Started
+Premium marketplace for finding **nannies, caregivers, tutors, and drivers** in Uzbekistan.
+A discovery + trust + **pay-to-unlock-contacts** platform (not a booking/escrow service) — trilingual, with document verification, a Trust Score, and an admin moderation panel.
 
-First, run the development server:
+> Built per the technical specification (`nanya.uz- ТЗ.docx`). This is a working MVP: real auth, database, catalog, profiles, the contact-unlock money path, specialist onboarding, and admin moderation. Payments and SMS are **mocked behind clean interfaces** so the Uzbek providers (Click/Payme/Uzum, Eskiz) drop in without touching call sites.
+
+## Tech stack
+
+| Layer | Choice |
+|---|---|
+| Framework | **Next.js 16** (App Router, RSC + Server Actions, Turbopack) · TypeScript |
+| Database | **PostgreSQL** + **Drizzle ORM** (local: Docker; prod: Railway — same driver) |
+| Auth | **Better Auth** (email+password, roles via admin plugin, mock phone OTP) |
+| UI | **Tailwind v4 + shadcn/ui**, "Luxury Minimal" theme (ivory / royal purple / champagne gold) |
+| i18n | **next-intl** — Russian (default), Uzbek, English at `/[locale]/…` |
+| Media | Specialist portraits + hero generated with **Higgsfield** (soul_2), in `public/media` |
+| Testing | **Vitest** (Trust Score) · **Playwright** (E2E journeys) |
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. Install deps
+npm install
+
+# 2. Start Postgres (Docker) — maps host 5434 -> container 5432
+docker compose up -d
+
+# 3. Apply schema + seed demo data
+npm run db:migrate
+npm run db:seed
+
+# 4. Run
+npm run dev          # http://localhost:3000  (redirects to /ru)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env` already contains local dev defaults (gitignored). See `.env.example`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Demo accounts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Role | Email | Password |
+|---|---|---|
+| Parent | `parent@nanya.uz` | `parent12345` |
+| Specialist | `dilnoza@nanya.uz` | `spec12345` |
+| Admin | `admin@nanya.uz` | `admin12345` |
 
-## Learn More
+Mock SMS OTP code (phone verification): **`123456`**.
 
-To learn more about Next.js, take a look at the following resources:
+## What works
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Parent journey** — choose a category on the home page → browse the catalog with filters (city, price, experience, language, English, car, live-in, night, newborns) → open a profile (contacts gated, with Trust Score, reviews, video-intro slot) → **pay to unlock contacts** (mock provider) → phone / Telegram / WhatsApp revealed → favorite & review.
+- **Specialist journey** — register → mock phone OTP → fill a profile → submitted for review → admin approves → published in the catalog with a Trust Score.
+- **Admin journey** — analytics (parents, specialists, unlocks, revenue, conversion), specialist moderation (set Verified / Premium Verified, hide/publish), and user blocking.
+- **Trust Score** — automatic 0–100 indicator (verification, opened contacts, profile age, engagement), recomputed on unlock. Unit-tested.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Mock-first integrations (swap for production)
 
-## Deploy on Vercel
+Selected by env var, behind interfaces — no call-site changes when going live:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Payments** (`PAYMENT_PROVIDER`, `src/lib/providers/payment.ts`) — `mock` → `payme` / `click` / `uzum`. The unlock flow creates a `payments` row and, on success, an idempotent `contact_unlocks` row.
+- **SMS** (`SMS_PROVIDER`, `src/lib/providers/sms.ts`) — `mock` → `eskiz` / `playmobile`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Data residency (Uzbekistan, ZRU-547 — launch gate)
+
+Per the plan, before public launch, **biometric media (selfies/face video/photos), medical certificates, and UZ phone numbers must be stored physically in Uzbekistan**; passports/names/email may live abroad with contracts. The dev MVP runs entirely on Docker/local; the storage split + database registration is a pre-launch task. Document upload is simulated in this MVP for the same reason.
+
+## Project structure
+
+```
+src/
+  app/[locale]/        # routes: home, catalog, catalog/[id], account, specialist, admin, auth…
+  components/          # design system (trust-seal, specialist-card, header/footer) + UI
+  db/                  # Drizzle schema, client, seed
+  i18n/                # next-intl routing, request, navigation
+  lib/
+    actions/           # server actions (auth, unlock, specialist, admin)
+    providers/         # payment & sms abstractions (mock-first)
+    queries.ts         # data access
+    trust-score.ts     # pure scoring fn (+ .test.ts)
+messages/              # ru.json · uz.json · en.json
+```
+
+## Scripts
+
+`npm run dev` · `build` · `test` (Vitest) · `db:migrate` · `db:seed` · `db:studio` · `lint`
+
+## Notes
+
+- Local dev uses a real Postgres in Docker on port **5434** (avoids common 5432/5433 conflicts).
+- Production: point `DATABASE_URL` at Railway Postgres — the `postgres-js` driver is the same.

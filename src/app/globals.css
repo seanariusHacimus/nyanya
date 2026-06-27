@@ -1,26 +1,129 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
+
+/*
+  NANYA.UZ — "Luxury Minimal" design system
+  Ivory canvas · Royal Purple primary · Champagne Gold accent · purple-black ink
+  Display: Cormorant Garamond (Cyrillic-capable serif) · Body/UI: Manrope
+*/
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+
+  --font-sans: var(--font-manrope);
+  --font-display: var(--font-cormorant);
+  --font-heading: var(--font-cormorant);
   --font-mono: var(--font-geist-mono);
+
+  /* brand raw tokens → utilities (bg-royal, text-champagne, border-line…) */
+  --color-ivory: var(--ivory);
+  --color-ivory-deep: var(--ivory-deep);
+  --color-royal: var(--royal);
+  --color-royal-deep: var(--royal-deep);
+  --color-royal-soft: var(--royal-soft);
+  --color-champagne: var(--champagne);
+  --color-champagne-soft: var(--champagne-soft);
+  --color-gold-ink: var(--gold-ink);
+  --color-ink: var(--ink);
+  --color-line: var(--line);
+
+  /* shadcn semantic tokens */
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.5rem;
+
+  /* raw brand palette */
+  --ivory: #f7f2e9;
+  --ivory-deep: #efe6d4;
+  --royal: #4b2e83;
+  --royal-deep: #2c1a4f;
+  --royal-soft: #6b4fa0;
+  --champagne: #c2a05a;
+  --champagne-soft: #e7d6ab;
+  --gold-ink: #8a6d2a;
+  --ink: #221c2e;
+  --line: #e6dcc8;
+
+  /* semantic */
+  --background: var(--ivory);
+  --foreground: var(--ink);
+  --card: #fcfaf4;
+  --card-foreground: var(--ink);
+  --popover: #fcfaf4;
+  --popover-foreground: var(--ink);
+  --primary: var(--royal);
+  --primary-foreground: #f8f4ec;
+  --secondary: var(--ivory-deep);
+  --secondary-foreground: var(--royal-deep);
+  --muted: #ece3d2;
+  --muted-foreground: #6e6678;
+  --accent: #efe6d2;
+  --accent-foreground: var(--royal-deep);
+  --destructive: oklch(0.55 0.2 27);
+  --border: var(--line);
+  --input: #ded2bb;
+  --ring: var(--royal-soft);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/40;
+  }
+  html {
+    @apply font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv01";
+  }
+  ::selection {
+    background: var(--champagne-soft);
+    color: var(--royal-deep);
+  }
+  /* refined defaults for the display face */
+  .font-display {
+    font-feature-settings: "liga", "dlig";
+    letter-spacing: -0.01em;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* thin champagne hairline used as a structural divider */
+.rule-gold {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--champagne) 18%,
+    var(--champagne) 82%,
+    transparent
+  );
 }

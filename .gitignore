@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local embedded db
+/.pglite
+
+# keep the env template, ignore real env files
+!.env.example
+
+# playwright session artifacts
+.playwright-mcp/
