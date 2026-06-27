@@ -50,27 +50,32 @@ export function CatalogFilters({ cities }: { cities: CityRow[] }) {
     label: string,
     anyLabel: string,
     options: { value: string; label: string }[],
-  ) => (
-    <div className="space-y-1.5">
-      <Label className="text-xs uppercase tracking-wider text-gold-ink">{label}</Label>
-      <Select
-        value={sp.get(key) ?? ALL}
-        onValueChange={(v) => setParam(key, v === ALL ? null : v)}
-      >
-        <SelectTrigger className="w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL}>{anyLabel}</SelectItem>
-          {options.map((o) => (
-            <SelectItem key={o.value} value={o.value}>
-              {o.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
+  ) => {
+    const items: Record<string, string> = { [ALL]: anyLabel };
+    for (const o of options) items[o.value] = o.label;
+    return (
+      <div className="space-y-1.5">
+        <Label className="text-xs uppercase tracking-wider text-gold-ink">{label}</Label>
+        <Select
+          items={items}
+          value={sp.get(key) ?? ALL}
+          onValueChange={(v) => setParam(key, v === ALL ? null : v)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>{anyLabel}</SelectItem>
+            {options.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-5">

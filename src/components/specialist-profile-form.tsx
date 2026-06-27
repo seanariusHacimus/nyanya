@@ -96,7 +96,7 @@ export function SpecialistProfileForm({ cities }: { cities: CityRow[] }) {
         </div>
         <div className="space-y-1.5">
           <Label>{catalogT("category")}</Label>
-          <Select value={category} onValueChange={(v) => v && setCategory(v as Category)}>
+          <Select items={Object.fromEntries(CATEGORIES.map((c) => [c, cat(c)]))} value={category} onValueChange={(v) => v && setCategory(v as Category)}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -118,7 +118,7 @@ export function SpecialistProfileForm({ cities }: { cities: CityRow[] }) {
         </div>
         <div className="space-y-1.5">
           <Label>{catalogT("city")}</Label>
-          <Select value={cityId} onValueChange={(v) => setCityId(v ?? "")}>
+          <Select items={Object.fromEntries(cities.map((c) => [String(c.id), localizedName(locale, c.nameRu, c.nameUz, c.nameEn)]))} value={cityId} onValueChange={(v) => setCityId(v ?? "")}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="—" />
             </SelectTrigger>
@@ -151,7 +151,7 @@ export function SpecialistProfileForm({ cities }: { cities: CityRow[] }) {
         </div>
         <div className="space-y-1.5">
           <Label>{t("priceUnit")}</Label>
-          <Select value={priceUnit} onValueChange={(v) => v && setPriceUnit(v as PriceUnit)}>
+          <Select items={Object.fromEntries(PRICE_UNITS.map((u) => [u, unitLabel(u)]))} value={priceUnit} onValueChange={(v) => v && setPriceUnit(v as PriceUnit)}>
             <SelectTrigger className="w-32">
               <SelectValue />
             </SelectTrigger>
@@ -185,7 +185,7 @@ export function SpecialistProfileForm({ cities }: { cities: CityRow[] }) {
 
       <div className="space-y-1.5">
         <Label>{tp("english")}</Label>
-        <Select value={englishLevel} onValueChange={(v) => v && setEnglishLevel(v as EnglishLevel)}>
+        <Select items={Object.fromEntries(ENGLISH_LEVELS.map((l) => [l, englishLabel(l)]))} value={englishLevel} onValueChange={(v) => v && setEnglishLevel(v as EnglishLevel)}>
           <SelectTrigger className="w-full sm:w-60">
             <SelectValue />
           </SelectTrigger>

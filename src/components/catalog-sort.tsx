@@ -26,8 +26,15 @@ export function CatalogSort() {
     router.replace(qs ? `${pathname}?${qs}` : pathname);
   }
 
+  const items = {
+    trust: t("sortTrust"),
+    price_asc: t("sortPriceAsc"),
+    price_desc: t("sortPriceDesc"),
+    experience: t("sortExperience"),
+  };
+
   return (
-    <Select value={value} onValueChange={set}>
+    <Select items={items} value={value} onValueChange={set}>
       <SelectTrigger className="w-[190px]">
         <SelectValue />
       </SelectTrigger>
