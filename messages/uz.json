@@ -3,6 +3,28 @@
     "name": "NANYA.UZ",
     "tagline": "Enagalar va uy mutaxassislarini tanlash bo'yicha premium xizmat"
   },
+  "meta": {
+    "title": "NANYA.UZ — O'zbekistonda enagalarni premium tanlash",
+    "description": "O'zbekistonda tekshirilgan enagalar, parvarishchilar, repetitorlar va haydovchilar. Hujjatlar tekshiruvi, video-tashrifnomalar va ishonch reytingi."
+  },
+  "notif": {
+    "contact_unlocked": {
+      "title": "Kontaktlaringiz ochildi",
+      "body": "Ota-ona kontaktlaringizga kirish huquqini oldi."
+    },
+    "verification_status": {
+      "title": "Tekshiruv holati yangilandi",
+      "body": "Verifikatsiya holatingiz moderator tomonidan yangilandi."
+    },
+    "new_review": {
+      "title": "Yangi sharh",
+      "body": "Sizda yangi sharh bor."
+    },
+    "listing_published": {
+      "title": "Anketa e'lon qilindi",
+      "body": "Anketangiz katalogda e'lon qilindi."
+    }
+  },
   "nav": {
     "find": "Mutaxassis topish",
     "forSpecialists": "Mutaxassislarga",
@@ -11,7 +33,8 @@
     "login": "Kirish",
     "signup": "Ro'yxatdan o'tish",
     "account": "Kabinet",
-    "logout": "Chiqish"
+    "logout": "Chiqish",
+    "menu": "Menyu"
   },
   "categories": {
     "nanny": "Enaga",
@@ -35,6 +58,8 @@
     "ctaBecome": "Mutaxassis bo'lish",
     "searchPlaceholder": "Kimni qidiryapsiz?",
     "chooseCategory": "Kimni qidiryapsiz?",
+    "heroCity": "Toshkent",
+    "heroName": "Dilnoza R.",
     "trustEyebrow": "Nega NANYA",
     "trustTitle": "Hashamat darajasidagi ishonch",
     "feature1Title": "Hujjatlarni tekshirish",
@@ -64,7 +89,8 @@
     "privacy": "Maxfiylik",
     "disclaimerTitle": "Muhim",
     "disclaimer": "Biz qidiruv va o'zaro aloqa uchun platforma taqdim etamiz. NANYA.UZ foydalanuvchilar harakatlari uchun javobgar emas va xizmat sifatini kafolatlamaydi. Foydalanuvchi mutaxassisni mustaqil tanlaydi va qaror qabul qiladi.",
-    "rights": "Barcha huquqlar himoyalangan."
+    "rights": "Barcha huquqlar himoyalangan.",
+    "location": "Toshkent, O'zbekiston"
   },
   "auth": {
     "loginTitle": "Kirish",
@@ -91,7 +117,8 @@
     "errorInvalid": "Email yoki parol noto'g'ri",
     "errorGeneric": "Nimadir xato ketdi. Qayta urinib ko'ring.",
     "errorCode": "Noto'g'ri kod",
-    "welcome": "Xush kelibsiz"
+    "welcome": "Xush kelibsiz",
+    "codeSent": "Kod qayta yuborildi"
   },
   "account": {
     "parent": "Ota-ona",
@@ -246,6 +273,9 @@
     "loading": "Yuklanmoqda…",
     "search": "Qidiruv",
     "filters": "Filtrlar",
-    "all": "Barchasi"
+    "all": "Barchasi",
+    "error": "Xatolik",
+    "done": "Tayyor",
+    "close": "Yopish"
   }
 }

@@ -3,6 +3,28 @@
     "name": "NANYA.UZ",
     "tagline": "Premium matching for nannies and household specialists"
   },
+  "meta": {
+    "title": "NANYA.UZ — Premium marketplace for nannies in Uzbekistan",
+    "description": "Verified nannies, caregivers, tutors and drivers in Uzbekistan. Document verification, video intros and a Trust Score you can rely on."
+  },
+  "notif": {
+    "contact_unlocked": {
+      "title": "Your contacts were unlocked",
+      "body": "A parent gained access to your contacts."
+    },
+    "verification_status": {
+      "title": "Verification status updated",
+      "body": "Your verification status was updated by a moderator."
+    },
+    "new_review": {
+      "title": "New review",
+      "body": "You have a new review."
+    },
+    "listing_published": {
+      "title": "Profile published",
+      "body": "Your profile is now live in the catalog."
+    }
+  },
   "nav": {
     "find": "Find a specialist",
     "forSpecialists": "For specialists",
@@ -11,7 +33,8 @@
     "login": "Log in",
     "signup": "Sign up",
     "account": "Account",
-    "logout": "Log out"
+    "logout": "Log out",
+    "menu": "Menu"
   },
   "categories": {
     "nanny": "Nanny",
@@ -35,6 +58,8 @@
     "ctaBecome": "Become a specialist",
     "searchPlaceholder": "Who are you looking for?",
     "chooseCategory": "Who are you looking for?",
+    "heroCity": "Tashkent",
+    "heroName": "Dilnoza R.",
     "trustEyebrow": "Why NANYA",
     "trustTitle": "Trust, finished like luxury",
     "feature1Title": "Document verification",
@@ -64,7 +89,8 @@
     "privacy": "Privacy",
     "disclaimerTitle": "Important",
     "disclaimer": "We provide a platform for search and interaction. NANYA.UZ is not responsible for users' actions and does not guarantee the quality of services. The user independently selects a specialist and makes the decision.",
-    "rights": "All rights reserved."
+    "rights": "All rights reserved.",
+    "location": "Tashkent, Uzbekistan"
   },
   "auth": {
     "loginTitle": "Log in",
@@ -91,7 +117,8 @@
     "errorInvalid": "Invalid email or password",
     "errorGeneric": "Something went wrong. Please try again.",
     "errorCode": "Invalid code",
-    "welcome": "Welcome"
+    "welcome": "Welcome",
+    "codeSent": "Code resent"
   },
   "account": {
     "parent": "Parent",
@@ -246,6 +273,9 @@
     "loading": "Loading…",
     "search": "Search",
     "filters": "Filters",
-    "all": "All"
+    "all": "All",
+    "error": "Error",
+    "done": "Done",
+    "close": "Close"
   }
 }

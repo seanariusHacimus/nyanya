@@ -57,7 +57,7 @@ export function VerifyPhoneForm() {
       </Button>
       <button
         type="button"
-        onClick={() => sendOtpMock().then(() => toast.success("OK"))}
+        onClick={() => sendOtpMock().then(() => toast.success(t("codeSent")))}
         className="w-full text-center text-sm text-muted-foreground hover:text-royal"
       >
         {t("resend")}

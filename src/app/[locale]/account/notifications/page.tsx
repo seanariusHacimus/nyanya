@@ -23,6 +23,13 @@ export default async function NotificationsPage({
 
   const items = await getNotifications(session.user.id);
   const t = await getTranslations("account");
+  const tn = await getTranslations("notif");
+  const KNOWN = [
+    "contact_unlocked",
+    "verification_status",
+    "new_review",
+    "listing_published",
+  ];
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
@@ -36,14 +43,17 @@ export default async function NotificationsPage({
         <ul className="mt-8 space-y-3">
           {items.map((n) => {
             const Icon = ICONS[n.type] ?? Bell;
+            const known = KNOWN.includes(n.type);
+            const title = known ? tn(`${n.type}.title`) : n.title;
+            const body = known ? tn(`${n.type}.body`) : n.body;
             return (
               <li key={n.id} className="flex gap-3 rounded-xl border border-line bg-card p-4">
                 <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg bg-royal/5 text-royal">
                   <Icon className="size-4" />
                 </span>
                 <div>
-                  <p className="font-medium text-ink">{n.title}</p>
-                  {n.body && <p className="mt-0.5 text-sm text-muted-foreground">{n.body}</p>}
+                  <p className="font-medium text-ink">{title}</p>
+                  {body && <p className="mt-0.5 text-sm text-muted-foreground">{body}</p>}
                 </div>
               </li>
             );

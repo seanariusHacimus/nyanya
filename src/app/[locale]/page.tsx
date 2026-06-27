@@ -69,9 +69,9 @@ export default function HomePage() {
                 </span>
               </div>
               <div className="absolute inset-x-0 bottom-0 p-6">
-                <p className="font-display text-3xl leading-none text-ivory">Dilnoza R.</p>
+                <p className="font-display text-3xl leading-none text-ivory">{t("heroName")}</p>
                 <p className="mt-1.5 text-sm text-champagne-soft/85">
-                  {c("nanny")} · Toshkent
+                  {c("nanny")} · {t("heroCity")}
                 </p>
               </div>
             </div>

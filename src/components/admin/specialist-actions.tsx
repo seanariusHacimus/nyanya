@@ -14,15 +14,16 @@ export function SpecialistActions({
   status: string;
 }) {
   const t = useTranslations("admin");
+  const common = useTranslations("common");
   const [pending, start] = useTransition();
 
   function run(fn: () => Promise<void>) {
     start(async () => {
       try {
         await fn();
-        toast.success("OK");
+        toast.success(common("done"));
       } catch {
-        toast.error("Error");
+        toast.error(common("error"));
       }
     });
   }

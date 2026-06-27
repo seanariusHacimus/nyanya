@@ -91,13 +91,13 @@ export function SiteHeader() {
           <LocaleSwitcher />
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger
-              aria-label="Menu"
+              aria-label={t("menu")}
               className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
             >
               <Menu className="size-5" />
             </SheetTrigger>
             <SheetContent side="right" className="bg-ivory">
-              <SheetTitle className="sr-only">Menu</SheetTitle>
+              <SheetTitle className="sr-only">{t("menu")}</SheetTitle>
               <div className="mt-10 flex flex-col gap-1 px-4">
                 {links.map((l) => (
                   <Link

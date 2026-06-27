@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant, Manrope } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { Toaster } from "@/components/ui/sonner";
@@ -21,14 +22,18 @@ const manrope = Manrope({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "NANYA.UZ — Premium marketplace for nannies in Uzbekistan",
-    template: "%s · NANYA.UZ",
-  },
-  description:
-    "Verified nannies, caregivers, tutors and drivers in Uzbekistan. Document verification, video intros and a Trust Score you can rely on.",
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "meta" });
+  return {
+    title: { default: t("title"), template: "%s · NANYA.UZ" },
+    description: t("description"),
+  };
+}
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));

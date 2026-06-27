@@ -83,7 +83,7 @@ export function SpecialistProfileForm({ cities }: { cities: CityRow[] }) {
     } else if (res.reason === "auth") {
       router.push("/login");
     } else {
-      toast.error("Error");
+      toast.error(common("error"));
     }
   }
 

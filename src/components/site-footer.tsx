@@ -71,7 +71,7 @@ export function SiteFooter() {
 
         <div className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-line pt-6 text-xs text-muted-foreground sm:flex-row">
           <span>© 2026 NANYA.UZ — {t("rights")}</span>
-          <span>Toshkent, O'zbekiston</span>
+          <span>{t("location")}</span>
         </div>
       </div>
     </footer>
