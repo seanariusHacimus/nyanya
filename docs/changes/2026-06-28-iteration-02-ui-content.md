@@ -55,6 +55,20 @@ Re-cut all 7 portraits from the collages' **bottom** cells, which have full head
 
 Verified through the real `next/image` pipeline (server-side, bypassing browser cache): all 7 render full-head, watermark-free. *Note:* a long-running `next dev` caches optimised variants in memory and won't notice a same-name source swap — restart dev (or hard-refresh) to see replacements locally; production serves the new files fresh. One spare clean crop (an older woman) remains available if we later want a photo for a caregiver instead of a monogram.
 
+## Follow-up — translation completeness audit (100%)
+
+Audited the whole app for i18n coverage, not just visible chrome:
+- **Key parity** — all three catalogs hold the same 244 keys (no missing keys in any locale).
+- **No hardcoded UI strings** — swept components for hardcoded Cyrillic and for literal JSX text/attributes; the only non-`t()` text is in seed data (which carries `{ru,uz,en}`) and code comments.
+
+Fixed the gaps found:
+- **Spoken languages rendered raw** — `specialist.languages` is stored canonically (Russian) and the profile page printed it verbatim, so EN/UZ visitors saw "Русский, Узбекский". Added a shared `LANGUAGES` list + `localizeLanguage()` in `lib/format.ts`; the profile page, the catalog filter, and the profile-form checkboxes all localize now (RU «Русский» · UZ «Rus tili» · EN "Russian"). Stored value is unchanged, so existing filters/data keep working.
+- **`home.feature2Title`** was "Trust Score" in every locale → RU «Индекс доверия» · UZ «Ishonch indeksi» (matches the localized `common.trustScore`).
+- **TrustSeal `aria-label`** was hardcoded `"Trust Score N of 100"` → now built from the localized `trustScore` key (screen-reader text follows the locale).
+- **Email label** `Email` → RU «Эл. почта» (auth + admin). UZ keeps "Email" (standard loanword).
+
+Remaining English-equal values are intentional: brand names (NANYA.UZ, Telegram, WhatsApp), a person's name, and accepted Uzbek loanwords ("Premium", "Administrator", "Email"). Notification titles already localize at render time via the `notif` namespace keyed on `type`. Verified RU/UZ/EN render correctly server-side.
+
 ## Follow-ups
 
 - **Full ethnically-diverse generated faces** (male drivers, older caregivers, Russian/Tatar faces) still need fresh Higgsfield generation — currently blocked by the account's **grace-period generation cap** (credits available, but daily generation limit reached; did not reset overnight). Until then those specialists use monograms. Re-run portrait generation once the cap clears, then reseed.

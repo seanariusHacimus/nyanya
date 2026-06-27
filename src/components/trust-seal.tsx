@@ -26,7 +26,7 @@ export function TrustSeal({
       className={cn("relative inline-grid shrink-0 place-items-center", className)}
       style={{ width: size, height: size }}
       role="img"
-      aria-label={`Trust Score ${value} of 100`}
+      aria-label={`${t("trustScore")}: ${value}/100`}
     >
       <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
         {/* outer hairline ring */}

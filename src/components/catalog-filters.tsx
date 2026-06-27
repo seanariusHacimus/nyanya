@@ -4,7 +4,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { CATEGORIES } from "@/lib/constants";
-import { localizedName, formatUZS } from "@/lib/format";
+import { localizedName, formatUZS, LANGUAGES } from "@/lib/format";
 import {
   Select,
   SelectContent,
@@ -19,11 +19,6 @@ import { Button } from "@/components/ui/button";
 type CityRow = { id: number; nameRu: string; nameUz: string; nameEn: string };
 
 const ALL = "__all";
-const LANGS = [
-  { v: "Русский", ru: "Русский", uz: "Rus tili", en: "Russian" },
-  { v: "Узбекский", ru: "Узбекский", uz: "O'zbek tili", en: "Uzbek" },
-  { v: "Английский", ru: "Английский", uz: "Ingliz tili", en: "English" },
-];
 const PRICES = [30000, 50000, 80000, 150000];
 const EXPS = [1, 3, 5, 10];
 const TOGGLES = ["english", "hasCar", "liveIn", "night", "newborn"] as const;
@@ -110,8 +105,8 @@ export function CatalogFilters({ cities }: { cities: CityRow[] }) {
         "language",
         t("language"),
         t("anyLanguage"),
-        LANGS.map((l) => ({
-          value: l.v,
+        LANGUAGES.map((l) => ({
+          value: l.value,
           label: localizedName(locale, l.ru, l.uz, l.en),
         })),
       )}

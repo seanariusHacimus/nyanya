@@ -25,7 +25,7 @@ import { TrustSeal } from "@/components/trust-seal";
 import { VerificationBadge } from "@/components/verification-badge";
 import { UnlockPanel } from "@/components/unlock-panel";
 import { FavoriteButton } from "@/components/favorite-button";
-import { formatUZS, localizedName, ageFromBirthDate } from "@/lib/format";
+import { formatUZS, localizedName, ageFromBirthDate, localizeLanguage } from "@/lib/format";
 import { UNLOCK_FEE } from "@/lib/providers/payment";
 
 export default async function SpecialistPage({
@@ -74,7 +74,7 @@ export default async function SpecialistPage({
 
   const attrs = [
     education && { icon: GraduationCap, label: t("education"), value: education },
-    { icon: LanguagesIcon, label: t("languages"), value: spec.languages.join(", ") },
+    { icon: LanguagesIcon, label: t("languages"), value: spec.languages.map((l) => localizeLanguage(locale, l)).join(", ") },
     { icon: Briefcase, label: t("experience"), value: `${spec.experienceYears} ${common("years")}` },
     { icon: Globe, label: t("english"), value: englishLabel },
   ].filter(Boolean) as { icon: typeof Car; label: string; value: string }[];

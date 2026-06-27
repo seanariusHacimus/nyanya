@@ -13,7 +13,7 @@ import {
   type PriceUnit,
   type EnglishLevel,
 } from "@/lib/constants";
-import { localizedName } from "@/lib/format";
+import { localizedName, LANGUAGES, localizeLanguage } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/select";
 
 type CityRow = { id: number; nameRu: string; nameUz: string; nameEn: string };
-const LANGS = ["Русский", "Узбекский", "Английский"];
 
 export function SpecialistProfileForm({ cities }: { cities: CityRow[] }) {
   const t = useTranslations("specialist");
@@ -169,15 +168,15 @@ export function SpecialistProfileForm({ cities }: { cities: CityRow[] }) {
       <div className="space-y-1.5">
         <Label>{tp("languages")}</Label>
         <div className="flex flex-wrap gap-3">
-          {LANGS.map((l) => (
-            <label key={l} className="flex cursor-pointer items-center gap-2 text-sm">
+          {LANGUAGES.map((l) => (
+            <label key={l.value} className="flex cursor-pointer items-center gap-2 text-sm">
               <Checkbox
-                checked={languages.includes(l)}
+                checked={languages.includes(l.value)}
                 onCheckedChange={(c) =>
-                  setLanguages((prev) => (c ? [...prev, l] : prev.filter((x) => x !== l)))
+                  setLanguages((prev) => (c ? [...prev, l.value] : prev.filter((x) => x !== l.value)))
                 }
               />
-              {l}
+              {localizeLanguage(locale, l.value)}
             </label>
           ))}
         </div>
