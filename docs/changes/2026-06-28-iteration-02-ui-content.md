@@ -37,6 +37,16 @@ The hero is now driven by data. `getFeaturedSpecialist()` (highest-trust active 
 
 `npx tsc --noEmit` clean. Reseeded (`FORCE_SEED=true`) and verified in-browser across **RU / UZ / EN**: hero links through to the featured profile, badges legible, single-face photos, varied reviews with real names, equal card heights, seal label localized.
 
+## Follow-up — localize the verification badges
+
+Per request, the verification labels are no longer English brand terms. Localized the remaining holdouts (RU / UZ; EN stays as the source language):
+- `common.verified` → **Проверен** · **Tasdiqlangan**
+- `common.premiumVerified` → **Премиум-проверка** · **Premium tasdiqlangan**
+- `common.trustScore` (specialist dashboard) → **Индекс доверия** · **Ishonch indeksi**
+- `admin.trust` / `admin.makeVerified` / `admin.makePremium` (admin panel) → **Доверие / Проверен / Премиум** · **Ishonch / Tasdiqlangan / Premium**
+
+The Trust *seal* label (`common.trust`) was already localized (Доверие / Ishonch / Trust). Verified in-browser: catalog badges render Cyrillic, no English brand terms remain.
+
 ## Follow-ups
 
 - **Full ethnically-diverse generated faces** (male drivers, older caregivers, Russian/Tatar faces) still need fresh Higgsfield generation — currently blocked by the account's **grace-period generation cap** (credits available, but daily generation limit reached; did not reset overnight). Until then those specialists use monograms. Re-run portrait generation once the cap clears, then reseed.
