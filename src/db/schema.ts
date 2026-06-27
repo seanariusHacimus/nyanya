@@ -128,6 +128,7 @@ export const specialistProfiles = pgTable(
       .unique(),
     category: categoryEnum("category").notNull(),
     fullName: text("full_name").notNull(),
+    fullNameLatin: text("full_name_latin"),
     photoKey: text("photo_key"),
     birthDate: date("birth_date"),
     cityId: integer("city_id").references(() => cities.id),

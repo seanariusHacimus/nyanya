@@ -42,6 +42,7 @@ const catalogFields = {
   id: specialistProfiles.id,
   category: specialistProfiles.category,
   fullName: specialistProfiles.fullName,
+  fullNameLatin: specialistProfiles.fullNameLatin,
   photoKey: specialistProfiles.photoKey,
   birthDate: specialistProfiles.birthDate,
   experienceYears: specialistProfiles.experienceYears,

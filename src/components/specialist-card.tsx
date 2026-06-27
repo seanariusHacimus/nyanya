@@ -18,6 +18,7 @@ export function SpecialistCard({ item }: { item: CatalogItem }) {
     item.cityNameUz ?? "",
     item.cityNameEn ?? "",
   );
+  const name = localizedName(locale, item.fullName, item.fullNameLatin ?? "", item.fullNameLatin ?? "");
   const age = item.birthDate ? ageFromBirthDate(item.birthDate) : null;
   const unit =
     item.priceUnit === "hour"
@@ -33,7 +34,7 @@ export function SpecialistCard({ item }: { item: CatalogItem }) {
     >
       <div className="relative">
         <SpecialistAvatar
-          name={item.fullName}
+          name={name}
           photoKey={item.photoKey}
           className="aspect-[4/5] w-full"
           rounded="rounded-none"
@@ -51,7 +52,7 @@ export function SpecialistCard({ item }: { item: CatalogItem }) {
           {cat(item.category)}
         </p>
         <h3 className="mt-1 font-display text-xl font-semibold leading-tight text-ink">
-          {item.fullName}
+          {name}
           {age ? `, ${age}` : ""}
         </h3>
         {city && (

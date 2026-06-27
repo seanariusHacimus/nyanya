@@ -260,6 +260,23 @@ const SPECIALISTS: SpecSeed[] = [
   },
 ];
 
+// Latin spellings for the Uzbek/English (Latin-script) locales.
+const LATIN_NAMES: Record<string, string> = {
+  "Дилноза Рахимова": "Dilnoza Rakhimova",
+  "Мадина Каримова": "Madina Karimova",
+  "Севара Тошпулатова": "Sevara Toshpulatova",
+  "Камола Саидова": "Kamola Saidova",
+  "Нигора Алимова": "Nigora Alimova",
+  "Гулнора Бекова": "Gulnora Bekova",
+  "Зульфия Рустамова": "Zulfiya Rustamova",
+  "Азиза Мирзаева": "Aziza Mirzaeva",
+  "Бобур Назаров": "Bobur Nazarov",
+  "Лайло Хамидова": "Laylo Khamidova",
+  "Жасур Қодиров": "Jasur Qodirov",
+  "Рустам Давронов": "Rustam Davronov",
+};
+const REVIEWER_NAMES = ["Aziz U.", "Kamola R.", "Jasur T.", "Nilufar S."];
+
 async function main() {
   const ctx = await auth.$context;
 
@@ -306,8 +323,8 @@ async function main() {
   }
 
   console.log("Creating demo accounts…");
-  await createLoginUser("admin@nanya.uz", "admin12345", "Администратор", "admin");
-  await createLoginUser("parent@nanya.uz", "parent12345", "Азиз Усмонов", "parent");
+  await createLoginUser("admin@nanya.uz", "admin12345", "Admin", "admin");
+  await createLoginUser("parent@nanya.uz", "parent12345", "Aziz Usmonov", "parent");
 
   console.log("Seeding cities & districts…");
   const cityIds: number[] = [];
@@ -334,7 +351,7 @@ async function main() {
     const id = randomUUID();
     await db.insert(s.user).values({
       id,
-      name: `Родитель ${i + 1}`,
+      name: REVIEWER_NAMES[i],
       email: `reviewer${i + 1}@demo.nanya.uz`,
       emailVerified: true,
       role: "parent",
@@ -381,6 +398,7 @@ async function main() {
         userId,
         category: sp.category,
         fullName: sp.fullName,
+        fullNameLatin: LATIN_NAMES[sp.fullName] ?? null,
         photoKey: sp.photo,
         birthDate: `${birthYear}-03-15`,
         cityId: cityIds[sp.city],

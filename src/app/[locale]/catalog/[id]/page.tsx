@@ -64,6 +64,7 @@ export default async function SpecialistPage({
   const priceLabel = `${formatUZS(UNLOCK_FEE)} ${currencyWord}`;
   const description = localizedName(locale, spec.description ?? "", spec.descriptionUz ?? "", spec.descriptionEn ?? "");
   const education = localizedName(locale, spec.education ?? "", spec.educationUz ?? "", spec.educationEn ?? "");
+  const fullName = localizedName(locale, spec.fullName, spec.fullNameLatin ?? "", spec.fullNameLatin ?? "");
 
   const features = [
     spec.hasCar && { icon: Car, label: t("hasCar") },
@@ -86,7 +87,7 @@ export default async function SpecialistPage({
         <div className="space-y-5 lg:sticky lg:top-20 lg:self-start">
           <div className="relative">
             <SpecialistAvatar
-              name={spec.fullName}
+              name={fullName}
               photoKey={spec.photoKey}
               className="aspect-[4/5] w-full"
               monogramClass="text-7xl"
@@ -121,7 +122,7 @@ export default async function SpecialistPage({
 
           <p className="mt-4 text-xs uppercase tracking-[0.22em] text-gold-ink">{cat(spec.category)}</p>
           <h1 className="mt-1 font-display text-4xl font-semibold text-ink sm:text-5xl">
-            {spec.fullName}
+            {fullName}
             {age ? `, ${age}` : ""}
           </h1>
 
