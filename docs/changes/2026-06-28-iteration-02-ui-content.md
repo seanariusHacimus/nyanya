@@ -69,6 +69,14 @@ Fixed the gaps found:
 
 Remaining English-equal values are intentional: brand names (NANYA.UZ, Telegram, WhatsApp), a person's name, and accepted Uzbek loanwords ("Premium", "Administrator", "Email"). Notification titles already localize at render time via the `notif` namespace keyed on `type`. Verified RU/UZ/EN render correctly server-side.
 
+## Follow-up — prod images 404 (stale seed)
+
+**Symptom:** every portrait broke in production while fine locally.
+
+**Root cause (confirmed against prod, not guessed):** the live catalog HTML referenced `/media/specialists/p1–p4.png` — the *original* seed's paths, which were deleted from the build when portraits were recut. Railway's seed is guarded against re-seeding a populated DB, so the prod DB kept the old `photoKey`s. `curl` proof: old `p1.png` → raw **404** / optimized **400**; new `face-01.png` & `hero.png` → **200** (files deployed, optimizer healthy). So it was purely stale data, not sharp/optimizer/static-serving.
+
+**Fix:** made the seed **self-healing**. The guard now skips only when the DB is *already on the current seed* (detected by a `photoKey` under `/media/hero*` or `/media/specialists/face-*`). A populated-but-stale DB (old paths) is refreshed automatically on the next deploy, then skipped thereafter; `FORCE_SEED=true` still forces. This also lands the diversified names, varied reviews and localized content on prod. (Verified: migrations 0000–0002 already ship the i18n columns, so the reseed inserts cleanly.)
+
 ## Follow-ups
 
 - **Full ethnically-diverse generated faces** (male drivers, older caregivers, Russian/Tatar faces) still need fresh Higgsfield generation — currently blocked by the account's **grace-period generation cap** (credits available, but daily generation limit reached; did not reset overnight). Until then those specialists use monograms. Re-run portrait generation once the cap clears, then reseed.

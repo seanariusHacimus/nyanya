@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { randomUUID } from "crypto";
-import { sql } from "drizzle-orm";
+import { sql, or, like } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -327,17 +327,33 @@ const REVIEWER_NAMES = [
 async function main() {
   const ctx = await auth.$context;
 
-  // Guard: never wipe an already-populated DB (e.g. on Railway redeploys).
-  // Set FORCE_SEED=true to reset and reseed.
+  // Guard: don't wipe a populated DB on every Railway redeploy — but DO refresh
+  // it once if the data is stale (from a previous seed whose media no longer
+  // ships). The current seed's portraits live at /media/hero* and
+  // /media/specialists/face-*; older data referenced now-deleted paths, which
+  // 404s in production. FORCE_SEED=true always forces a reset.
   const existing = await db
     .select({ id: s.specialistProfiles.id })
     .from(s.specialistProfiles)
     .limit(1);
-  if (existing.length && process.env.FORCE_SEED !== "true") {
-    console.log(
-      "Seed skipped — data already present (set FORCE_SEED=true to reset).",
-    );
+  const onCurrentSeed = existing.length
+    ? await db
+        .select({ id: s.specialistProfiles.id })
+        .from(s.specialistProfiles)
+        .where(
+          or(
+            like(s.specialistProfiles.photoKey, "/media/hero%"),
+            like(s.specialistProfiles.photoKey, "/media/specialists/face-%"),
+          ),
+        )
+        .limit(1)
+    : [];
+  if (existing.length && onCurrentSeed.length && process.env.FORCE_SEED !== "true") {
+    console.log("Seed skipped — already on current seed (set FORCE_SEED=true to reset).");
     process.exit(0);
+  }
+  if (existing.length && !onCurrentSeed.length) {
+    console.log("Stale seed detected (media paths no longer shipped) — refreshing…");
   }
 
   console.log("Clearing existing data…");
