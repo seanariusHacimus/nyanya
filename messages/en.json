@@ -1,10 +1,10 @@
 {
   "brand": {
-    "name": "NANYA.UZ",
+    "name": "nyanya.uz",
     "tagline": "Premium matching for nannies and household specialists"
   },
   "meta": {
-    "title": "NANYA.UZ — Premium marketplace for nannies in Uzbekistan",
+    "title": "nyanya.uz — Premium marketplace for nannies in Uzbekistan",
     "description": "Verified nannies, caregivers, tutors and drivers in Uzbekistan. Document verification, video intros and a Trust Score you can rely on."
   },
   "notif": {
@@ -60,7 +60,7 @@
     "chooseCategory": "Who are you looking for?",
     "heroCity": "Tashkent",
     "heroName": "Dilnoza R.",
-    "trustEyebrow": "Why NANYA",
+    "trustEyebrow": "Why nyanya",
     "trustTitle": "Trust, finished like luxury",
     "feature1Title": "Document verification",
     "feature1Desc": "Passport, medical certificates and credentials are reviewed by a moderator before a profile goes live.",
@@ -88,7 +88,7 @@
     "terms": "Terms of use",
     "privacy": "Privacy",
     "disclaimerTitle": "Important",
-    "disclaimer": "We provide a platform for search and interaction. NANYA.UZ is not responsible for users' actions and does not guarantee the quality of services. The user independently selects a specialist and makes the decision.",
+    "disclaimer": "We provide a platform for search and interaction. nyanya.uz is not responsible for users' actions and does not guarantee the quality of services. The user independently selects a specialist and makes the decision.",
     "rights": "All rights reserved.",
     "location": "Tashkent, Uzbekistan"
   },

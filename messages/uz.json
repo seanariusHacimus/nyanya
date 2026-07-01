@@ -1,10 +1,10 @@
 {
   "brand": {
-    "name": "NANYA.UZ",
+    "name": "nyanya.uz",
     "tagline": "Enagalar va uy mutaxassislarini tanlash bo'yicha premium xizmat"
   },
   "meta": {
-    "title": "NANYA.UZ — O'zbekistonda enagalarni premium tanlash",
+    "title": "nyanya.uz — O'zbekistonda enagalarni premium tanlash",
     "description": "O'zbekistonda tekshirilgan enagalar, parvarishchilar, repetitorlar va haydovchilar. Hujjatlar tekshiruvi, video-tashrifnomalar va ishonch reytingi."
   },
   "notif": {
@@ -60,7 +60,7 @@
     "chooseCategory": "Kimni qidiryapsiz?",
     "heroCity": "Toshkent",
     "heroName": "Dilnoza R.",
-    "trustEyebrow": "Nega NANYA",
+    "trustEyebrow": "Nega nyanya",
     "trustTitle": "Hashamat darajasidagi ishonch",
     "feature1Title": "Hujjatlarni tekshirish",
     "feature1Desc": "Pasport, tibbiy ma'lumotnomalar va sertifikatlar anketa e'lon qilinishidan oldin moderator tomonidan tekshiriladi.",
@@ -88,7 +88,7 @@
     "terms": "Foydalanish shartlari",
     "privacy": "Maxfiylik",
     "disclaimerTitle": "Muhim",
-    "disclaimer": "Biz qidiruv va o'zaro aloqa uchun platforma taqdim etamiz. NANYA.UZ foydalanuvchilar harakatlari uchun javobgar emas va xizmat sifatini kafolatlamaydi. Foydalanuvchi mutaxassisni mustaqil tanlaydi va qaror qabul qiladi.",
+    "disclaimer": "Biz qidiruv va o'zaro aloqa uchun platforma taqdim etamiz. nyanya.uz foydalanuvchilar harakatlari uchun javobgar emas va xizmat sifatini kafolatlamaydi. Foydalanuvchi mutaxassisni mustaqil tanlaydi va qaror qabul qiladi.",
     "rights": "Barcha huquqlar himoyalangan.",
     "location": "Toshkent, O'zbekiston"
   },
