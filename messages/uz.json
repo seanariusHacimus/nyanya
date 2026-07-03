@@ -4,8 +4,8 @@
     "tagline": "Enagalar va uy mutaxassislarini tanlash bo'yicha premium xizmat"
   },
   "meta": {
-    "title": "nyanya.uz — O'zbekistonda enagalarni premium tanlash",
-    "description": "O'zbekistonda tekshirilgan enagalar, parvarishchilar, repetitorlar va haydovchilar. Hujjatlar tekshiruvi, video-tashrifnomalar va ishonch reytingi."
+    "title": "nyanya.uz — Toshkentda enagalarni premium tanlash",
+    "description": "Toshkentda tekshirilgan enagalar, parvarishchilar, repetitorlar va haydovchilar. Hujjatlar tekshiruvi, video-tashrifnomalar va ishonch reytingi."
   },
   "notif": {
     "contact_unlocked": {
@@ -51,9 +51,9 @@
     "driver_desc": "Shaxsiy va oilaviy haydovchilar"
   },
   "home": {
-    "heroEyebrow": "O'zbekiston · Tekshirilgan mutaxassislar",
+    "heroEyebrow": "Toshkent · Tekshirilgan mutaxassislar",
     "heroTitle": "Uyingizni tekshirilgan insonlarga ishoning",
-    "heroSub": "Hujjatlari tekshirilgan, video-tashrifnomali va ishonch reytingiga ega enagalar, parvarishchilar, repetitorlar va haydovchilar katalogi. Tanlov sizniki — biz ishonch hosil qilishga yordam beramiz.",
+    "heroSub": "Hujjatlari tekshirilgan, video-tashrifnomali va ishonch reytingiga ega enagalar, parvarishchilar, repetitorlar va haydovchilar katalogi. Tanlov sizniki — biz ishonch hosil qilishga yordam beramiz. Hozircha xizmat faqat Toshkentda ishlaydi.",
     "ctaFind": "Mutaxassis topish",
     "ctaBecome": "Mutaxassis bo'lish",
     "searchPlaceholder": "Kimni qidiryapsiz?",
@@ -150,6 +150,7 @@
     "filtersTitle": "Filtrlar",
     "category": "Toifa",
     "city": "Shahar",
+    "district": "Tuman",
     "language": "Til",
     "maxPrice": "Narx gacha",
     "minExperience": "Tajriba dan",
@@ -163,6 +164,7 @@
     "empty": "Hech narsa topilmadi",
     "emptyHint": "Filtrlarni o'zgartirib ko'ring",
     "anyCity": "Barcha shaharlar",
+    "anyDistrict": "Barcha tumanlar",
     "anyLanguage": "Istalgan til",
     "anyPrice": "Istalgan narx",
     "anyExperience": "Istalgan tajriba",

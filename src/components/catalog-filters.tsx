@@ -16,14 +16,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-type CityRow = { id: number; nameRu: string; nameUz: string; nameEn: string };
+type DistrictRow = { id: number; nameRu: string; nameUz: string; nameEn: string };
 
 const ALL = "__all";
 const PRICES = [30000, 50000, 80000, 150000];
 const EXPS = [1, 3, 5, 10];
 const TOGGLES = ["english", "hasCar", "liveIn", "night", "newborn"] as const;
 
-export function CatalogFilters({ cities }: { cities: CityRow[] }) {
+export function CatalogFilters({ districts }: { districts: DistrictRow[] }) {
   const t = useTranslations("catalog");
   const cat = useTranslations("categories");
   const common = useTranslations("common");
@@ -81,12 +81,12 @@ export function CatalogFilters({ cities }: { cities: CityRow[] }) {
         CATEGORIES.map((c) => ({ value: c, label: cat(c) })),
       )}
       {fieldSelect(
-        "city",
-        t("city"),
-        t("anyCity"),
-        cities.map((c) => ({
-          value: String(c.id),
-          label: localizedName(locale, c.nameRu, c.nameUz, c.nameEn),
+        "district",
+        t("district"),
+        t("anyDistrict"),
+        districts.map((d) => ({
+          value: String(d.id),
+          label: localizedName(locale, d.nameRu, d.nameUz, d.nameEn),
         })),
       )}
       {fieldSelect(

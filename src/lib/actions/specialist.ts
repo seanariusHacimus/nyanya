@@ -2,10 +2,10 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { specialistProfiles, user } from "@/db/schema";
+import { cities, specialistProfiles, user } from "@/db/schema";
 import type { Category, PriceUnit, EnglishLevel } from "@/lib/constants";
 import { profileInputSchema } from "@/lib/validation";
 
@@ -13,7 +13,7 @@ export interface ProfileInput {
   category: Category;
   fullName: string;
   birthDate?: string;
-  cityId?: number;
+  districtId?: number;
   experienceYears: number;
   education?: string;
   languages: string[];
@@ -36,6 +36,14 @@ export async function saveSpecialistProfile(input: ProfileInput) {
   const data = parsed.data;
   const userId = session.user.id;
 
+  // Tashkent-only launch: every profile is pinned to Tashkent; specialists pick a district.
+  const [tashkent] = await db
+    .select({ id: cities.id })
+    .from(cities)
+    .orderBy(asc(cities.id))
+    .limit(1);
+  const tashkentCityId = tashkent?.id ?? null;
+
   // Becoming a specialist if not already.
   await db.update(user).set({ role: "specialist" }).where(eq(user.id, userId));
 
@@ -43,7 +51,8 @@ export async function saveSpecialistProfile(input: ProfileInput) {
     category: data.category,
     fullName: data.fullName,
     birthDate: data.birthDate || null,
-    cityId: data.cityId ?? null,
+    cityId: tashkentCityId,
+    districtId: data.districtId ?? null,
     experienceYears: data.experienceYears,
     education: data.education ?? null,
     languages: data.languages,

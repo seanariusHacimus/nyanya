@@ -4,7 +4,9 @@ import { clampScore } from "@/lib/format";
 
 /**
  * The brand's signature element: a champagne-gold trust medallion.
- * Trust is the product, so we render the Trust Score as a wax-seal gauge.
+ * A full track keeps the coin visually complete (never a lopsided arc); the gold
+ * fill rises to the score, with the number as the hero — legible from a catalog
+ * card up to the profile hero.
  */
 export function TrustSeal({
   score = 0,
@@ -17,7 +19,7 @@ export function TrustSeal({
 }) {
   const t = useTranslations("common");
   const value = clampScore(score);
-  const r = 41;
+  const r = 42;
   const circumference = 2 * Math.PI * r;
   const pct = value / 100;
 
@@ -29,38 +31,38 @@ export function TrustSeal({
       aria-label={`${t("trustScore")}: ${value}/100`}
     >
       <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-        {/* outer hairline ring */}
-        <circle cx="50" cy="50" r={46} fill="none" stroke="var(--line)" strokeWidth="1" />
-        {/* track */}
-        <circle cx="50" cy="50" r={r} fill="none" stroke="var(--ivory-deep)" strokeWidth="4" />
-        {/* progress arc */}
+        {/* full track — keeps the ring complete and symmetric at any score */}
+        <circle cx="50" cy="50" r={r} fill="none" stroke="var(--ivory-deep)" strokeWidth={7} />
+        {/* gold fill up to the score */}
         <circle
           cx="50"
           cy="50"
           r={r}
           fill="none"
           stroke="var(--champagne)"
-          strokeWidth="4"
+          strokeWidth={7}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - pct)}
         />
       </svg>
-      <div className="absolute inset-0 grid place-items-center">
-        <div className="text-center leading-none">
-          <div
-            className="font-display font-semibold text-royal-deep"
-            style={{ fontSize: size * 0.26 }}
-          >
-            {value}
-          </div>
-          <div
-            className="mt-0.5 whitespace-nowrap uppercase leading-none text-gold-ink"
-            style={{ fontSize: Math.max(6, size * 0.078), letterSpacing: "0.08em" }}
-          >
-            {t("trust")}
-          </div>
-        </div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
+        <span
+          className="font-display font-semibold text-royal-deep"
+          style={{ fontSize: size * 0.32 }}
+        >
+          {value}
+        </span>
+        <span
+          className="whitespace-nowrap uppercase text-gold-ink"
+          style={{
+            fontSize: Math.max(6.5, size * 0.1),
+            letterSpacing: "0.12em",
+            marginTop: size * 0.035,
+          }}
+        >
+          {t("trust")}
+        </span>
       </div>
     </div>
   );

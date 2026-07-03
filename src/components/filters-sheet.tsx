@@ -12,9 +12,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { CatalogFilters } from "./catalog-filters";
 import { cn } from "@/lib/utils";
 
-type CityRow = { id: number; nameRu: string; nameUz: string; nameEn: string };
+type DistrictRow = { id: number; nameRu: string; nameUz: string; nameEn: string };
 
-export function FiltersSheet({ cities }: { cities: CityRow[] }) {
+export function FiltersSheet({ districts }: { districts: DistrictRow[] }) {
   const t = useTranslations("catalog");
   return (
     <Sheet>
@@ -29,7 +29,7 @@ export function FiltersSheet({ cities }: { cities: CityRow[] }) {
           {t("filtersTitle")}
         </SheetTitle>
         <div className="p-5">
-          <CatalogFilters cities={cities} />
+          <CatalogFilters districts={districts} />
         </div>
       </SheetContent>
     </Sheet>

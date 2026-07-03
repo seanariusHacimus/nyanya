@@ -27,9 +27,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type CityRow = { id: number; nameRu: string; nameUz: string; nameEn: string };
+type DistrictRow = { id: number; nameRu: string; nameUz: string; nameEn: string };
 
-export function SpecialistProfileForm({ cities }: { cities: CityRow[] }) {
+export function SpecialistProfileForm({ districts }: { districts: DistrictRow[] }) {
   const t = useTranslations("specialist");
   const tp = useTranslations("profile");
   const cat = useTranslations("categories");
@@ -40,7 +40,7 @@ export function SpecialistProfileForm({ cities }: { cities: CityRow[] }) {
 
   const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState<Category>("nanny");
-  const [cityId, setCityId] = useState("");
+  const [districtId, setDistrictId] = useState("");
   const [priceUnit, setPriceUnit] = useState<PriceUnit>("hour");
   const [englishLevel, setEnglishLevel] = useState<EnglishLevel>("none");
   const [languages, setLanguages] = useState<string[]>(["Русский"]);
@@ -64,7 +64,7 @@ export function SpecialistProfileForm({ cities }: { cities: CityRow[] }) {
       category,
       fullName: String(fd.get("fullName") ?? ""),
       birthDate: String(fd.get("birthDate") ?? "") || undefined,
-      cityId: cityId ? Number(cityId) : undefined,
+      districtId: districtId ? Number(districtId) : undefined,
       experienceYears: Number(fd.get("experienceYears") ?? 0),
       education: String(fd.get("education") ?? "") || undefined,
       languages,
@@ -116,15 +116,15 @@ export function SpecialistProfileForm({ cities }: { cities: CityRow[] }) {
           <Input id="birthDate" name="birthDate" type="date" />
         </div>
         <div className="space-y-1.5">
-          <Label>{catalogT("city")}</Label>
-          <Select items={Object.fromEntries(cities.map((c) => [String(c.id), localizedName(locale, c.nameRu, c.nameUz, c.nameEn)]))} value={cityId} onValueChange={(v) => setCityId(v ?? "")}>
+          <Label>{catalogT("district")}</Label>
+          <Select items={Object.fromEntries(districts.map((d) => [String(d.id), localizedName(locale, d.nameRu, d.nameUz, d.nameEn)]))} value={districtId} onValueChange={(v) => setDistrictId(v ?? "")}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="—" />
             </SelectTrigger>
             <SelectContent>
-              {cities.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {localizedName(locale, c.nameRu, c.nameUz, c.nameEn)}
+              {districts.map((d) => (
+                <SelectItem key={d.id} value={String(d.id)}>
+                  {localizedName(locale, d.nameRu, d.nameUz, d.nameEn)}
                 </SelectItem>
               ))}
             </SelectContent>

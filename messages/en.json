@@ -4,8 +4,8 @@
     "tagline": "Premium matching for nannies and household specialists"
   },
   "meta": {
-    "title": "nyanya.uz — Premium marketplace for nannies in Uzbekistan",
-    "description": "Verified nannies, caregivers, tutors and drivers in Uzbekistan. Document verification, video intros and a Trust Score you can rely on."
+    "title": "nyanya.uz — Premium marketplace for nannies in Tashkent",
+    "description": "Verified nannies, caregivers, tutors and drivers in Tashkent. Document verification, video intros and a Trust Score you can rely on."
   },
   "notif": {
     "contact_unlocked": {
@@ -51,9 +51,9 @@
     "driver_desc": "Personal and family drivers"
   },
   "home": {
-    "heroEyebrow": "Uzbekistan · Verified specialists",
+    "heroEyebrow": "Tashkent · Verified specialists",
     "heroTitle": "Trust your home to people who've been checked",
-    "heroSub": "A catalog of nannies, caregivers, tutors and drivers with verified documents, video intros and a trust rating. You choose — we help you be sure.",
+    "heroSub": "A catalog of nannies, caregivers, tutors and drivers with verified documents, video intros and a trust rating. You choose — we help you be sure. For now the service operates in Tashkent only.",
     "ctaFind": "Find a specialist",
     "ctaBecome": "Become a specialist",
     "searchPlaceholder": "Who are you looking for?",
@@ -150,6 +150,7 @@
     "filtersTitle": "Filters",
     "category": "Category",
     "city": "City",
+    "district": "District",
     "language": "Language",
     "maxPrice": "Price up to",
     "minExperience": "Experience from",
@@ -163,6 +164,7 @@
     "empty": "Nothing found",
     "emptyHint": "Try changing the filters",
     "anyCity": "All cities",
+    "anyDistrict": "All districts",
     "anyLanguage": "Any language",
     "anyPrice": "Any price",
     "anyExperience": "Any experience",

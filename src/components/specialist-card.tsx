@@ -12,11 +12,11 @@ export function SpecialistCard({ item }: { item: CatalogItem }) {
   const cat = useTranslations("categories");
   const locale = useLocale();
 
-  const city = localizedName(
+  const district = localizedName(
     locale,
-    item.cityNameRu ?? "",
-    item.cityNameUz ?? "",
-    item.cityNameEn ?? "",
+    item.districtNameRu ?? "",
+    item.districtNameUz ?? "",
+    item.districtNameEn ?? "",
   );
   const name = localizedName(locale, item.fullName, item.fullNameLatin ?? "", item.fullNameLatin ?? "");
   const age = item.birthDate ? ageFromBirthDate(item.birthDate) : null;
@@ -43,8 +43,8 @@ export function SpecialistCard({ item }: { item: CatalogItem }) {
         <div className="absolute left-3 top-3">
           <VerificationBadge level={item.verificationLevel} />
         </div>
-        <div className="absolute -bottom-6 right-3 rounded-full bg-card p-1 shadow-[0_10px_24px_-8px_rgba(44,26,79,0.4)]">
-          <TrustSeal score={item.trustScore} size={62} />
+        <div className="absolute -bottom-5 right-4 rounded-full bg-card p-1.5 shadow-[0_14px_30px_-12px_rgba(44,26,79,0.5)] ring-1 ring-line">
+          <TrustSeal score={item.trustScore} size={58} />
         </div>
       </div>
       <div className="flex flex-1 flex-col p-4 pt-7">
@@ -55,10 +55,10 @@ export function SpecialistCard({ item }: { item: CatalogItem }) {
           {name}
           {age ? `, ${age}` : ""}
         </h3>
-        {city && (
+        {district && (
           <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
             <MapPin className="size-3.5" />
-            {city}
+            {district}
           </p>
         )}
         <div className="mt-3 flex items-center justify-between text-sm">

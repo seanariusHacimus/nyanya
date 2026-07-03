@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { SearchX } from "lucide-react";
-import { getCatalog, getCities, type CatalogFilters as CF } from "@/lib/queries";
+import { getCatalog, getDistricts, type CatalogFilters as CF } from "@/lib/queries";
 import { CATEGORIES, type Category } from "@/lib/constants";
 import { SpecialistCard } from "@/components/specialist-card";
 import { CatalogFilters } from "@/components/catalog-filters";
@@ -20,7 +20,7 @@ export default async function CatalogPage({
 
   const filters: CF = {
     category,
-    cityId: sp.city ? Number(sp.city) : undefined,
+    districtId: sp.district ? Number(sp.district) : undefined,
     maxPrice: sp.maxPrice ? Number(sp.maxPrice) : undefined,
     minExperience: sp.minExp ? Number(sp.minExp) : undefined,
     language: sp.language || undefined,
@@ -32,7 +32,7 @@ export default async function CatalogPage({
     sort: (sp.sort as CF["sort"]) ?? "trust",
   };
 
-  const [items, cities] = await Promise.all([getCatalog(filters), getCities()]);
+  const [items, districts] = await Promise.all([getCatalog(filters), getDistricts()]);
   const t = await getTranslations("catalog");
 
   return (
@@ -47,7 +47,7 @@ export default async function CatalogPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <FiltersSheet cities={cities} />
+          <FiltersSheet districts={districts} />
           <CatalogSort />
         </div>
       </div>
@@ -55,7 +55,7 @@ export default async function CatalogPage({
       <div className="mt-8 grid gap-8 lg:grid-cols-[260px_1fr]">
         <aside className="hidden lg:block">
           <div className="sticky top-20">
-            <CatalogFilters cities={cities} />
+            <CatalogFilters districts={districts} />
           </div>
         </aside>
         <div>

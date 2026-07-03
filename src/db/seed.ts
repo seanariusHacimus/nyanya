@@ -114,6 +114,7 @@ type SpecSeed = {
   login?: { email: string; password: string };
 };
 
+// Tashkent-only launch: the service currently operates in Tashkent, filtered by district.
 const CITY_DATA = [
   {
     nameRu: "Ташкент",
@@ -127,21 +128,6 @@ const CITY_DATA = [
       ["Мирабадский", "Mirobod", "Mirabad"],
       ["Шайхантахурский", "Shayxontohur", "Shaykhantakhur"],
     ],
-  },
-  {
-    nameRu: "Самарканд",
-    nameUz: "Samarqand",
-    nameEn: "Samarkand",
-    districts: [
-      ["Центр", "Markaz", "Center"],
-      ["Сиабский", "Siyob", "Siab"],
-    ],
-  },
-  {
-    nameRu: "Бухара",
-    nameUz: "Buxoro",
-    nameEn: "Bukhara",
-    districts: [["Центр", "Markaz", "Center"]],
   },
 ];
 
@@ -200,7 +186,7 @@ const SPECIALISTS: SpecSeed[] = [
   },
   {
     key: "nigora", category: "nanny", fullName: "Нигора Алимова", photo: "/media/specialists/face-03.png",
-    age: 24, city: 1, district: 0, experienceYears: 3,
+    age: 24, city: 0, district: 3, experienceYears: 3,
     education: { ru: "Студентка педагогического вуза", uz: "Pedagogika oliygohi talabasi", en: "Pedagogy university student" },
     languages: ["Узбекский", "Русский"], price: 22000, priceUnit: "hour",
     description: {
@@ -260,7 +246,7 @@ const SPECIALISTS: SpecSeed[] = [
   },
   {
     key: "laylo", category: "tutor", fullName: "Лайло Хамидова", photo: "/media/specialists/face-06.png",
-    age: 29, city: 2, district: 0, experienceYears: 5,
+    age: 29, city: 0, district: 5, experienceYears: 5,
     education: { ru: "Высшее, начальные классы", uz: "Oliy, boshlang'ich sinflar", en: "Higher, primary education" },
     languages: ["Узбекский", "Русский"], price: 50000, priceUnit: "hour",
     description: {

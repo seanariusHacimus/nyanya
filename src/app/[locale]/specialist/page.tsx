@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { FileText } from "lucide-react";
 import { getSession } from "@/lib/session";
-import { getSpecialistByUserId, getCities } from "@/lib/queries";
+import { getSpecialistByUserId, getDistricts } from "@/lib/queries";
 import { SpecialistProfileForm } from "@/components/specialist-profile-form";
 import { TrustSeal } from "@/components/trust-seal";
 import { VerificationBadge } from "@/components/verification-badge";
@@ -23,13 +23,13 @@ export default async function SpecialistPage({
   const t = await getTranslations("specialist");
 
   if (!profile) {
-    const cities = await getCities();
+    const districts = await getDistricts();
     return (
       <section className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
         <h1 className="font-display text-4xl font-semibold text-ink">{t("createTitle")}</h1>
         <p className="mt-2 text-muted-foreground">{t("createSubtitle")}</p>
         <div className="mt-8">
-          <SpecialistProfileForm cities={cities} />
+          <SpecialistProfileForm districts={districts} />
         </div>
       </section>
     );

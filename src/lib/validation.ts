@@ -24,6 +24,7 @@ export const profileInputSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
   cityId: z.number().int().positive().optional(),
+  districtId: z.number().int().positive().optional(),
   experienceYears: z.number().int().min(0).max(60),
   education: z.string().trim().max(200).optional(),
   languages: z.array(z.string().trim().max(40)).max(10),
