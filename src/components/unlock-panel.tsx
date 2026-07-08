@@ -32,9 +32,9 @@ export function UnlockPanel({
         <p className="text-xs uppercase tracking-wider text-gold-ink">{t("contacts")}</p>
         <a
           href={`tel:${digits}`}
-          className="flex items-center gap-3 rounded-lg border border-line bg-card px-4 py-3 transition-colors hover:border-royal"
+          className="flex items-center gap-3 rounded-lg border border-line bg-card px-4 py-3 transition-colors hover:border-champagne"
         >
-          <Phone className="size-4 text-royal" />
+          <Phone className="size-4 text-gold-ink" />
           <span className="font-medium text-ink">{phone}</span>
         </a>
         <div className="grid grid-cols-2 gap-2">
@@ -42,18 +42,18 @@ export function UnlockPanel({
             href={`https://t.me/+${digits}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 rounded-lg border border-line bg-card py-2.5 text-sm transition-colors hover:border-royal"
+            className="flex items-center justify-center gap-2 rounded-lg border border-line bg-card py-2.5 text-sm transition-colors hover:border-champagne"
           >
-            <Send className="size-4 text-royal" />
+            <Send className="size-4 text-gold-ink" />
             {t("telegram")}
           </a>
           <a
             href={`https://wa.me/${digits}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 rounded-lg border border-line bg-card py-2.5 text-sm transition-colors hover:border-royal"
+            className="flex items-center justify-center gap-2 rounded-lg border border-line bg-card py-2.5 text-sm transition-colors hover:border-champagne"
           >
-            <MessageCircle className="size-4 text-royal" />
+            <MessageCircle className="size-4 text-gold-ink" />
             {t("whatsapp")}
           </a>
         </div>
@@ -88,7 +88,7 @@ export function UnlockPanel({
       <Button
         onClick={handleUnlock}
         disabled={loading}
-        className="w-full bg-royal text-primary-foreground hover:bg-royal-deep"
+        className="w-full hover:bg-champagne-deep"
       >
         {authed ? t("openContacts", { price: priceLabel }) : t("loginToUnlock")}
       </Button>

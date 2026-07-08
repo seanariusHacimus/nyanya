@@ -23,7 +23,7 @@ export function LocaleSwitcher() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-ink/70 transition-colors hover:text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <DropdownMenuTrigger className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-ivory/70 transition-colors hover:text-champagne focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <Globe className="size-4" />
         <span className="uppercase">{locale}</span>
       </DropdownMenuTrigger>

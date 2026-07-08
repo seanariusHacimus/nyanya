@@ -8,7 +8,8 @@ function initials(name: string) {
 
 /**
  * Shows the generated portrait when available, else an on-brand monogram
- * (initials on a royal→champagne gradient) — reads as intentional, not missing.
+ * (initials on an espresso gradient with a champagne highlight); reads as
+ * intentional, not missing.
  */
 export function SpecialistAvatar({
   name,
@@ -39,7 +40,7 @@ export function SpecialistAvatar({
   return (
     <div
       className={cn(
-        "relative grid place-items-center overflow-hidden bg-gradient-to-br from-royal-soft via-royal to-royal-deep",
+        "relative grid place-items-center overflow-hidden bg-gradient-to-br from-[#51452f] via-[#382e1f] to-espresso-deep",
         rounded,
         className,
       )}

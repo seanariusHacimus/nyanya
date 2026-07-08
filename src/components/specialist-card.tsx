@@ -30,7 +30,7 @@ export function SpecialistCard({ item }: { item: CatalogItem }) {
   return (
     <Link
       href={`/catalog/${item.id}`}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card transition-all hover:border-champagne hover:shadow-[0_24px_60px_-32px_rgba(44,26,79,0.45)]"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card transition-all hover:border-champagne hover:shadow-[0_24px_60px_-32px_rgba(22,17,12,0.45)]"
     >
       <div className="relative">
         <SpecialistAvatar
@@ -43,7 +43,7 @@ export function SpecialistCard({ item }: { item: CatalogItem }) {
         <div className="absolute left-3 top-3">
           <VerificationBadge level={item.verificationLevel} />
         </div>
-        <div className="absolute -bottom-5 right-4 rounded-full bg-card p-1.5 shadow-[0_14px_30px_-12px_rgba(44,26,79,0.5)] ring-1 ring-line">
+        <div className="absolute -bottom-5 right-4 rounded-full bg-card p-1.5 shadow-[0_14px_30px_-12px_rgba(22,17,12,0.5)] ring-1 ring-line">
           <TrustSeal score={item.trustScore} size={58} />
         </div>
       </div>

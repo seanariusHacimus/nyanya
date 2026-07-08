@@ -1,4 +1,4 @@
-# NANYA.UZ
+# nyanya.uz
 
 Premium marketplace for finding **nannies, caregivers, tutors, and drivers** in Uzbekistan.
 A discovery + trust + **pay-to-unlock-contacts** platform (not a booking/escrow service) — trilingual, with document verification, a Trust Score, and an admin moderation panel.

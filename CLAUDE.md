@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# NANYA.UZ — project guide for Claude
+# nyanya.uz — project guide for Claude
 
 Premium **pay-to-unlock-contacts** marketplace (nannies / caregivers / tutors / drivers) for Uzbekistan. Trilingual (RU default · UZ · EN). It is **not** a booking/escrow platform — it connects families and specialists and gates contact reveal behind a (mock) payment.
 

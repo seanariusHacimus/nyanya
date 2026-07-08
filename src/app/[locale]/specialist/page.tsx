@@ -96,7 +96,7 @@ export default async function SpecialistPage({
 
       <div className="mt-6 rounded-2xl border border-line bg-card p-6">
         <h2 className="flex items-center gap-2 font-display text-xl font-semibold text-ink">
-          <FileText className="size-5 text-royal" />
+          <FileText className="size-5 text-gold-ink" />
           {t("documentsTitle")}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t("docNote")}</p>

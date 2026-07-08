@@ -50,7 +50,7 @@ export function LoginForm() {
       <Button
         type="submit"
         disabled={loading}
-        className="w-full bg-royal text-primary-foreground hover:bg-royal-deep"
+        className="w-full hover:bg-champagne-deep"
       >
         {t("submitLogin")}
       </Button>

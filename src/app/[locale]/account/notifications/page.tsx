@@ -48,7 +48,7 @@ export default async function NotificationsPage({
             const body = known ? tn(`${n.type}.body`) : n.body;
             return (
               <li key={n.id} className="flex gap-3 rounded-xl border border-line bg-card p-4">
-                <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg bg-royal/5 text-royal">
+                <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg bg-champagne/12 text-gold-ink">
                   <Icon className="size-4" />
                 </span>
                 <div>

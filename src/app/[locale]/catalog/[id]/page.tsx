@@ -91,7 +91,7 @@ export default async function SpecialistPage({
               className="aspect-[4/5] w-full"
               monogramClass="text-7xl"
             />
-            <div className="absolute -bottom-5 right-4 rounded-full bg-card p-1.5 shadow-[0_12px_30px_-8px_rgba(44,26,79,0.4)]">
+            <div className="absolute -bottom-5 right-4 rounded-full bg-card p-1.5 shadow-[0_12px_30px_-8px_rgba(22,17,12,0.4)]">
               <TrustSeal score={spec.trustScore} size={92} />
             </div>
           </div>
@@ -171,7 +171,7 @@ export default async function SpecialistPage({
               {features.map((f) => (
                 <span
                   key={f.label}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-royal/20 bg-royal/5 px-3 py-1 text-sm text-royal"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-champagne/40 bg-champagne/10 px-3 py-1 text-sm text-gold-ink"
                 >
                   <f.icon className="size-3.5" />
                   {f.label}

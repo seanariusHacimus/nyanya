@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant, Manrope } from "next/font/google";
+import { Playfair_Display, Inter } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -9,16 +9,16 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import "../globals.css";
 
-const cormorant = Cormorant({
+const playfair = Playfair_Display({
   subsets: ["latin", "cyrillic"],
-  weight: ["500", "600", "700"],
-  variable: "--font-cormorant",
+  style: ["normal", "italic"],
+  variable: "--font-playfair",
   display: "swap",
 });
 
-const manrope = Manrope({
+const inter = Inter({
   subsets: ["latin", "cyrillic"],
-  variable: "--font-manrope",
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -30,8 +30,22 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
   return {
+    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
     title: { default: t("title"), template: "%s · nyanya.uz" },
     description: t("description"),
+    openGraph: {
+      type: "website",
+      siteName: "nyanya.uz",
+      title: t("title"),
+      description: t("description"),
+      images: [{ url: "/og.png", width: 1200, height: 630, alt: "nyanya.uz" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: t("title"),
+      description: t("description"),
+      images: ["/og.png"],
+    },
   };
 }
 
@@ -52,7 +66,7 @@ export default async function LocaleLayout({
   return (
     <html
       lang={locale}
-      className={`${cormorant.variable} ${manrope.variable} h-full`}
+      className={`${playfair.variable} ${inter.variable} h-full`}
     >
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider>

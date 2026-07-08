@@ -49,7 +49,7 @@ export default async function AccountPage({
           <p className="mt-2 inline-flex items-center gap-1.5 text-sm">
             {user.phoneVerified ? (
               <>
-                <BadgeCheck className="size-4 text-royal" />
+                <BadgeCheck className="size-4 text-gold-ink" />
                 <span className="text-muted-foreground">{t("phoneVerified")}</span>
               </>
             ) : (
@@ -68,9 +68,9 @@ export default async function AccountPage({
           <Link
             key={c.href}
             href={c.href}
-            className="group rounded-2xl border border-line bg-card p-6 transition-all hover:border-champagne hover:shadow-[0_16px_40px_-24px_rgba(44,26,79,0.4)]"
+            className="group rounded-2xl border border-line bg-card p-6 transition-all hover:border-champagne hover:shadow-[0_16px_40px_-24px_rgba(22,17,12,0.4)]"
           >
-            <span className="grid size-11 place-items-center rounded-xl bg-royal/5 text-royal transition-colors group-hover:bg-royal group-hover:text-champagne">
+            <span className="grid size-11 place-items-center rounded-xl bg-champagne/12 text-gold-ink transition-colors group-hover:bg-champagne group-hover:text-espresso-deep">
               <c.icon className="size-5" />
             </span>
             <h3 className="mt-4 font-display text-xl font-semibold text-ink">{c.title}</h3>

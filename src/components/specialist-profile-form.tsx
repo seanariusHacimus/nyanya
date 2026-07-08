@@ -119,7 +119,7 @@ export function SpecialistProfileForm({ districts }: { districts: DistrictRow[] 
           <Label>{catalogT("district")}</Label>
           <Select items={Object.fromEntries(districts.map((d) => [String(d.id), localizedName(locale, d.nameRu, d.nameUz, d.nameEn)]))} value={districtId} onValueChange={(v) => setDistrictId(v ?? "")}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="—" />
+              <SelectValue placeholder="-" />
             </SelectTrigger>
             <SelectContent>
               {districts.map((d) => (
@@ -224,7 +224,7 @@ export function SpecialistProfileForm({ districts }: { districts: DistrictRow[] 
       <Button
         type="submit"
         disabled={loading}
-        className="w-full bg-royal text-primary-foreground hover:bg-royal-deep"
+        className="w-full hover:bg-champagne-deep"
       >
         {t("save")}
       </Button>

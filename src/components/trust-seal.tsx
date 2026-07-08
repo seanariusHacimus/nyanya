@@ -58,7 +58,7 @@ export function TrustSeal({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
         <span
-          className="font-display font-semibold text-royal-deep"
+          className="font-display font-semibold text-ink"
           style={{
             fontSize: size * (showLabel ? 0.32 : 0.4),
             transform: "translateY(0.03em)",

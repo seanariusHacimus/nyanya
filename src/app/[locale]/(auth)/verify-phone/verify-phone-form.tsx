@@ -51,14 +51,14 @@ export function VerifyPhoneForm() {
       <Button
         type="submit"
         disabled={loading}
-        className="w-full bg-royal text-primary-foreground hover:bg-royal-deep"
+        className="w-full hover:bg-champagne-deep"
       >
         {t("verifyButton")}
       </Button>
       <button
         type="button"
         onClick={() => sendOtpMock().then(() => toast.success(t("codeSent")))}
-        className="w-full text-center text-sm text-muted-foreground hover:text-royal"
+        className="w-full text-center text-sm text-muted-foreground hover:text-gold-ink"
       >
         {t("resend")}
       </button>

@@ -33,10 +33,10 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line/70 bg-ivory/80 backdrop-blur-md">
+    <header className="surface-dark sticky top-0 z-50 border-b border-ivory/10 bg-espresso/95 text-ivory backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" aria-label="nyanya.uz">
-          <BrandMark />
+          <BrandMark onDark />
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
@@ -44,7 +44,7 @@ export function SiteHeader() {
             <Link
               key={l.href}
               href={l.href}
-              className="text-sm text-ink/70 transition-colors hover:text-royal"
+              className="text-sm text-ivory/70 transition-colors hover:text-champagne"
             >
               {l.label}
             </Link>
@@ -57,7 +57,7 @@ export function SiteHeader() {
             <>
               <Link
                 href="/account"
-                className={cn(buttonVariants({ variant: "ghost" }), "gap-1.5 text-ink/80 hover:text-royal")}
+                className={cn(buttonVariants({ variant: "ghost" }), "gap-1.5 text-ivory/80 hover:text-champagne")}
               >
                 <UserRound className="size-4" />
                 {t("account")}
@@ -73,13 +73,13 @@ export function SiteHeader() {
             <>
               <Link
                 href="/login"
-                className={cn(buttonVariants({ variant: "ghost" }), "text-ink/80 hover:text-royal")}
+                className={cn(buttonVariants({ variant: "ghost" }), "text-ivory/80 hover:text-champagne")}
               >
                 {t("login")}
               </Link>
               <Link
                 href="/register"
-                className={cn(buttonVariants(), "bg-royal text-primary-foreground hover:bg-royal-deep")}
+                className={cn(buttonVariants(), "hover:bg-champagne-deep")}
               >
                 {t("signup")}
               </Link>
@@ -96,7 +96,7 @@ export function SiteHeader() {
             >
               <Menu className="size-5" />
             </SheetTrigger>
-            <SheetContent side="right" className="bg-ivory">
+            <SheetContent side="right" className="surface-dark border-ivory/10 bg-espresso text-ivory">
               <SheetTitle className="sr-only">{t("menu")}</SheetTitle>
               <div className="mt-10 flex flex-col gap-1 px-4">
                 {links.map((l) => (
@@ -104,7 +104,7 @@ export function SiteHeader() {
                     key={l.href}
                     href={l.href}
                     onClick={() => setOpen(false)}
-                    className="rounded-md px-3 py-3 text-lg text-ink hover:bg-secondary"
+                    className="rounded-md px-3 py-3 text-lg text-ivory hover:bg-ivory/5"
                   >
                     {l.label}
                   </Link>
@@ -121,7 +121,7 @@ export function SiteHeader() {
                       </Link>
                       <button
                         onClick={logout}
-                        className={cn(buttonVariants(), "w-full bg-royal text-primary-foreground")}
+                        className={cn(buttonVariants(), "w-full hover:bg-champagne-deep")}
                       >
                         {t("logout")}
                       </button>
@@ -138,7 +138,7 @@ export function SiteHeader() {
                       <Link
                         href="/register"
                         onClick={() => setOpen(false)}
-                        className={cn(buttonVariants(), "w-full bg-royal text-primary-foreground")}
+                        className={cn(buttonVariants(), "w-full hover:bg-champagne-deep")}
                       >
                         {t("signup")}
                       </Link>

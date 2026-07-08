@@ -59,8 +59,8 @@ export function RegisterForm() {
               className={cn(
                 "rounded-lg border p-3 text-left text-sm leading-snug transition-colors",
                 accountType === type
-                  ? "border-royal bg-royal/5 text-royal"
-                  : "border-line text-muted-foreground hover:border-royal/40",
+                  ? "border-champagne bg-champagne/10 text-gold-ink"
+                  : "border-line text-muted-foreground hover:border-champagne/60",
               )}
             >
               {type === "parent" ? t("asParent") : t("asSpecialist")}
@@ -94,7 +94,7 @@ export function RegisterForm() {
       <Button
         type="submit"
         disabled={loading}
-        className="w-full bg-royal text-primary-foreground hover:bg-royal-deep"
+        className="w-full hover:bg-champagne-deep"
       >
         {t("submitRegister")}
       </Button>

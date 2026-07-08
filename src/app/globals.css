@@ -5,27 +5,30 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  nyanya.uz — "Luxury Minimal" design system
-  Ivory canvas · Royal Purple primary · Champagne Gold accent · purple-black ink
-  Display: Cormorant Garamond (Cyrillic-capable serif) · Body/UI: Manrope
+  nyanya.uz — "Quiet Luxury" design system
+  Cream canvas · Espresso dark surfaces · Champagne Gold single accent · warm charcoal ink
+  Display: Playfair Display (Cyrillic-capable, high-contrast serif) · Body/UI: Inter
 */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  --font-sans: var(--font-manrope);
-  --font-display: var(--font-cormorant);
-  --font-heading: var(--font-cormorant);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-playfair);
+  --font-heading: var(--font-playfair);
   --font-mono: var(--font-geist-mono);
 
-  /* brand raw tokens → utilities (bg-royal, text-champagne, border-line…) */
+  /* brand raw tokens → utilities (bg-espresso, text-champagne, border-line…) */
   --color-ivory: var(--ivory);
   --color-ivory-deep: var(--ivory-deep);
+  --color-espresso: var(--espresso);
+  --color-espresso-deep: var(--espresso-deep);
   --color-royal: var(--royal);
   --color-royal-deep: var(--royal-deep);
   --color-royal-soft: var(--royal-soft);
   --color-champagne: var(--champagne);
+  --color-champagne-deep: var(--champagne-deep);
   --color-champagne-soft: var(--champagne-soft);
   --color-gold-ink: var(--gold-ink);
   --color-ink: var(--ink);
@@ -57,39 +60,70 @@
 }
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.375rem;
 
   /* raw brand palette */
-  --ivory: #f7f2e9;
-  --ivory-deep: #efe6d4;
-  --royal: #4b2e83;
-  --royal-deep: #2c1a4f;
-  --royal-soft: #6b4fa0;
+  --ivory: #f2ece0;
+  --ivory-deep: #e9e0cd;
+  --espresso: #1e1813;
+  --espresso-deep: #16110c;
   --champagne: #c2a05a;
+  --champagne-deep: #a8874a;
   --champagne-soft: #e7d6ab;
   --gold-ink: #8a6d2a;
-  --ink: #221c2e;
-  --line: #e6dcc8;
+  --ink: #332f28;
+  --line: #e4dcca;
+
+  /* legacy aliases — the purple family is retired from components; these keep
+     any missed `royal` class rendering warm espresso instead of violet */
+  --royal: #3a3025;
+  --royal-deep: var(--espresso-deep);
+  --royal-soft: #5a4c3a;
 
   /* semantic */
   --background: var(--ivory);
   --foreground: var(--ink);
-  --card: #fcfaf4;
+  --card: #fbf8f1;
   --card-foreground: var(--ink);
-  --popover: #fcfaf4;
+  --popover: #fbf8f1;
   --popover-foreground: var(--ink);
-  --primary: var(--royal);
-  --primary-foreground: #f8f4ec;
+  --primary: var(--champagne);
+  --primary-foreground: var(--espresso-deep);
   --secondary: var(--ivory-deep);
-  --secondary-foreground: var(--royal-deep);
-  --muted: #ece3d2;
-  --muted-foreground: #6e6678;
-  --accent: #efe6d2;
-  --accent-foreground: var(--royal-deep);
+  --secondary-foreground: var(--espresso);
+  --muted: #eae2d1;
+  --muted-foreground: #7c7568;
+  --accent: #ece4d2;
+  --accent-foreground: var(--espresso);
   --destructive: oklch(0.55 0.2 27);
   --border: var(--line);
-  --input: #ded2bb;
-  --ring: var(--royal-soft);
+  --input: #d9d0bc;
+  --ring: var(--champagne);
+}
+
+/*
+  Section-scoped dark surface (header, hero copy column, footer, dark tiles).
+  Overrides only the semantic tokens so shared components (buttons, inputs,
+  selects) adapt without their own dark variants. Raw brand tokens (--ink,
+  --champagne…) stay untouched. This is a color-block device, not a theme.
+*/
+.surface-dark {
+  --background: var(--espresso);
+  --foreground: #f0e9db;
+  --card: #262019;
+  --card-foreground: #f0e9db;
+  --popover: #262019;
+  --popover-foreground: #f0e9db;
+  --secondary: rgba(240, 233, 219, 0.08);
+  --secondary-foreground: #f0e9db;
+  --muted: rgba(240, 233, 219, 0.08);
+  --muted-foreground: #b9ac96;
+  --accent: rgba(240, 233, 219, 0.08);
+  --accent-foreground: #f0e9db;
+  --line: rgba(240, 233, 219, 0.14);
+  --border: rgba(240, 233, 219, 0.14);
+  --input: rgba(240, 233, 219, 0.22);
+  --ring: var(--champagne);
 }
 
 @layer base {
@@ -107,7 +141,7 @@
   }
   ::selection {
     background: var(--champagne-soft);
-    color: var(--royal-deep);
+    color: var(--espresso-deep);
   }
   /* refined defaults for the display face */
   .font-display {
@@ -126,4 +160,24 @@
     var(--champagne) 82%,
     transparent
   );
+}
+
+/* gentle load-in for hero content; collapses to static under reduced motion */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise {
+  animation: rise-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none;
+  }
 }

@@ -23,7 +23,7 @@ export default function BecomeSpecialistPage() {
         <div className="mt-8">
           <Link
             href="/specialist"
-            className={cn(buttonVariants(), "bg-royal text-primary-foreground hover:bg-royal-deep")}
+            className={cn(buttonVariants(), "hover:bg-champagne-deep")}
           >
             {t("ctaBecome")}
           </Link>
@@ -32,7 +32,7 @@ export default function BecomeSpecialistPage() {
       <div className="mt-16 grid gap-6 sm:grid-cols-3">
         {features.map((f) => (
           <div key={f.title} className="rounded-2xl border border-line bg-card p-6">
-            <span className="grid size-11 place-items-center rounded-xl bg-royal/5 text-royal">
+            <span className="grid size-11 place-items-center rounded-xl bg-champagne/12 text-gold-ink">
               <f.icon className="size-5" strokeWidth={1.6} />
             </span>
             <h3 className="mt-4 font-display text-xl font-semibold text-ink">{f.title}</h3>

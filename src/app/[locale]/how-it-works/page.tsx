@@ -29,7 +29,7 @@ export default function HowItWorksPage() {
       <div className="mt-14 text-center">
         <Link
           href="/catalog"
-          className={cn(buttonVariants(), "bg-royal text-primary-foreground hover:bg-royal-deep")}
+          className={cn(buttonVariants(), "hover:bg-champagne-deep")}
         >
           {t("browseCatalog")}
         </Link>

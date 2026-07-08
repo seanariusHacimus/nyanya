@@ -10,6 +10,10 @@ const ICONS: Record<Category, typeof Baby> = {
   driver: Car,
 };
 
+/*
+ * Styled with semantic tokens only, so the tiles adapt to the surface they sit
+ * on: subtle espresso tiles inside the dark hero, warm-white cards on cream.
+ */
 export function CategoryChooser() {
   const t = useTranslations("categories");
 
@@ -21,12 +25,12 @@ export function CategoryChooser() {
           <Link
             key={c}
             href={{ pathname: "/catalog", query: { category: c } }}
-            className="group flex flex-col items-start gap-3 rounded-xl border border-line bg-card p-4 transition-all hover:border-champagne hover:shadow-[0_8px_30px_-12px_rgba(75,46,131,0.25)]"
+            className="group flex flex-col items-start gap-3 rounded-xl border border-line bg-card p-4 transition-all hover:border-champagne hover:shadow-[0_8px_30px_-12px_rgba(22,17,12,0.35)]"
           >
-            <span className="grid size-10 place-items-center rounded-lg bg-royal/5 text-royal transition-colors group-hover:bg-royal group-hover:text-champagne">
+            <span className="grid size-10 place-items-center rounded-lg bg-champagne/12 text-champagne transition-colors group-hover:bg-champagne group-hover:text-espresso-deep">
               <Icon className="size-5" />
             </span>
-            <span className="font-medium text-ink">{t(c)}</span>
+            <span className="font-medium text-card-foreground">{t(c)}</span>
             <span className="text-xs text-muted-foreground">{t(`${c}_find`)}</span>
           </Link>
         );
