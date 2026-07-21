@@ -1,0 +1,1 @@
+ALTER TABLE "specialist_profiles" ADD COLUMN "full_name_latin" text;
