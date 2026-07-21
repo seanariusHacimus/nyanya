@@ -1,21 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Info } from "@phosphor-icons/react";
+import { setSession } from "@/lib/demo";
 
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
 
-/** §9 R1 — Вход. ⛳ Бэкенд-авторизации нет: сабмит показывает демо-уведомление. */
+/**
+ * §9 R1 — Вход. ⛳ Демо-режим: любой email/пароль создают локальную сессию
+ * родителя (специалисты приходят через регистрацию с выбором роли).
+ */
 export function LoginForm() {
-  const [demo, setDemo] = useState(false);
+  const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get("next");
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        setDemo(true);
+        setSession({ role: "parent", name: "Алия Каримова" });
+        router.push(next && next.startsWith("/") ? next : "/account");
       }}
       className="space-y-5"
     >
@@ -46,15 +53,11 @@ export function LoginForm() {
         />
       </div>
 
-      {demo && (
-        <p
-          role="status"
-          className="flex items-start gap-3 border border-bronze/40 bg-cream-deep px-4 py-3 text-sm text-ink"
-        >
-          <Info size={18} className="mt-0.5 shrink-0 text-bronze" aria-hidden="true" />
-          Демо-версия: вход заработает после подключения бэкенда.
-        </p>
-      )}
+      <p className="flex items-start gap-3 border border-line bg-cream-deep/60 px-4 py-3 text-xs leading-relaxed text-ink-soft">
+        <Info size={16} className="mt-0.5 shrink-0 text-bronze" aria-hidden="true" />
+        Демо-режим: подойдут любые данные, сессия хранится только в вашем
+        браузере.
+      </p>
 
       <button
         type="submit"
@@ -65,7 +68,7 @@ export function LoginForm() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-sm">
         <Link
-          href="/register"
+          href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}
           className="border-b border-ink/30 pb-0.5 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
         >
           Нет аккаунта? Зарегистрируйтесь

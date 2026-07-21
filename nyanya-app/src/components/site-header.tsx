@@ -7,11 +7,24 @@ import { List, X, CaretDown } from "@phosphor-icons/react";
 import { nav } from "@/content/home";
 import { easeOutQuart } from "@/lib/motion";
 import { ButtonLink } from "@/components/ui/button-link";
+import {
+  getSession,
+  clearSession,
+  subscribeDemo,
+  type DemoSession,
+} from "@/lib/demo";
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [session, setSessionState] = useState<DemoSession | null>(null);
   const reduce = useReducedMotion();
   const langRef = useRef<HTMLDetailsElement>(null);
+
+  // §1.6 — авторизованное состояние шапки (демо-сессия)
+  useEffect(() => {
+    setSessionState(getSession());
+    return subscribeDemo(() => setSessionState(getSession()));
+  }, []);
 
   useEffect(() => {
     const closeLang = () => {
@@ -86,9 +99,24 @@ export function SiteHeader() {
             </div>
           </details>
 
-          <div className="hidden md:block">
-            <ButtonLink href={nav.cta.href}>{nav.cta.label}</ButtonLink>
-          </div>
+          {session ? (
+            <div className="hidden items-center gap-5 md:flex">
+              <ButtonLink href={session.role === "specialist" ? "/specialist" : "/account"}>
+                Кабинет
+              </ButtonLink>
+              <button
+                type="button"
+                onClick={() => clearSession()}
+                className="label-caps min-h-11 text-ink-soft transition-colors duration-300 hover:text-ink"
+              >
+                Выйти
+              </button>
+            </div>
+          ) : (
+            <div className="hidden md:block">
+              <ButtonLink href={nav.cta.href}>{nav.cta.label}</ButtonLink>
+            </div>
+          )}
 
           <button
             type="button"
@@ -140,15 +168,37 @@ export function SiteHeader() {
                   ))}
                 </div>
               </li>
-              <li className="pt-4 pb-2">
-                <ButtonLink
-                  href={nav.cta.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="w-full"
-                >
-                  {nav.cta.label}
-                </ButtonLink>
-              </li>
+              {session ? (
+                <li className="flex items-center gap-4 pt-4 pb-2">
+                  <ButtonLink
+                    href={session.role === "specialist" ? "/specialist" : "/account"}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex-1"
+                  >
+                    Кабинет
+                  </ButtonLink>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearSession();
+                      setMenuOpen(false);
+                    }}
+                    className="label-caps min-h-11 px-2 text-ink-soft"
+                  >
+                    Выйти
+                  </button>
+                </li>
+              ) : (
+                <li className="pt-4 pb-2">
+                  <ButtonLink
+                    href={nav.cta.href}
+                    onClick={() => setMenuOpen(false)}
+                    className="w-full"
+                  >
+                    {nav.cta.label}
+                  </ButtonLink>
+                </li>
+              )}
             </ul>
           </motion.nav>
         )}

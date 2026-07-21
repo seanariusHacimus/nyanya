@@ -1,13 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowLeft,
-  MapPin,
-  SealCheck,
-  Heart,
-  LockKeyOpen,
-} from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeft, MapPin, SealCheck } from "@phosphor-icons/react/dist/ssr";
 import {
   specialists,
   getSpecialist,
@@ -20,6 +14,7 @@ import { SpecialistCard } from "@/components/specialist-card";
 import { TrustScore } from "@/components/ui/trust-score";
 import { Stars } from "@/components/ui/stars";
 import { ShareButton } from "@/components/share-button";
+import { UnlockPanel } from "@/components/profile/unlock-panel";
 import { Reveal } from "@/components/reveal";
 
 export function generateStaticParams() {
@@ -58,7 +53,6 @@ export default async function SpecialistPage({
     facts.push({ label: "Английский язык", value: s.english });
   }
 
-  const fee = UNLOCK_FEE_UZS.toLocaleString("ru-RU");
   const similar = similarSpecialists(s);
 
   return (
@@ -200,37 +194,20 @@ export default async function SpecialistPage({
             </section>
           </div>
 
-          {/* P3 — панель контактов (состояние: гость) */}
-          <aside className="lg:sticky lg:top-24 lg:self-start">
-            <div className="border border-line bg-paper p-8">
-              <LockKeyOpen size={30} weight="thin" className="text-bronze" />
-              <p className="mt-5 text-base leading-relaxed text-ink">
-                Откройте контакты, чтобы связаться напрямую — телефон, Telegram и
-                WhatsApp.
-              </p>
-              {/* D17: цена видна гостям */}
-              <p className="mt-6 font-display text-3xl font-medium text-ink">
-                {fee} сум
-              </p>
-              <div className="mt-6 grid gap-3">
-                <Link
-                  href="/login"
-                  className="label-caps inline-flex min-h-12 items-center justify-center bg-ink px-6 text-center whitespace-nowrap text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px"
-                >
-                  Войдите, чтобы открыть контакты
-                </Link>
-                <Link
-                  href="/login"
-                  className="label-caps inline-flex min-h-12 items-center justify-center gap-2 border border-line px-6 text-ink transition-colors duration-300 hover:border-ink-faint"
-                >
-                  <Heart size={15} aria-hidden="true" />В избранное
-                </Link>
-              </div>
-              <p className="mt-6 border-t border-line pt-5 text-xs leading-relaxed text-ink-soft">
-                Оплата разовая — контакты останутся доступны в вашем кабинете.
-              </p>
-            </div>
-          </aside>
+          {/* P3 + §10 — панель контактов и оплата (состояния: гость / вход / открыто) */}
+          <UnlockPanel
+            s={{
+              slug: s.slug,
+              name: s.name,
+              age: s.age,
+              categoryLabel: categories[s.category].label,
+              trustScore: s.trustScore,
+              priceLabel: formatPrice(s),
+              fee: UNLOCK_FEE_UZS,
+              photo: s.photo,
+              photoAlt: s.photoAlt,
+            }}
+          />
         </div>
       </div>
 
@@ -256,16 +233,6 @@ export default async function SpecialistPage({
         </section>
       )}
 
-      {/* P8 — липкая мобильная панель (D16) */}
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-4 border-t border-line bg-cream/95 px-5 py-3 backdrop-blur-md lg:hidden">
-        <p className="text-sm font-semibold text-ink">{formatPrice(s)}</p>
-        <Link
-          href="/login"
-          className="label-caps inline-flex min-h-11 shrink-0 items-center bg-ink px-5 text-cream active:translate-y-px"
-        >
-          Открыть контакты
-        </Link>
-      </div>
     </main>
   );
 }

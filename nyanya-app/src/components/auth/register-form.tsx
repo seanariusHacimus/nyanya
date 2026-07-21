@@ -2,21 +2,36 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Info, MagnifyingGlass, IdentificationBadge } from "@phosphor-icons/react";
+import { setPendingRegistration } from "@/lib/demo";
 
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
 
-/** §9 R2 — Регистрация с выбором роли. ⛳ Бэкенда нет: сабмит показывает демо-уведомление. */
+/** §9 R2 — Регистрация с выбором роли; после сабмита — подтверждение телефона (R3). */
 export function RegisterForm() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get("next");
   const [role, setRole] = useState<"parent" | "specialist">("parent");
-  const [demo, setDemo] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        setDemo(true);
+        setPendingRegistration({
+          role,
+          name: name.trim() || "Гость",
+          phone: phone.trim() || "+998 __ ___ __ __",
+        });
+        router.push(
+          next
+            ? `/verify-phone?next=${encodeURIComponent(next)}`
+            : "/verify-phone"
+        );
       }}
       className="space-y-5"
     >
@@ -72,6 +87,8 @@ export function RegisterForm() {
           type="text"
           required
           autoComplete="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           className={inputClass}
           placeholder="Ваше имя"
         />
@@ -98,6 +115,8 @@ export function RegisterForm() {
           type="tel"
           required
           autoComplete="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
           className={inputClass}
           placeholder="+998 __ ___ __ __"
         />
@@ -117,15 +136,10 @@ export function RegisterForm() {
         />
       </div>
 
-      {demo && (
-        <p
-          role="status"
-          className="flex items-start gap-3 border border-bronze/40 bg-cream-deep px-4 py-3 text-sm text-ink"
-        >
-          <Info size={18} className="mt-0.5 shrink-0 text-bronze" aria-hidden="true" />
-          Демо-версия: регистрация заработает после подключения бэкенда.
-        </p>
-      )}
+      <p className="flex items-start gap-3 border border-line bg-cream-deep/60 px-4 py-3 text-xs leading-relaxed text-ink-soft">
+        <Info size={16} className="mt-0.5 shrink-0 text-bronze" aria-hidden="true" />
+        Демо-режим: данные хранятся только в вашем браузере.
+      </p>
 
       <button
         type="submit"

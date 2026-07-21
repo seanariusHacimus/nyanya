@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, SealCheck, Heart } from "@phosphor-icons/react/dist/ssr";
+import { MapPin, SealCheck } from "@phosphor-icons/react/dist/ssr";
 import {
   categories,
   formatPrice,
@@ -8,6 +8,7 @@ import {
 } from "@/content/specialists";
 import { TrustScore } from "@/components/ui/trust-score";
 import { Stars } from "@/components/ui/stars";
+import { FavoriteHeart } from "@/components/favorite-heart";
 
 /** Карточка специалиста — §4.5. Вся карточка ведёт в профиль; ♡ — гостя на /login (D11). */
 export function SpecialistCard({ specialist }: { specialist: Specialist }) {
@@ -67,14 +68,12 @@ export function SpecialistCard({ specialist }: { specialist: Specialist }) {
         </p>
       </div>
 
-      {/* D11: ♡ на карточке; гость → вход. z-10 поверх stretched-link */}
-      <Link
-        href="/login"
-        aria-label={`Добавить ${s.name} в избранное (нужен вход)`}
-        className="absolute top-4 right-4 z-10 flex size-11 items-center justify-center rounded-full bg-cream/95 text-ink transition-colors duration-300 hover:text-bronze-text"
-      >
-        <Heart size={18} aria-hidden="true" />
-      </Link>
+      {/* D11: ♡ на карточке. z-10 поверх stretched-link */}
+      <FavoriteHeart
+        slug={s.slug}
+        name={s.name}
+        className="absolute top-4 right-4 z-10"
+      />
     </article>
   );
 }

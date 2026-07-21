@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { LoginForm } from "@/components/auth/login-form";
 import { TrustSeal } from "@/components/trust-seal";
 
@@ -20,7 +21,9 @@ export default function LoginPage() {
           Вход
         </h1>
         <div className="mt-10 border border-line bg-paper p-8">
-          <LoginForm />
+          <Suspense>
+            <LoginForm />
+          </Suspense>
         </div>
       </div>
     </main>
