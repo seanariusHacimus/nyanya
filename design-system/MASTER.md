@@ -111,6 +111,20 @@ SpecialistCard, TrustScore, Stars, Accordion, FaqTabs, PageHero, LegalArticle.
 Портреты 12 специалистов + 6 обложек блога + hero специалистов — GPT Image 2, JPEG в
 `public/images/{specialists,blog}`, PNG-оригиналы в `assets-source/`.
 
+## Authenticated layer (built 2026-07-21, demo-mode)
+
+Демо-сессия в localStorage (`src/lib/demo.ts`, события "nyanya-demo") делает воронку
+кликабельной без бэкенда: вход/регистрация с вилкой ролей → `/verify-phone` (код 123456,
+таймер повтора) → редирект по роли. Unlock-панель профиля — стейт-машина
+гость/авторизован/открыто + модал оплаты §10 (Payme/Click/Uzum mock, confirm → processing
+→ success). `/account` §11 (избранное, открытые контакты с живыми ссылками, платежи,
+уведомления) · `/specialist` §8+§12 (статус-баннер с демо-автомодерацией ~4.5с, показатели,
+полнота анкеты, форма с автосейвом D26, симуляция загрузки документов) · `/admin` §13
+(noindex; статистика, модерация с обязательной причиной отклонения, блокировка юзеров).
+Шапка знает о сессии (§1.6 Кабинет·Выйти). error.tsx + фирменный favicon (icon.svg).
+ВАЖНО: `turbopack.root` закреплён в next.config.ts — в корне репо живёт старое приложение
+(ветка main) со своим lockfile.
+
 ## Open decisions honored via fallback registry (content doc)
 
 D1 self-serve · D2 placeholder wordmarks (replace before launch) · D3 «10 000 семей»
