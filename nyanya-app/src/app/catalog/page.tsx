@@ -1,7 +1,18 @@
-import { PageStub } from "@/components/page-stub";
+import { Suspense } from "react";
+import { CatalogView } from "@/components/catalog-view";
 
-export const metadata = { title: "Каталог специалистов" };
+export const metadata = {
+  title: "Каталог специалистов",
+  description:
+    "Проверенные няни, сиделки, репетиторы и водители в Ташкенте. Фильтры по району, цене и опыту, индекс доверия и отзывы.",
+};
 
-export default function Page() {
-  return <PageStub title="Каталог специалистов" />;
+export default function CatalogPage() {
+  return (
+    <main className="flex-1">
+      <Suspense>
+        <CatalogView />
+      </Suspense>
+    </main>
+  );
 }

@@ -99,6 +99,18 @@ Next.js (latest, App Router, RSC default) · Tailwind v4 · motion/react ·
 @phosphor-icons/react (one family, strokeWidth-consistent light/regular) ·
 next/font/google (Playfair Display + Golos Text, cyrillic + latin subsets).
 
+## Public pages (built 2026-07-21)
+
+Каталог (client-side фильтры/сортировка/чипы, D8–D12 fallbacks, 12 demo-анкет в
+`src/content/specialists.ts`) · Профиль `/specialists/[slug]` (unlock-панель в гостевом
+состоянии, D13–D18 fallbacks, sticky mobile CTA) · Как это работает (§6 полностью) ·
+Специалистам (§7, hero с feathered-mask) · Проверка (§14) · Контакты (§15, форма ⛳ mock) ·
+FAQ (§16, tabs) · Блог (§17, 6 статей в `src/content/blog.ts`) · О сервисе (§18) ·
+Terms/Privacy (§19 черновики) · Вход/Регистрация (§9, демо-сабмит). Компоненты-примитивы:
+SpecialistCard, TrustScore, Stars, Accordion, FaqTabs, PageHero, LegalArticle.
+Портреты 12 специалистов + 6 обложек блога + hero специалистов — GPT Image 2, JPEG в
+`public/images/{specialists,blog}`, PNG-оригиналы в `assets-source/`.
+
 ## Open decisions honored via fallback registry (content doc)
 
 D1 self-serve · D2 placeholder wordmarks (replace before launch) · D3 «10 000 семей»
