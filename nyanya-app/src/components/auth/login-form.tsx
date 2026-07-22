@@ -66,15 +66,17 @@ export function LoginForm() {
         Войти
       </button>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-sm">
+      <div className="border-t border-line pt-5">
+        <p className="text-center text-sm text-ink-soft">Нет аккаунта?</p>
         <Link
           href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}
-          className="border-b border-ink/30 pb-0.5 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
+          className="label-caps mt-3 inline-flex min-h-12 w-full items-center justify-center border border-ink text-ink transition-colors duration-300 hover:bg-ink hover:text-cream"
         >
-          Нет аккаунта? Зарегистрируйтесь
+          Зарегистрироваться
         </Link>
-        <span className="text-ink-faint">Забыли пароль?</span>
       </div>
+
+      <p className="pt-1 text-center text-sm text-ink-faint">Забыли пароль?</p>
     </form>
   );
 }

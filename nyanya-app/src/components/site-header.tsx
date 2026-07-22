@@ -19,6 +19,7 @@ export function SiteHeader() {
   const [session, setSessionState] = useState<DemoSession | null>(null);
   const reduce = useReducedMotion();
   const langRef = useRef<HTMLDetailsElement>(null);
+  const aboutRef = useRef<HTMLDetailsElement>(null);
 
   // §1.6 — авторизованное состояние шапки (демо-сессия)
   useEffect(() => {
@@ -26,17 +27,19 @@ export function SiteHeader() {
     return subscribeDemo(() => setSessionState(getSession()));
   }, []);
 
+  // закрытие выпадающих меню по клику вне и по Escape
   useEffect(() => {
-    const closeLang = () => {
-      if (langRef.current?.open) langRef.current.open = false;
+    const refs = () => [langRef.current, aboutRef.current];
+    const closeAll = () => {
+      for (const d of refs()) if (d?.open) d.open = false;
     };
     const onDocClick = (e: MouseEvent) => {
-      if (langRef.current?.open && !langRef.current.contains(e.target as Node)) {
-        closeLang();
+      for (const d of refs()) {
+        if (d?.open && !d.contains(e.target as Node)) d.open = false;
       }
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeLang();
+      if (e.key === "Escape") closeAll();
     };
     document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onKeyDown);
@@ -46,7 +49,7 @@ export function SiteHeader() {
     };
   }, []);
 
-  const links = [...nav.categories, nav.about];
+  const topLinks = [...nav.categories, nav.specialists];
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-cream/90 backdrop-blur-md">
@@ -59,8 +62,8 @@ export function SiteHeader() {
         </Link>
 
         <nav aria-label="Основная навигация" className="hidden lg:block">
-          <ul className="flex items-center gap-5 xl:gap-8">
-            {links.map((link) => (
+          <ul className="flex items-center gap-4 xl:gap-7">
+            {topLinks.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
@@ -70,6 +73,33 @@ export function SiteHeader() {
                 </Link>
               </li>
             ))}
+            <li>
+              <details ref={aboutRef} className="group relative">
+                <summary className="label-caps flex min-h-11 cursor-pointer list-none items-center gap-1.5 whitespace-nowrap text-ink-soft transition-colors duration-300 hover:text-ink [&::-webkit-details-marker]:hidden">
+                  {nav.aboutMenu.label}
+                  <CaretDown
+                    size={12}
+                    aria-hidden="true"
+                    className="transition-transform duration-300 group-open:rotate-180"
+                  />
+                </summary>
+                <ul className="absolute top-full left-0 mt-3 w-64 border border-line bg-paper py-2 shadow-[0_12px_32px_rgba(33,31,26,0.1)]">
+                  {nav.aboutMenu.items.map((item) => (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={() => {
+                          if (aboutRef.current) aboutRef.current.open = false;
+                        }}
+                        className="label-caps block px-4 py-2.5 text-ink-soft transition-colors duration-300 hover:bg-cream-deep hover:text-ink"
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            </li>
           </ul>
         </nav>
 
@@ -101,7 +131,9 @@ export function SiteHeader() {
 
           {session ? (
             <div className="hidden items-center gap-5 md:flex">
-              <ButtonLink href={session.role === "specialist" ? "/specialist" : "/account"}>
+              <ButtonLink
+                href={session.role === "specialist" ? "/specialist" : "/account"}
+              >
                 Кабинет
               </ButtonLink>
               <button
@@ -114,7 +146,7 @@ export function SiteHeader() {
             </div>
           ) : (
             <div className="hidden md:block">
-              <ButtonLink href={nav.cta.href}>{nav.cta.label}</ButtonLink>
+              <ButtonLink href={nav.login.href}>{nav.login.label}</ButtonLink>
             </div>
           )}
 
@@ -138,17 +170,28 @@ export function SiteHeader() {
             animate={{ opacity: 1, height: "auto" }}
             exit={reduce ? undefined : { opacity: 0, height: 0 }}
             transition={{ duration: 0.35, ease: easeOutQuart }}
-            className="overflow-hidden border-t border-line bg-cream lg:hidden"
+            className="max-h-[calc(100dvh-4.5rem)] overflow-y-auto border-t border-line bg-cream lg:hidden"
           >
             <ul className="flex flex-col px-5 py-4 sm:px-8">
-              {links.map((link) => (
-                <li key={link.href} className="border-b border-line/70 last:border-0">
+              {topLinks.map((link) => (
+                <li key={link.href} className="border-b border-line/70">
                   <Link
                     href={link.href}
                     onClick={() => setMenuOpen(false)}
                     className="label-caps block py-4 text-ink-soft"
                   >
                     {link.label}
+                  </Link>
+                </li>
+              ))}
+              {nav.aboutMenu.items.map((item) => (
+                <li key={item.href} className="border-b border-line/70">
+                  <Link
+                    href={item.href}
+                    onClick={() => setMenuOpen(false)}
+                    className="label-caps block py-4 text-ink-soft"
+                  >
+                    {item.label}
                   </Link>
                 </li>
               ))}
@@ -171,7 +214,9 @@ export function SiteHeader() {
               {session ? (
                 <li className="flex items-center gap-4 pt-4 pb-2">
                   <ButtonLink
-                    href={session.role === "specialist" ? "/specialist" : "/account"}
+                    href={
+                      session.role === "specialist" ? "/specialist" : "/account"
+                    }
                     onClick={() => setMenuOpen(false)}
                     className="flex-1"
                   >
@@ -189,14 +234,21 @@ export function SiteHeader() {
                   </button>
                 </li>
               ) : (
-                <li className="pt-4 pb-2">
+                <li className="grid gap-3 pt-4 pb-2">
                   <ButtonLink
-                    href={nav.cta.href}
+                    href={nav.login.href}
                     onClick={() => setMenuOpen(false)}
                     className="w-full"
                   >
-                    {nav.cta.label}
+                    {nav.login.label}
                   </ButtonLink>
+                  <Link
+                    href={nav.register.href}
+                    onClick={() => setMenuOpen(false)}
+                    className="label-caps inline-flex min-h-12 w-full items-center justify-center border border-line text-ink transition-colors duration-300 hover:border-ink-faint"
+                  >
+                    {nav.register.label}
+                  </Link>
                 </li>
               )}
             </ul>

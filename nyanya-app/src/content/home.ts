@@ -21,8 +21,22 @@ export const nav = {
     { label: "Репетиторы", href: "/catalog?category=tutor" },
     { label: "Водители", href: "/catalog?category=driver" },
   ],
-  about: { label: "О сервисе", href: "/about" },
-  cta: { label: "Подобрать специалиста", href: "/catalog" },
+  /** Путь специалиста — первый уровень навигации */
+  specialists: { label: "Специалистам", href: "/become-specialist" },
+  /** «О сервисе» — выпадающее меню с остальными публичными страницами */
+  aboutMenu: {
+    label: "О сервисе",
+    items: [
+      { label: "О сервисе", href: "/about" },
+      { label: "Как это работает", href: "/how-it-works" },
+      { label: "Проверка специалистов", href: "/verification" },
+      { label: "Вопросы и ответы", href: "/faq" },
+      { label: "Блог", href: "/blog" },
+      { label: "Контакты", href: "/contacts" },
+    ],
+  },
+  login: { label: "Войти", href: "/login" },
+  register: { label: "Регистрация", href: "/register" },
   languages: [
     { code: "ru", label: "Русский", active: true },
     { code: "uz", label: "O‘zbekcha — скоро", active: false },
