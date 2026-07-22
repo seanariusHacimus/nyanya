@@ -48,3 +48,15 @@ next-env.d.ts
 
 # playwright session artifacts
 .playwright-mcp/
+
+# --- nyanya-app (new frontend, lives in subfolder) ---
+nyanya-app/node_modules/
+nyanya-app/.next/
+nyanya-app/out/
+
+# machine-specific agent config (absolute local paths)
+.claude/
+
+# OS noise
+Thumbs.db
+desktop.ini
