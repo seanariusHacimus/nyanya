@@ -171,12 +171,15 @@ export const ctaBand = {
   image: { src: interiorPhoto, alt: "" } satisfies ContentImage,
 } as const;
 
+/** Девиз бренда — единый источник для футера, метаданных и страниц. */
+export const slogan = "Жизнь без забот";
+
 export const footer = {
+  slogan,
   tagline: "Премиальный сервис по подбору специалистов для вашей семьи.",
   social: [
     { icon: "instagram", label: "Instagram", href: "https://instagram.com/nyanya.uz" },
     { icon: "telegram", label: "Telegram", href: "https://t.me/nyanya_uz" },
-    { icon: "phone", label: "Позвонить", href: "tel:+998901234567" },
   ],
   columns: [
     {
@@ -206,8 +209,7 @@ export const footer = {
       ],
     },
   ],
-  // ⛳ контакты-заглушки (backlog T1–T2)
-  phone: { label: "+998 90 123 45 67", href: "tel:+998901234567" },
+  // ⛳ почта-заглушка (backlog T2) — единственный публичный контакт компании
   email: { label: "info@nyanya.uz", href: "mailto:info@nyanya.uz" },
   cta: { label: "Подобрать специалиста", href: "/catalog" },
   disclaimer:

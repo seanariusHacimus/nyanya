@@ -1,5 +1,4 @@
 import {
-  Phone,
   TelegramLogo,
   EnvelopeSimple,
   InstagramLogo,
@@ -11,28 +10,22 @@ import { Reveal } from "@/components/reveal";
 export const metadata = {
   title: "Контакты",
   description:
-    "Свяжитесь с nyanya.uz: телефон, Telegram, email. Отвечаем ежедневно с 9:00 до 21:00.",
+    "Свяжитесь с nyanya.uz: почта, Telegram, Instagram. Отвечаем ежедневно с 9:00 до 21:00.",
 };
 
 // ⛳ каналы-заглушки — единый источник с футером (2.6), заменить до запуска
 const channels = [
   {
-    icon: Phone,
-    label: "Телефон",
-    value: "+998 90 123 45 67",
-    href: "tel:+998901234567",
+    icon: EnvelopeSimple,
+    label: "Email",
+    value: "info@nyanya.uz",
+    href: "mailto:info@nyanya.uz",
   },
   {
     icon: TelegramLogo,
     label: "Telegram",
     value: "@nyanya_uz",
     href: "https://t.me/nyanya_uz",
-  },
-  {
-    icon: EnvelopeSimple,
-    label: "Email",
-    value: "info@nyanya.uz",
-    href: "mailto:info@nyanya.uz",
   },
   {
     icon: InstagramLogo,

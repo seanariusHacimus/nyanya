@@ -1,16 +1,11 @@
 import Link from "next/link";
-import {
-  InstagramLogo,
-  TelegramLogo,
-  Phone,
-} from "@phosphor-icons/react/dist/ssr";
+import { InstagramLogo, TelegramLogo } from "@phosphor-icons/react/dist/ssr";
 import { footer } from "@/content/home";
 import { ButtonLink } from "@/components/ui/button-link";
 
 const socialIcons = {
   instagram: InstagramLogo,
   telegram: TelegramLogo,
-  phone: Phone,
 } as const;
 
 export function SiteFooter() {
@@ -25,7 +20,10 @@ export function SiteFooter() {
             >
               NYANYA.UZ
             </Link>
-            <p className="mt-5 max-w-[26ch] text-sm leading-relaxed text-cream/60">
+            <p className="mt-3 font-display text-2xl leading-snug font-medium text-bronze-soft">
+              {footer.slogan}
+            </p>
+            <p className="mt-4 max-w-[26ch] text-sm leading-relaxed text-cream/60">
               {footer.tagline}
             </p>
             <ul className="mt-7 flex gap-3">
@@ -73,19 +71,14 @@ export function SiteFooter() {
           <div className="md:col-span-3 lg:col-span-1 lg:text-right">
             <p>
               <a
-                href={footer.phone.href}
-                className="font-display text-2xl whitespace-nowrap text-cream transition-colors duration-300 hover:text-bronze-soft"
-              >
-                {footer.phone.label}
-              </a>
-            </p>
-            <p className="mt-3">
-              <a
                 href={footer.email.href}
-                className="inline-block py-1 text-sm text-cream/75 transition-colors duration-300 hover:text-cream"
+                className="font-display text-2xl whitespace-nowrap text-cream transition-colors duration-300 hover:text-bronze-soft"
               >
                 {footer.email.label}
               </a>
+            </p>
+            <p className="mt-3 text-sm text-cream/60">
+              Отвечаем ежедневно с 9:00 до 21:00
             </p>
             <div className="mt-8 lg:flex lg:justify-end">
               <ButtonLink href={footer.cta.href} variant="outline-light">

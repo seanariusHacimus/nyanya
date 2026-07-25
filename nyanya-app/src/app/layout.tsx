@@ -18,7 +18,7 @@ const golos = Golos_Text({
 
 export const metadata: Metadata = {
   title: {
-    default: "NYANYA.UZ — Проверенные специалисты для вашей семьи",
+    default: "NYANYA.UZ — жизнь без забот",
     template: "%s — NYANYA.UZ",
   },
   description:
