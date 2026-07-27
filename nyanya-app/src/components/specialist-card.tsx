@@ -27,7 +27,15 @@ function Monogram({ name }: { name: string }) {
 }
 
 /** Карточка специалиста — §4.5. Данные приходят из PostgreSQL. */
-export function SpecialistCard({ specialist }: { specialist: UiSpecialist }) {
+export function SpecialistCard({
+  specialist,
+  favorite = false,
+  authed = false,
+}: {
+  specialist: UiSpecialist;
+  favorite?: boolean;
+  authed?: boolean;
+}) {
   const s = specialist;
   return (
     <article className="group relative flex h-full flex-col border border-line bg-paper transition-colors duration-300 hover:border-ink-faint">
@@ -92,6 +100,8 @@ export function SpecialistCard({ specialist }: { specialist: UiSpecialist }) {
       <FavoriteHeart
         slug={s.slug}
         name={s.name}
+        initialActive={favorite}
+        authed={authed}
         className="absolute top-4 right-4 z-10"
       />
     </article>

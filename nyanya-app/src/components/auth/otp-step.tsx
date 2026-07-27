@@ -70,7 +70,8 @@ export function OtpStep({
 
       <p className="flex items-start gap-3 border border-line bg-cream-deep/60 px-4 py-3 text-xs leading-relaxed text-ink-soft">
         <Info size={16} className="mt-0.5 shrink-0 text-bronze" aria-hidden="true" />
-        Письмо не пришло? Проверьте «Спам» — или запросите код повторно.
+        Если писем несколько, введите код из самого свежего — предыдущие
+        перестают действовать. Код живёт 10 минут; письмо может попасть в «Спам».
       </p>
 
       <button

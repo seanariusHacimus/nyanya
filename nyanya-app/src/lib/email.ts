@@ -23,7 +23,7 @@ function renderOtpEmail(code: string): { html: string; text: string } {
         <tr><td style="background-color:#fbfaf7;border:1px solid #dbd5c8;padding:36px 32px;" align="center">
           <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#211f1a;padding-bottom:12px;">Код подтверждения</div>
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#5d584e;padding-bottom:24px;">
-            Введите этот код на сайте, чтобы продолжить. Код действует 5 минут.
+            Введите этот код на сайте, чтобы продолжить. Код действует 10 минут.
           </div>
           <div style="font-family:Georgia,'Times New Roman',serif;font-size:36px;letter-spacing:12px;color:#211f1a;padding:16px 0 20px;border-top:1px solid #dbd5c8;border-bottom:1px solid #dbd5c8;">${code}</div>
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#8a8478;padding-top:20px;">
@@ -45,7 +45,7 @@ function renderOtpEmail(code: string): { html: string; text: string } {
 
 Код подтверждения: ${code}
 
-Введите этот код на сайте, чтобы продолжить. Код действует 5 минут.
+Введите этот код на сайте, чтобы продолжить. Код действует 10 минут.
 Если вы не запрашивали код — проигнорируйте это письмо.`;
 
   return { html, text };

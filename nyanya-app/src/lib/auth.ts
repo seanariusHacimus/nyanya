@@ -31,7 +31,10 @@ export const auth = betterAuth({
   plugins: [
     emailOTP({
       otpLength: 6,
-      expiresIn: 300, // 5 минут — как в письме
+      // 10 минут: письмо может идти минуту-другую, а запрос нового кода
+      // аннулирует предыдущий — запас снижает шанс «устаревшего кода»
+      expiresIn: 600,
+      allowedAttempts: 5,
       async sendVerificationOTP({ email, otp }) {
         await sendOtpEmail(email, otp);
       },
