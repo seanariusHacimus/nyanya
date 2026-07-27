@@ -1,28 +1,87 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
-import { Info } from "@phosphor-icons/react";
-import { setSession } from "@/lib/demo";
+import { useRouter, useSearchParams } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import { setSession as setDemoMirror } from "@/lib/demo";
+import { OtpStep } from "@/components/auth/otp-step";
 
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
 
-/**
- * §9 R1 — Вход. ⛳ Демо-режим: любой email/пароль создают локальную сессию
- * родителя (специалисты приходят через регистрацию с выбором роли).
- */
+/** §9 R1 — вход без пароля: почта → код из письма → сессия. */
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next");
 
+  const [step, setStep] = useState<"email" | "otp">("email");
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sendCode = async () => {
+    setBusy(true);
+    setError(null);
+    const { error: sendError } = await authClient.emailOtp.sendVerificationOtp({
+      email,
+      type: "sign-in",
+    });
+    setBusy(false);
+    if (sendError) {
+      setError("Не удалось отправить код. Попробуйте ещё раз.");
+      return;
+    }
+    setStep("otp");
+  };
+
+  const verify = async (code: string) => {
+    setBusy(true);
+    setError(null);
+    const { error: signInError } = await authClient.signIn.emailOtp({
+      email,
+      otp: code,
+    });
+    if (signInError) {
+      setBusy(false);
+      setError("Неверный или устаревший код. Попробуйте ещё раз.");
+      return;
+    }
+    // роль — из свежей сессии; мост в demo-хранилище для кабинетов (до Ф5/Ф6)
+    const { data } = await authClient.getSession();
+    const role = data?.user.role === "specialist" ? "specialist" : "parent";
+    setDemoMirror({ role, name: data?.user.name ?? "Гость" });
+    router.push(
+      next && next.startsWith("/")
+        ? next
+        : role === "specialist"
+          ? "/specialist"
+          : "/account"
+    );
+  };
+
+  if (step === "otp") {
+    return (
+      <OtpStep
+        email={email}
+        busy={busy}
+        error={error}
+        onVerify={verify}
+        onResend={sendCode}
+        onChangeEmail={() => {
+          setStep("email");
+          setError(null);
+        }}
+      />
+    );
+  }
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        setSession({ role: "parent", name: "Алия Каримова" });
-        router.push(next && next.startsWith("/") ? next : "/account");
+        void sendCode();
       }}
       className="space-y-5"
     >
@@ -35,35 +94,28 @@ export function LoginForm() {
           type="email"
           required
           autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           className={inputClass}
           placeholder="you@example.com"
         />
-      </div>
-      <div className="grid gap-2">
-        <label htmlFor="login-password" className="text-sm font-semibold text-ink">
-          Пароль
-        </label>
-        <input
-          id="login-password"
-          type="password"
-          required
-          autoComplete="current-password"
-          className={inputClass}
-          placeholder="••••••••"
-        />
+        <p className="text-xs text-ink-faint">
+          Пароль не нужен — пришлём код подтверждения на почту.
+        </p>
       </div>
 
-      <p className="flex items-start gap-3 border border-line bg-cream-deep/60 px-4 py-3 text-xs leading-relaxed text-ink-soft">
-        <Info size={16} className="mt-0.5 shrink-0 text-bronze" aria-hidden="true" />
-        Демо-режим: подойдут любые данные, сессия хранится только в вашем
-        браузере.
-      </p>
+      {error && (
+        <p role="alert" className="text-sm text-[#a5462f]">
+          {error}
+        </p>
+      )}
 
       <button
         type="submit"
-        className="label-caps inline-flex min-h-12 w-full items-center justify-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px"
+        disabled={busy}
+        className="label-caps inline-flex min-h-12 w-full items-center justify-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px disabled:opacity-70"
       >
-        Войти
+        {busy ? "Отправляем код…" : "Получить код"}
       </button>
 
       <div className="border-t border-line pt-5">
@@ -75,8 +127,6 @@ export function LoginForm() {
           Зарегистрироваться
         </Link>
       </div>
-
-      <p className="pt-1 text-center text-sm text-ink-faint">Забыли пароль?</p>
     </form>
   );
 }

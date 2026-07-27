@@ -7,12 +7,19 @@ import { List, X, CaretDown } from "@phosphor-icons/react";
 import { nav } from "@/content/home";
 import { easeOutQuart } from "@/lib/motion";
 import { ButtonLink } from "@/components/ui/button-link";
+import { authClient } from "@/lib/auth-client";
 import {
   getSession,
   clearSession,
   subscribeDemo,
   type DemoSession,
 } from "@/lib/demo";
+
+/** Полный выход: реальная сессия Better Auth + локальное зеркало кабинетов. */
+function signOutEverywhere() {
+  void authClient.signOut();
+  clearSession();
+}
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -138,7 +145,7 @@ export function SiteHeader() {
               </ButtonLink>
               <button
                 type="button"
-                onClick={() => clearSession()}
+                onClick={signOutEverywhere}
                 className="label-caps min-h-11 text-ink-soft transition-colors duration-300 hover:text-ink"
               >
                 Выйти
@@ -225,7 +232,7 @@ export function SiteHeader() {
                   <button
                     type="button"
                     onClick={() => {
-                      clearSession();
+                      signOutEverywhere();
                       setMenuOpen(false);
                     }}
                     className="label-caps min-h-11 px-2 text-ink-soft"

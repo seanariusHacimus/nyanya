@@ -3,35 +3,93 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Info, MagnifyingGlass, IdentificationBadge } from "@phosphor-icons/react";
-import { setPendingRegistration } from "@/lib/demo";
+import { MagnifyingGlass, IdentificationBadge } from "@phosphor-icons/react";
+import { authClient } from "@/lib/auth-client";
+import { completeProfile } from "@/lib/actions/complete-profile";
+import { setSession as setDemoMirror } from "@/lib/demo";
+import { OtpStep } from "@/components/auth/otp-step";
 
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
 
-/** §9 R2 — Регистрация с выбором роли; после сабмита — подтверждение телефона (R3). */
+/** §9 R2 — регистрация: роль + данные → код на почту → профиль готов. */
 export function RegisterForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next");
+
+  const [step, setStep] = useState<"form" | "otp">("form");
   const [role, setRole] = useState<"parent" | "specialist">("parent");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sendCode = async () => {
+    setBusy(true);
+    setError(null);
+    const { error: sendError } = await authClient.emailOtp.sendVerificationOtp({
+      email,
+      type: "sign-in",
+    });
+    setBusy(false);
+    if (sendError) {
+      setError("Не удалось отправить код. Проверьте адрес и попробуйте ещё раз.");
+      return;
+    }
+    setStep("otp");
+  };
+
+  const verify = async (code: string) => {
+    setBusy(true);
+    setError(null);
+    const { error: signInError } = await authClient.signIn.emailOtp({
+      email,
+      otp: code,
+    });
+    if (signInError) {
+      setBusy(false);
+      setError("Неверный или устаревший код. Попробуйте ещё раз.");
+      return;
+    }
+
+    const result = await completeProfile({ name, phone, role });
+    const finalRole = result.ok ? result.role : "parent";
+    setDemoMirror({
+      role: finalRole === "specialist" ? "specialist" : "parent",
+      name: name || "Гость",
+    });
+    router.push(
+      finalRole === "specialist"
+        ? "/specialist"
+        : next && next.startsWith("/")
+          ? next
+          : "/account"
+    );
+  };
+
+  if (step === "otp") {
+    return (
+      <OtpStep
+        email={email}
+        busy={busy}
+        error={error}
+        onVerify={verify}
+        onResend={sendCode}
+        onChangeEmail={() => {
+          setStep("form");
+          setError(null);
+        }}
+      />
+    );
+  }
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        setPendingRegistration({
-          role,
-          name: name.trim() || "Гость",
-          phone: phone.trim() || "+998 __ ___ __ __",
-        });
-        router.push(
-          next
-            ? `/verify-phone?next=${encodeURIComponent(next)}`
-            : "/verify-phone"
-        );
+        void sendCode();
       }}
       className="space-y-5"
     >
@@ -86,6 +144,7 @@ export function RegisterForm() {
           id="reg-name"
           type="text"
           required
+          maxLength={100}
           autoComplete="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -93,6 +152,7 @@ export function RegisterForm() {
           placeholder="Ваше имя"
         />
       </div>
+
       <div className="grid gap-2">
         <label htmlFor="reg-email" className="text-sm font-semibold text-ink">
           Email
@@ -102,10 +162,16 @@ export function RegisterForm() {
           type="email"
           required
           autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           className={inputClass}
           placeholder="you@example.com"
         />
+        <p className="text-xs text-ink-faint">
+          Пришлём код подтверждения — пароль не нужен.
+        </p>
       </div>
+
       <div className="grid gap-2">
         <label htmlFor="reg-phone" className="text-sm font-semibold text-ink">
           Телефон
@@ -114,6 +180,7 @@ export function RegisterForm() {
           id="reg-phone"
           type="tel"
           required
+          maxLength={20}
           autoComplete="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
@@ -121,31 +188,19 @@ export function RegisterForm() {
           placeholder="+998 __ ___ __ __"
         />
       </div>
-      <div className="grid gap-2">
-        <label htmlFor="reg-password" className="text-sm font-semibold text-ink">
-          Пароль
-        </label>
-        <input
-          id="reg-password"
-          type="password"
-          required
-          minLength={8}
-          autoComplete="new-password"
-          className={inputClass}
-          placeholder="Не менее 8 символов"
-        />
-      </div>
 
-      <p className="flex items-start gap-3 border border-line bg-cream-deep/60 px-4 py-3 text-xs leading-relaxed text-ink-soft">
-        <Info size={16} className="mt-0.5 shrink-0 text-bronze" aria-hidden="true" />
-        Демо-режим: данные хранятся только в вашем браузере.
-      </p>
+      {error && (
+        <p role="alert" className="text-sm text-[#a5462f]">
+          {error}
+        </p>
+      )}
 
       <button
         type="submit"
-        className="label-caps inline-flex min-h-12 w-full items-center justify-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px"
+        disabled={busy}
+        className="label-caps inline-flex min-h-12 w-full items-center justify-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px disabled:opacity-70"
       >
-        Создать аккаунт
+        {busy ? "Отправляем код…" : "Создать аккаунт"}
       </button>
 
       <p className="text-xs leading-relaxed text-ink-soft">
@@ -168,7 +223,7 @@ export function RegisterForm() {
 
       <p className="pt-1 text-sm">
         <Link
-          href="/login"
+          href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
           className="border-b border-ink/30 pb-0.5 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
         >
           Уже есть аккаунт? Войти
