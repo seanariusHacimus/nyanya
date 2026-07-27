@@ -11,6 +11,7 @@ import {
   categories,
   formatPrice,
 } from "@/lib/queries/specialists";
+import { getFavoriteSlugs } from "@/lib/queries/account";
 import { SpecialistCard } from "@/components/specialist-card";
 import { TrustScore } from "@/components/ui/trust-score";
 import { Stars } from "@/components/ui/stars";
@@ -55,9 +56,12 @@ export default async function SpecialistPage({
 
   // состояние доступа к контактам — на сервере, до первого рендера
   const session = await auth.api.getSession({ headers: await headers() });
-  const initialContacts = session
-    ? await getUnlockedContactsForUser(s.slug, session.user.id)
-    : null;
+  const [initialContacts, favoriteSlugs] = session
+    ? await Promise.all([
+        getUnlockedContactsForUser(s.slug, session.user.id),
+        getFavoriteSlugs(session.user.id),
+      ])
+    : [null, [] as string[]];
 
   return (
     <main className="flex-1 pb-24 lg:pb-0">
@@ -229,6 +233,7 @@ export default async function SpecialistPage({
             }}
             initialAuthed={Boolean(session)}
             initialContacts={initialContacts}
+            initialFavorite={favoriteSlugs.includes(s.slug)}
           />
         </div>
       </div>

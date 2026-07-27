@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -10,55 +9,16 @@ import {
   TelegramLogo,
   WhatsappLogo,
   Bell,
-  Receipt,
   SignOut,
   MagnifyingGlass,
 } from "@phosphor-icons/react";
-import {
-  getSession,
-  clearSession,
-  subscribeDemo,
-  getFavorites,
-  getPayments,
-  demoContacts,
-  type DemoSession,
-  type DemoPayment,
-} from "@/lib/demo";
-import {
-  specialists,
-  categories,
-  UNLOCK_FEE_UZS,
-  type Specialist,
-} from "@/content/specialists";
-import type { UiSpecialist } from "@/lib/specialists-shared";
+import { authClient } from "@/lib/auth-client";
+import { clearSession } from "@/lib/demo";
+import type { AccountData } from "@/lib/queries/account";
 import { SpecialistCard } from "@/components/specialist-card";
 import { ButtonLink } from "@/components/ui/button-link";
 
-/** Временный адаптер demo-данных под UI-тип из БД — уходит в Ф5. */
-function toUi(s: Specialist): UiSpecialist {
-  return {
-    slug: s.slug,
-    name: s.name,
-    age: s.age,
-    category: s.category,
-    district: s.district,
-    experienceYears: s.experienceYears,
-    rating: s.rating,
-    reviewCount: s.reviews.length,
-    priceFrom: s.priceFrom,
-    priceUnit: categories[s.category].unit,
-    trustScore: s.trustScore,
-    verification: s.verification,
-    languages: s.languages,
-    english: s.english,
-    education: s.education,
-    attributes: s.attributes,
-    about: s.about,
-    photoUrl: s.photo.src,
-  };
-}
-
-function formatDateTime(iso: string) {
+function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ru-RU", {
     day: "numeric",
     month: "long",
@@ -66,64 +26,18 @@ function formatDateTime(iso: string) {
   });
 }
 
-/** §11 — кабинет родителя (демо-данные из localStorage). */
-export function AccountView() {
-  const [session, setSession] = useState<DemoSession | null>(null);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [payments, setPayments] = useState<DemoPayment[]>([]);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    const sync = () => {
-      setSession(getSession());
-      setFavorites(getFavorites());
-      setPayments(getPayments());
-    };
-    sync();
-    setHydrated(true);
-    return subscribeDemo(sync);
-  }, []);
-
-  if (!hydrated) return <div className="min-h-[50vh]" />;
-
-  if (!session) {
-    return (
-      <div className="mx-auto max-w-[1400px] px-5 py-28 text-center sm:px-8">
-        <h1 className="font-display text-4xl font-medium text-ink">Кабинет</h1>
-        <p className="mx-auto mt-5 max-w-md text-lg text-ink-soft">
-          Войдите, чтобы видеть избранное и открытые контакты.
-        </p>
-        <div className="mt-10 flex justify-center">
-          <ButtonLink href="/login?next=/account">Войти</ButtonLink>
-        </div>
-      </div>
-    );
-  }
-
-  const favoriteSpecialists = specialists.filter((s) =>
-    favorites.includes(s.slug)
-  );
-  const unlockedRows = payments
-    .slice()
-    .reverse()
-    .map((p) => ({
-      payment: p,
-      specialist: specialists.find((s) => s.slug === p.slug),
-    }))
-    .filter((r) => r.specialist);
-
-  const notifications = [
-    ...unlockedRows.map((r) => ({
-      title: "Контакты открыты",
-      body: `${r.specialist!.name} — телефон, Telegram и WhatsApp доступны в кабинете.`,
-      date: r.payment.date,
-    })),
-    {
-      title: "Добро пожаловать на nyanya.uz",
-      body: "Сохраняйте специалистов в избранное и открывайте контакты — они останутся здесь навсегда.",
-      date: new Date().toISOString(),
-    },
-  ];
+/** §11 — кабинет заказчика на данных из PostgreSQL. */
+export function AccountView({
+  name,
+  phoneVerified,
+  data,
+}: {
+  name: string;
+  phoneVerified: boolean;
+  data: AccountData;
+}) {
+  const { favorites, unlocked, notifications } = data;
+  const favoriteSlugs = new Set(favorites.map((f) => f.slug));
 
   return (
     <div className="mx-auto max-w-[1400px] px-5 pt-14 pb-24 sm:px-8 lg:pt-20">
@@ -132,16 +46,20 @@ export function AccountView() {
         <div>
           <p className="label-caps text-bronze-text">Кабинет · Родитель</p>
           <h1 className="mt-3 font-display text-4xl leading-[1.08] font-medium text-ink sm:text-5xl">
-            {session.name}
+            {name}
           </h1>
           <p className="mt-4 flex items-center gap-2 text-sm text-ink-soft">
             <SealCheck size={16} className="text-bronze" aria-hidden="true" />
-            Телефон подтверждён
+            {phoneVerified ? "Телефон подтверждён" : "Почта подтверждена"}
           </p>
         </div>
         <button
           type="button"
-          onClick={() => clearSession()}
+          onClick={() => {
+            void authClient.signOut();
+            clearSession();
+            window.location.href = "/";
+          }}
           className="label-caps flex min-h-11 items-center gap-2 text-ink-soft transition-colors duration-300 hover:text-ink"
         >
           <SignOut size={16} aria-hidden="true" />
@@ -153,10 +71,9 @@ export function AccountView() {
       <nav aria-label="Разделы кабинета" className="mt-10 border-y border-line">
         <ul className="flex flex-wrap gap-x-8 gap-y-2 py-4">
           {[
-            ["#favorites", "Избранное"],
-            ["#contacts", "Открытые контакты"],
-            ["#payments", "История платежей"],
-            ["#notifications", "Уведомления"],
+            ["#favorites", `Избранное (${favorites.length})`],
+            ["#contacts", `Открытые контакты (${unlocked.length})`],
+            ["#notifications", `Уведомления (${notifications.length})`],
           ].map(([href, label]) => (
             <li key={href}>
               <a
@@ -176,11 +93,15 @@ export function AccountView() {
           <Heart size={24} className="text-bronze" aria-hidden="true" />
           Избранное
         </h2>
-        {favoriteSpecialists.length > 0 ? (
+        {favorites.length > 0 ? (
           <ul className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {favoriteSpecialists.map((s) => (
+            {favorites.map((s) => (
               <li key={s.slug}>
-                <SpecialistCard specialist={toUi(s)} />
+                <SpecialistCard
+                  specialist={s}
+                  favorite={favoriteSlugs.has(s.slug)}
+                  authed
+                />
               </li>
             ))}
           </ul>
@@ -202,67 +123,72 @@ export function AccountView() {
           <Phone size={24} className="text-bronze" aria-hidden="true" />
           Открытые контакты
         </h2>
-        {unlockedRows.length > 0 ? (
+        {unlocked.length > 0 ? (
           <ul className="mt-8 divide-y divide-line border-y border-line">
-            {unlockedRows.map(({ payment, specialist }) => {
-              const s = specialist!;
-              const c = demoContacts(s.slug);
-              return (
-                <li
-                  key={payment.slug}
-                  className="flex flex-wrap items-center gap-5 py-5"
+            {unlocked.map(({ specialist, categoryLabel, unlockedAt, contacts }) => (
+              <li
+                key={specialist.slug}
+                className="flex flex-wrap items-center gap-5 py-5"
+              >
+                <Link
+                  href={`/specialists/${specialist.slug}`}
+                  className="flex min-w-0 flex-1 items-center gap-4"
                 >
-                  <Link
-                    href={`/specialists/${s.slug}`}
-                    className="flex min-w-0 flex-1 items-center gap-4"
-                  >
+                  {specialist.photoUrl ? (
                     <Image
-                      src={s.photo}
-                      alt={s.photoAlt}
+                      src={specialist.photoUrl}
+                      alt={`${specialist.name} — портрет`}
                       width={48}
                       height={60}
                       className="h-[60px] w-12 rounded-[2px] object-cover object-top"
                     />
-                    <span className="min-w-0">
-                      <span className="block truncate text-base font-semibold text-ink">
-                        {s.name}
-                      </span>
-                      <span className="mt-0.5 block text-sm text-ink-soft">
-                        {categories[s.category].label} · открыто{" "}
-                        {formatDateTime(payment.date)}
-                      </span>
+                  ) : (
+                    <span className="flex h-[60px] w-12 items-center justify-center rounded-[2px] bg-cream-deep font-display text-base text-bronze-text">
+                      {specialist.name
+                        .split(" ")
+                        .slice(0, 2)
+                        .map((w) => w[0])
+                        .join("")}
                     </span>
-                  </Link>
-                  <span className="flex items-center gap-2">
-                    <a
-                      href={c.phoneHref}
-                      aria-label={`Позвонить: ${s.name}`}
-                      className="flex size-11 items-center justify-center rounded-full border border-bronze/40 text-bronze transition-colors duration-300 hover:bg-cream-deep"
-                    >
-                      <Phone size={17} />
-                    </a>
-                    <a
-                      href={c.telegramHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`Telegram: ${s.name}`}
-                      className="flex size-11 items-center justify-center rounded-full border border-bronze/40 text-bronze transition-colors duration-300 hover:bg-cream-deep"
-                    >
-                      <TelegramLogo size={17} />
-                    </a>
-                    <a
-                      href={c.whatsappHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`WhatsApp: ${s.name}`}
-                      className="flex size-11 items-center justify-center rounded-full border border-bronze/40 text-bronze transition-colors duration-300 hover:bg-cream-deep"
-                    >
-                      <WhatsappLogo size={17} />
-                    </a>
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate text-base font-semibold text-ink">
+                      {specialist.name}
+                    </span>
+                    <span className="mt-0.5 block text-sm text-ink-soft">
+                      {categoryLabel} · открыто {formatDate(unlockedAt)}
+                    </span>
                   </span>
-                </li>
-              );
-            })}
+                </Link>
+                <span className="flex items-center gap-2">
+                  <a
+                    href={contacts.phoneHref}
+                    aria-label={`Позвонить: ${specialist.name}`}
+                    className="flex size-11 items-center justify-center rounded-full border border-bronze/40 text-bronze transition-colors duration-300 hover:bg-cream-deep"
+                  >
+                    <Phone size={17} />
+                  </a>
+                  <a
+                    href={contacts.telegramHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Telegram: ${specialist.name}`}
+                    className="flex size-11 items-center justify-center rounded-full border border-bronze/40 text-bronze transition-colors duration-300 hover:bg-cream-deep"
+                  >
+                    <TelegramLogo size={17} />
+                  </a>
+                  <a
+                    href={contacts.whatsappHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`WhatsApp: ${specialist.name}`}
+                    className="flex size-11 items-center justify-center rounded-full border border-bronze/40 text-bronze transition-colors duration-300 hover:bg-cream-deep"
+                  >
+                    <WhatsappLogo size={17} />
+                  </a>
+                </span>
+              </li>
+            ))}
           </ul>
         ) : (
           <div className="mt-8 flex flex-col items-center border border-line bg-paper px-8 py-16 text-center">
@@ -276,79 +202,39 @@ export function AccountView() {
         )}
       </section>
 
-      {/* K5 — история платежей */}
-      <section id="payments" className="mt-16 scroll-mt-24">
-        <h2 className="flex items-center gap-3 font-display text-3xl font-medium text-ink">
-          <Receipt size={24} className="text-bronze" aria-hidden="true" />
-          История платежей
-        </h2>
-        {unlockedRows.length > 0 ? (
-          <div className="mt-8 overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-line">
-                  <th className="label-caps py-3 pr-6 font-medium text-ink-faint">
-                    Дата
-                  </th>
-                  <th className="label-caps py-3 pr-6 font-medium text-ink-faint">
-                    Специалист
-                  </th>
-                  <th className="label-caps py-3 pr-6 font-medium text-ink-faint">
-                    Сумма
-                  </th>
-                  <th className="label-caps py-3 font-medium text-ink-faint">
-                    Статус
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {unlockedRows.map(({ payment, specialist }) => (
-                  <tr key={payment.slug} className="border-b border-line/60">
-                    <td className="py-4 pr-6 text-ink-soft">
-                      {formatDateTime(payment.date)}
-                    </td>
-                    <td className="py-4 pr-6 font-medium text-ink">
-                      {specialist!.name}
-                    </td>
-                    <td className="py-4 pr-6 text-ink">
-                      {UNLOCK_FEE_UZS.toLocaleString("ru-RU")} сум
-                    </td>
-                    <td className="py-4">
-                      <span className="label-caps text-bronze-text">Оплачен</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="mt-6 text-base text-ink-soft">Платежей пока нет.</p>
-        )}
-      </section>
-
       {/* K6 — уведомления */}
       <section id="notifications" className="mt-16 scroll-mt-24">
         <h2 className="flex items-center gap-3 font-display text-3xl font-medium text-ink">
           <Bell size={24} className="text-bronze" aria-hidden="true" />
           Уведомления
         </h2>
-        <ul className="mt-8 space-y-4">
-          {notifications.map((n, i) => (
-            <li key={i} className="border border-line bg-paper p-6">
-              <p className="text-base font-semibold text-ink">{n.title}</p>
-              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
-                {n.body}
-              </p>
-              <p className="mt-3 text-xs text-ink-faint">
-                {formatDateTime(n.date)}
-              </p>
-            </li>
-          ))}
-        </ul>
+        {notifications.length > 0 ? (
+          <ul className="mt-8 space-y-4">
+            {notifications.map((n) => (
+              <li
+                key={n.id}
+                className={`border p-6 ${
+                  n.read ? "border-line bg-paper" : "border-bronze/40 bg-cream-deep"
+                }`}
+              >
+                <p className="text-base font-semibold text-ink">{n.title}</p>
+                {n.body && (
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+                    {n.body}
+                  </p>
+                )}
+                <p className="mt-3 text-xs text-ink-faint">
+                  {formatDate(n.createdAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-6 text-base text-ink-soft">Уведомлений пока нет.</p>
+        )}
       </section>
 
-      {/* пустой каталог-призыв, если совсем нет активности */}
-      {favoriteSpecialists.length === 0 && unlockedRows.length === 0 && (
+      {favorites.length === 0 && unlocked.length === 0 && (
         <div className="mt-16 flex flex-col items-center gap-5 border-t border-line pt-12 text-center sm:flex-row sm:justify-between sm:text-left">
           <p className="flex items-center gap-3 font-display text-2xl font-medium text-ink">
             <MagnifyingGlass size={22} className="text-bronze" aria-hidden="true" />

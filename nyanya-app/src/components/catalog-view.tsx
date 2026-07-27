@@ -54,7 +54,16 @@ const selectClass =
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
 
-export function CatalogView({ specialists }: { specialists: UiSpecialist[] }) {
+export function CatalogView({
+  specialists,
+  favoriteSlugs = [],
+  authed = false,
+}: {
+  specialists: UiSpecialist[];
+  favoriteSlugs?: string[];
+  authed?: boolean;
+}) {
+  const favorites = new Set(favoriteSlugs);
   const params = useSearchParams();
   const paramCategory = params.get("category");
   const initialCategory: CategoryKey | "all" =
@@ -392,7 +401,11 @@ export function CatalogView({ specialists }: { specialists: UiSpecialist[] }) {
               <ul className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {visible.map((s) => (
                   <li key={s.slug}>
-                    <SpecialistCard specialist={s} />
+                    <SpecialistCard
+                      specialist={s}
+                      favorite={favorites.has(s.slug)}
+                      authed={authed}
+                    />
                   </li>
                 ))}
               </ul>

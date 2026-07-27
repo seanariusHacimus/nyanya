@@ -14,8 +14,8 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { unlockContacts } from "@/lib/actions/unlock-contacts";
+import { toggleFavoriteAction } from "@/lib/actions/favorites";
 import type { SpecialistContacts } from "@/lib/specialists-shared";
-import { getSession, getFavorites, toggleFavorite } from "@/lib/demo";
 import { easeOutQuart } from "@/lib/motion";
 import { TrustScore } from "@/components/ui/trust-score";
 
@@ -33,6 +33,7 @@ type PanelProps = {
   s: PanelSpecialist;
   initialAuthed: boolean;
   initialContacts: SpecialistContacts | null;
+  initialFavorite?: boolean;
 };
 
 /**
@@ -40,7 +41,12 @@ type PanelProps = {
  * гостю — модальное окно с предложением зарегистрироваться (решение владельца),
  * вошедшему — кнопка открытия (server action пишет unlock + уведомление).
  */
-export function UnlockPanel({ s, initialAuthed, initialContacts }: PanelProps) {
+export function UnlockPanel({
+  s,
+  initialAuthed,
+  initialContacts,
+  initialFavorite = false,
+}: PanelProps) {
   const reduce = useReducedMotion();
   const [contacts, setContacts] = useState<SpecialistContacts | null>(
     initialContacts
@@ -48,11 +54,7 @@ export function UnlockPanel({ s, initialAuthed, initialContacts }: PanelProps) {
   const [guestModal, setGuestModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [favorite, setFavorite] = useState(false);
-
-  useEffect(() => {
-    setFavorite(getFavorites().includes(s.slug));
-  }, [s.slug]);
+  const [favorite, setFavorite] = useState(initialFavorite);
 
   useEffect(() => {
     if (!guestModal) return;
@@ -88,11 +90,17 @@ export function UnlockPanel({ s, initialAuthed, initialContacts }: PanelProps) {
     <button
       type="button"
       onClick={() => {
-        if (!getSession()) {
+        if (!initialAuthed) {
           window.location.href = `/login?next=${encodeURIComponent(profileHref)}`;
           return;
         }
-        setFavorite(toggleFavorite(s.slug));
+        const next = !favorite;
+        setFavorite(next); // оптимистично
+        startTransition(async () => {
+          const result = await toggleFavoriteAction({ slug: s.slug });
+          if (!result.ok) setFavorite(!next);
+          else setFavorite(result.active);
+        });
       }}
       className={`label-caps inline-flex min-h-12 w-full items-center justify-center gap-2 border px-6 transition-colors duration-300 ${
         favorite
