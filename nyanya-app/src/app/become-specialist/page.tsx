@@ -14,12 +14,14 @@ import {
   GraduationCap,
   EnvelopeSimple,
 } from "@phosphor-icons/react/dist/ssr";
-import { getSpecialist } from "@/content/specialists";
+import { getSpecialistBySlug } from "@/lib/queries/specialists";
 import { SpecialistCard } from "@/components/specialist-card";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Accordion } from "@/components/ui/accordion";
 import { Reveal } from "@/components/reveal";
 import specialistHero from "../../../public/images/specialist-hero.jpg";
+
+export const dynamic = "force-dynamic"; // пример анкеты читается из PostgreSQL
 
 export const metadata = {
   title: "Специалистам",
@@ -127,8 +129,8 @@ const faq = [
   },
 ];
 
-export default function BecomeSpecialistPage() {
-  const example = getSpecialist("sevara-toshpulatova");
+export default async function BecomeSpecialistPage() {
+  const example = await getSpecialistBySlug("sevara-toshpulatova");
 
   return (
     <main className="flex-1">

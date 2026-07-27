@@ -4,25 +4,45 @@ import { MapPin, SealCheck } from "@phosphor-icons/react/dist/ssr";
 import {
   categories,
   formatPrice,
-  type Specialist,
-} from "@/content/specialists";
+  type UiSpecialist,
+} from "@/lib/specialists-shared";
 import { TrustScore } from "@/components/ui/trust-score";
 import { Stars } from "@/components/ui/stars";
 import { FavoriteHeart } from "@/components/favorite-heart";
 
-/** Карточка специалиста — §4.5. Вся карточка ведёт в профиль; ♡ — гостя на /login (D11). */
-export function SpecialistCard({ specialist }: { specialist: Specialist }) {
+/** Монограмма — премиальный fallback для анкет без фото (§4.5). */
+function Monogram({ name }: { name: string }) {
+  const initials = name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("");
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-cream-deep">
+      <span className="flex size-24 items-center justify-center rounded-full border border-bronze/50 font-display text-3xl font-medium text-bronze-text">
+        {initials}
+      </span>
+    </div>
+  );
+}
+
+/** Карточка специалиста — §4.5. Данные приходят из PostgreSQL. */
+export function SpecialistCard({ specialist }: { specialist: UiSpecialist }) {
   const s = specialist;
   return (
     <article className="group relative flex h-full flex-col border border-line bg-paper transition-colors duration-300 hover:border-ink-faint">
       <div className="relative aspect-4/5 overflow-hidden bg-cream-deep">
-        <Image
-          src={s.photo}
-          alt={s.photoAlt}
-          placeholder="blur"
-          sizes="(max-width: 640px) 92vw, (max-width: 1280px) 46vw, 30vw"
-          className="absolute inset-0 size-full object-cover object-top transition-transform duration-700 ease-out-quart group-hover:scale-[1.03]"
-        />
+        {s.photoUrl ? (
+          <Image
+            src={s.photoUrl}
+            alt={`${s.name} — ${categories[s.category].label.toLowerCase()}, портрет`}
+            fill
+            sizes="(max-width: 640px) 92vw, (max-width: 1280px) 46vw, 30vw"
+            className="object-cover object-top transition-transform duration-700 ease-out-quart group-hover:scale-[1.03]"
+          />
+        ) : (
+          <Monogram name={s.name} />
+        )}
         <span className="label-caps absolute top-4 left-4 inline-flex items-center gap-1.5 bg-cream/95 px-3 py-2 text-ink">
           <SealCheck size={13} className="text-bronze" aria-hidden="true" />
           {s.verification === "premium" ? "Премиум-проверка" : "Проверен"}
@@ -37,7 +57,8 @@ export function SpecialistCard({ specialist }: { specialist: Specialist }) {
                 href={`/specialists/${s.slug}`}
                 className="after:absolute after:inset-0"
               >
-                {s.name}, {s.age}
+                {s.name}
+                {s.age !== null && `, ${s.age}`}
               </Link>
             </h3>
             <p className="mt-1.5 flex items-center gap-1.5 text-sm text-ink-soft">
@@ -59,7 +80,7 @@ export function SpecialistCard({ specialist }: { specialist: Specialist }) {
           </span>
           <Stars rating={s.rating} />
           <span>
-            {s.rating} ({s.reviews.length})
+            {s.rating.toFixed(1)} ({s.reviewCount})
           </span>
         </p>
 
@@ -68,7 +89,6 @@ export function SpecialistCard({ specialist }: { specialist: Specialist }) {
         </p>
       </div>
 
-      {/* D11: ♡ на карточке. z-10 поверх stretched-link */}
       <FavoriteHeart
         slug={s.slug}
         name={s.name}

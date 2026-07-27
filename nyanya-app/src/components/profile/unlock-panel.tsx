@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image, { type StaticImageData } from "next/image";
+import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
@@ -30,13 +30,12 @@ import { TrustScore } from "@/components/ui/trust-score";
 type PanelSpecialist = {
   slug: string;
   name: string;
-  age: number;
+  age: number | null;
   categoryLabel: string;
   trustScore: number;
   priceLabel: string;
   fee: number;
-  photo: StaticImageData;
-  photoAlt: string;
+  photoUrl: string | null;
 };
 
 type ModalState = "closed" | "confirm" | "processing" | "success";
@@ -276,16 +275,27 @@ export function UnlockPanel({ s }: { s: PanelSpecialist }) {
                   </div>
 
                   <div className="mt-6 flex items-center gap-4 border border-line bg-paper p-4">
-                    <Image
-                      src={s.photo}
-                      alt={s.photoAlt}
-                      width={56}
-                      height={70}
-                      className="h-[70px] w-14 rounded-[2px] object-cover object-top"
-                    />
+                    {s.photoUrl ? (
+                      <Image
+                        src={s.photoUrl}
+                        alt={`${s.name} — портрет`}
+                        width={56}
+                        height={70}
+                        className="h-[70px] w-14 rounded-[2px] object-cover object-top"
+                      />
+                    ) : (
+                      <span className="flex h-[70px] w-14 items-center justify-center rounded-[2px] bg-cream-deep font-display text-lg text-bronze-text">
+                        {s.name
+                          .split(" ")
+                          .slice(0, 2)
+                          .map((w) => w[0])
+                          .join("")}
+                      </span>
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-base font-semibold text-ink">
-                        {s.name}, {s.age}
+                        {s.name}
+                        {s.age !== null && `, ${s.age}`}
                       </p>
                       <p className="mt-0.5 text-sm text-ink-soft">
                         {s.categoryLabel}

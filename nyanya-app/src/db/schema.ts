@@ -126,6 +126,8 @@ export const specialistProfiles = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" })
       .unique(),
+    /** ЧПУ-адрес анкеты: /specialists/[slug]; null у неопубликованных черновиков */
+    slug: text("slug").unique(),
     category: categoryEnum("category").notNull(),
     fullName: text("full_name").notNull(),
     fullNameLatin: text("full_name_latin"),

@@ -4,13 +4,21 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Funnel, X, MagnifyingGlass } from "@phosphor-icons/react";
 import {
-  specialists,
   categories,
-  districts,
   type CategoryKey,
-} from "@/content/specialists";
+  type UiSpecialist,
+} from "@/lib/specialists-shared";
 import { SpecialistCard } from "@/components/specialist-card";
 import { ButtonLink } from "@/components/ui/button-link";
+
+const districts = [
+  "Юнусабадский",
+  "Мирзо-Улугбекский",
+  "Чиланзарский",
+  "Яккасарайский",
+  "Мирабадский",
+  "Шайхантахурский",
+] as const;
 
 const PAGE_SIZE = 9; // D9: «Показать ещё»
 
@@ -46,7 +54,7 @@ const selectClass =
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
 
-export function CatalogView() {
+export function CatalogView({ specialists }: { specialists: UiSpecialist[] }) {
   const params = useSearchParams();
   const paramCategory = params.get("category");
   const initialCategory: CategoryKey | "all" =
@@ -90,15 +98,11 @@ export function CatalogView() {
       if (toggles.car && !s.attributes.includes("Свой автомобиль")) return false;
       if (toggles.liveIn && !s.attributes.includes("С проживанием")) return false;
       if (
-        toggles.night &&
-        !s.attributes.some((a) => a === "Ночные смены" || a === "Ночная няня")
+        toggles.night && !s.attributes.includes("Ночные смены")
       )
         return false;
       if (
-        toggles.newborn &&
-        !s.attributes.some(
-          (a) => a === "Опыт с новорождёнными" || a === "Для новорождённых"
-        )
+        toggles.newborn && !s.attributes.includes("Опыт с новорождёнными")
       )
         return false;
       return true;

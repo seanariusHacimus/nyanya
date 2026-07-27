@@ -24,9 +24,39 @@ import {
   type DemoSession,
   type DemoPayment,
 } from "@/lib/demo";
-import { specialists, categories, UNLOCK_FEE_UZS } from "@/content/specialists";
+import {
+  specialists,
+  categories,
+  UNLOCK_FEE_UZS,
+  type Specialist,
+} from "@/content/specialists";
+import type { UiSpecialist } from "@/lib/specialists-shared";
 import { SpecialistCard } from "@/components/specialist-card";
 import { ButtonLink } from "@/components/ui/button-link";
+
+/** Временный адаптер demo-данных под UI-тип из БД — уходит в Ф5. */
+function toUi(s: Specialist): UiSpecialist {
+  return {
+    slug: s.slug,
+    name: s.name,
+    age: s.age,
+    category: s.category,
+    district: s.district,
+    experienceYears: s.experienceYears,
+    rating: s.rating,
+    reviewCount: s.reviews.length,
+    priceFrom: s.priceFrom,
+    priceUnit: categories[s.category].unit,
+    trustScore: s.trustScore,
+    verification: s.verification,
+    languages: s.languages,
+    english: s.english,
+    education: s.education,
+    attributes: s.attributes,
+    about: s.about,
+    photoUrl: s.photo.src,
+  };
+}
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleDateString("ru-RU", {
@@ -150,7 +180,7 @@ export function AccountView() {
           <ul className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {favoriteSpecialists.map((s) => (
               <li key={s.slug}>
-                <SpecialistCard specialist={s} />
+                <SpecialistCard specialist={toUi(s)} />
               </li>
             ))}
           </ul>
