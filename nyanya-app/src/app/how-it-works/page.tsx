@@ -8,7 +8,7 @@ import {
   FirstAid,
   GraduationCap,
   EnvelopeSimple,
-  CurrencyCircleDollar,
+  UserPlus,
   Infinity as InfinityIcon,
   ChatsCircle,
   ArrowRight,
@@ -40,7 +40,7 @@ const steps = [
   {
     icon: LockKeyOpen,
     title: "Откройте контакты",
-    text: "Разовая оплата открывает телефон, Telegram и WhatsApp специалиста — навсегда, в вашем кабинете.",
+    text: "Контакты открываются бесплатно после регистрации — телефон, Telegram и WhatsApp, навсегда в вашем кабинете.",
   },
   {
     icon: Handshake,
@@ -73,11 +73,11 @@ const checks = [
   },
 ];
 
-// §6.6 — что происходит после оплаты (D19: цену публикуем)
+// §6.6 — что происходит после открытия контактов (бесплатная модель)
 const afterPayment = [
   {
-    icon: CurrencyCircleDollar,
-    text: "Оплата разовая — 29 000 сум за одного специалиста.",
+    icon: UserPlus,
+    text: "Открытие бесплатно — нужен только аккаунт с подтверждённой почтой.",
   },
   {
     icon: InfinityIcon,
@@ -93,11 +93,11 @@ const afterPayment = [
 const faq = [
   {
     q: "Сколько стоит открытие контактов?",
-    a: "29 000 сум за одного специалиста. Оплата разовая — контакты остаются доступны в вашем кабинете навсегда.",
+    a: "Нисколько — открытие контактов бесплатно. Нужен только аккаунт: регистрация с кодом на почту занимает минуту.",
   },
   {
-    q: "Оплата разовая или подписка?",
-    a: "Разовая. Никаких подписок и скрытых списаний: один платёж — один специалист, доступ навсегда.",
+    q: "Есть ли платные услуги?",
+    a: "Сейчас всё бесплатно: каталог, просмотр анкет и открытие контактов. Никаких подписок и скрытых списаний.",
   },
   {
     q: "Как проверяются специалисты?",
@@ -204,12 +204,12 @@ export default function HowItWorksPage() {
         </Reveal>
       </section>
 
-      {/* §6.6 — что происходит после оплаты */}
+      {/* §6.6 — что происходит после открытия контактов */}
       <section className="mx-auto max-w-[1400px] px-5 sm:px-8">
         <Reveal>
           <div className="rounded-[2px] bg-charcoal px-8 py-14 text-cream sm:px-12 lg:px-14">
             <h2 className="max-w-md font-display text-3xl leading-[1.12] font-medium sm:text-4xl">
-              Что происходит после оплаты
+              Что происходит после открытия контактов
             </h2>
             <ul className="mt-10 grid gap-8 sm:grid-cols-3">
               {afterPayment.map((point) => (

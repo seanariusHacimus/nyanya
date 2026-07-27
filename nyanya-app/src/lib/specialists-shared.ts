@@ -43,3 +43,23 @@ export function formatPrice(
 ): string {
   return `от ${s.priceFrom.toLocaleString("ru-RU")} сум/${s.priceUnit}`;
 }
+
+export type SpecialistContacts = {
+  phone: string;
+  phoneHref: string;
+  telegram: string;
+  telegramHref: string;
+  whatsappHref: string;
+};
+
+/** Контакты из телефона владельца анкеты; telegram — демо-username от slug. */
+export function buildContacts(phone: string, slug: string): SpecialistContacts {
+  const digits = phone.replace(/[^\d]/g, "");
+  return {
+    phone,
+    phoneHref: `tel:+${digits}`,
+    telegram: `@${slug.replace(/-/g, "_")}`,
+    telegramHref: `https://t.me/${slug.replace(/-/g, "_")}`,
+    whatsappHref: `https://wa.me/${digits}`,
+  };
+}

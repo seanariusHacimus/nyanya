@@ -128,7 +128,7 @@ export const trustFeatures = {
       icon: "chat",
       title: "Прямой контакт",
       description:
-        "После оплаты открываются телефон, Telegram и WhatsApp — общайтесь напрямую.",
+        "После бесплатной регистрации открываются телефон, Telegram и WhatsApp — общайтесь напрямую.",
     },
   ],
 } as const;

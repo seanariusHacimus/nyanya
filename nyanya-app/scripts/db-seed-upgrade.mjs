@@ -18,6 +18,14 @@ const englishMap = { Нет: "none", Базовый: "basic", Свободный
 // возраст витринных анкет (в порядке массива S) → birth_date = 15 июня нужного года
 const AGES = [31, 42, 38, 27, 48, 52, 29, 35, 33, 41, 38, 45];
 
+// демо-телефон специалиста — детерминированный из slug (заменяется реальным при онбординге)
+function demoPhone(slug) {
+  let h = 0;
+  for (const ch of slug) h = (h * 31 + ch.charCodeAt(0)) % 10000000;
+  const d = String(h).padStart(7, "0");
+  return `+998 9${d[0]} ${d.slice(1, 4)} ${d.slice(4, 6)} ${d[6]}${d[0]}`;
+}
+
 const S = [
   {
     slug: "sevara-toshpulatova", name: "Севара Тошпулатова", category: "nanny",
@@ -245,6 +253,10 @@ try {
           status = 'active',
           updated_at = now()
         where id = ${profileId}`;
+
+      // телефон владельца анкеты — источник контактов после открытия
+      await tx`update "user" set phone = ${demoPhone(s.slug)}, phone_verified = true
+               where id = (select user_id from specialist_profiles where id = ${profileId})`;
 
       await tx`delete from reviews where specialist_id = ${profileId}`;
       for (const [rating, text, author] of s.reviews) {

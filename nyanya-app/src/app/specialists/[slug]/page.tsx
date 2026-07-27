@@ -2,9 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, SealCheck } from "@phosphor-icons/react/dist/ssr";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import {
   getSpecialistBySlug,
   getSimilarSpecialists,
+  getUnlockedContactsForUser,
   categories,
   formatPrice,
 } from "@/lib/queries/specialists";
@@ -16,8 +19,6 @@ import { UnlockPanel } from "@/components/profile/unlock-panel";
 import { Reveal } from "@/components/reveal";
 
 export const dynamic = "force-dynamic"; // анкета читается из PostgreSQL
-
-const UNLOCK_FEE_UZS = 29000; // ⛳ уходит в Ф4 вместе с платной разблокировкой
 
 export async function generateMetadata({
   params,
@@ -51,6 +52,12 @@ export default async function SpecialistPage({
     facts.push({ label: "Английский язык", value: s.english });
 
   const similar = await getSimilarSpecialists(s.slug, s.category);
+
+  // состояние доступа к контактам — на сервере, до первого рендера
+  const session = await auth.api.getSession({ headers: await headers() });
+  const initialContacts = session
+    ? await getUnlockedContactsForUser(s.slug, session.user.id)
+    : null;
 
   return (
     <main className="flex-1 pb-24 lg:pb-0">
@@ -218,9 +225,10 @@ export default async function SpecialistPage({
               categoryLabel: categories[s.category].label,
               trustScore: s.trustScore,
               priceLabel: formatPrice(s),
-              fee: UNLOCK_FEE_UZS,
               photoUrl: s.photoUrl,
             }}
+            initialAuthed={Boolean(session)}
+            initialContacts={initialContacts}
           />
         </div>
       </div>

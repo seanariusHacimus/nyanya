@@ -15,10 +15,37 @@ import {
 import {
   categories,
   formatPrice,
+  buildContacts,
   type CategoryKey,
   type UiSpecialist,
   type UiReview,
+  type SpecialistContacts,
 } from "@/lib/specialists-shared";
+import { contactUnlocks } from "@/db/schema";
+
+/** Контакты специалиста для уже открывшего их пользователя (иначе null). */
+export async function getUnlockedContactsForUser(
+  slug: string,
+  userId: string
+): Promise<SpecialistContacts | null> {
+  const rows = await db
+    .select({ phone: user.phone })
+    .from(contactUnlocks)
+    .innerJoin(
+      specialistProfiles,
+      eq(specialistProfiles.id, contactUnlocks.specialistId)
+    )
+    .innerJoin(user, eq(user.id, specialistProfiles.userId))
+    .where(
+      and(
+        eq(contactUnlocks.parentId, userId),
+        eq(specialistProfiles.slug, slug)
+      )
+    )
+    .limit(1);
+  const phone = rows[0]?.phone;
+  return phone ? buildContacts(phone, slug) : null;
+}
 
 export { categories, formatPrice };
 export type { CategoryKey, UiSpecialist, UiReview };
