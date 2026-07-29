@@ -54,6 +54,10 @@ nyanya-app/node_modules/
 nyanya-app/.next/
 nyanya-app/out/
 
+# локальное хранилище документов верификации (только для разработки)
+.storage/
+nyanya-app/.storage/
+
 # machine-specific agent config (absolute local paths)
 .claude/
 
