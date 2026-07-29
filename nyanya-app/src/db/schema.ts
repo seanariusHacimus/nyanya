@@ -53,6 +53,9 @@ export const documentTypeEnum = pgEnum("document_type", [
   "medical_psychiatrist",
   "medical_tb_aids",
   "other",
+  // шаги верификации специалиста (2026-07)
+  "criminal_record",
+  "narcology",
 ]);
 export const documentStatusEnum = pgEnum("document_status", [
   "pending",
@@ -97,6 +100,9 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "contact_unlocked",
   "listing_published",
   "system",
+  // модерация анкеты (2026-07)
+  "profile_submitted",
+  "profile_rejected",
 ]);
 
 /* ------------------------ reference data ------------------------ */
@@ -152,6 +158,10 @@ export const specialistProfiles = pgTable(
     newbornExp: boolean("newborn_exp").notNull().default(false),
     englishLevel: englishLevelEnum("english_level").notNull().default("none"),
     status: profileStatusEnum("status").notNull().default("draft"),
+    /** комментарий модератора при отклонении анкеты (§8.2 «Отклонена») */
+    moderationNote: text("moderation_note"),
+    submittedAt: timestamp("submitted_at"),
+    reviewedAt: timestamp("reviewed_at"),
     verificationLevel: verificationLevelEnum("verification_level")
       .notNull()
       .default("unverified"),
@@ -173,18 +183,31 @@ export const specialistProfiles = pgTable(
   ],
 );
 
-export const documents = pgTable("documents", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  specialistId: uuid("specialist_id")
-    .notNull()
-    .references(() => specialistProfiles.id, { onDelete: "cascade" }),
-  type: documentTypeEnum("type").notNull(),
-  fileKey: text("file_key").notNull(),
-  status: documentStatusEnum("status").notNull().default("pending"),
-  reviewedBy: text("reviewed_by").references(() => user.id),
-  reviewNote: text("review_note"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const documents = pgTable(
+  "documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    specialistId: uuid("specialist_id")
+      .notNull()
+      .references(() => specialistProfiles.id, { onDelete: "cascade" }),
+    type: documentTypeEnum("type").notNull(),
+    fileKey: text("file_key").notNull(),
+    /** исходное имя файла и mime — для выдачи и превью в админке */
+    fileName: text("file_name"),
+    mimeType: text("mime_type"),
+    fileSize: integer("file_size"),
+    status: documentStatusEnum("status").notNull().default("pending"),
+    reviewedBy: text("reviewed_by").references(() => user.id),
+    reviewNote: text("review_note"),
+    reviewedAt: timestamp("reviewed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    // один актуальный файл на каждый шаг верификации
+    unique("uniq_specialist_document_type").on(t.specialistId, t.type),
+    index("documents_specialist_idx").on(t.specialistId),
+  ],
+);
 
 export const payments = pgTable("payments", {
   id: uuid("id").primaryKey().defaultRandom(),

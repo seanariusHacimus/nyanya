@@ -29,6 +29,13 @@
       "when": 1785138876145,
       "tag": "0003_add-specialist-slug",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785310323384,
+      "tag": "0004_verification-flow",
+      "breakpoints": true
     }
   ]
 }
