@@ -6,53 +6,59 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { MagnifyingGlass, IdentificationBadge } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
 import { completeProfile } from "@/lib/actions/complete-profile";
-import { OtpStep } from "@/components/auth/otp-step";
 
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
 
-/** §9 R2 — регистрация: роль + данные → код на почту → профиль готов. */
+const MIN_PASSWORD = 8; // должно совпадать с minPasswordLength в lib/auth.ts
+
+/**
+ * §9 R2 — регистрация: роль + данные + пароль, аккаунт готов сразу.
+ *
+ * ⛳ Подтверждения адреса нет: письма сейчас не доставляются, а проверка
+ * почты заблокировала бы регистрацию полностью — см. lib/auth.ts.
+ */
 export function RegisterForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next");
 
-  const [step, setStep] = useState<"form" | "otp">("form");
   const [role, setRole] = useState<"parent" | "specialist">("parent");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sendCode = async () => {
-    setBusy(true);
-    setError(null);
-    const { error: sendError } = await authClient.emailOtp.sendVerificationOtp({
-      email,
-      type: "sign-in",
-    });
-    setBusy(false);
-    if (sendError) {
-      setError("Не удалось отправить код. Проверьте адрес и попробуйте ещё раз.");
+  const submit = async () => {
+    if (password.length < MIN_PASSWORD) {
+      setError(`Пароль должен быть не короче ${MIN_PASSWORD} символов.`);
       return;
     }
-    setStep("otp");
-  };
 
-  const verify = async (code: string) => {
     setBusy(true);
     setError(null);
-    const { error: signInError } = await authClient.signIn.emailOtp({
+
+    // autoSignIn: true — сессия появляется сразу, отдельный вход не нужен
+    const { error: signUpError } = await authClient.signUp.email({
       email,
-      otp: code,
+      password,
+      name,
     });
-    if (signInError) {
+
+    if (signUpError) {
       setBusy(false);
-      setError("Неверный или устаревший код. Попробуйте ещё раз.");
+      setError(
+        signUpError.status === 422
+          ? "Этот адрес уже зарегистрирован — войдите."
+          : "Не удалось создать аккаунт. Проверьте данные и попробуйте ещё раз."
+      );
       return;
     }
 
+    // роль и телефон дописываются отдельным действием: Better Auth создаёт
+    // пользователя с ролью по умолчанию (parent)
     const result = await completeProfile({ name, phone, role });
     const finalRole = result.ok ? result.role : "parent";
     router.push(
@@ -64,27 +70,11 @@ export function RegisterForm() {
     );
   };
 
-  if (step === "otp") {
-    return (
-      <OtpStep
-        email={email}
-        busy={busy}
-        error={error}
-        onVerify={verify}
-        onResend={sendCode}
-        onChangeEmail={() => {
-          setStep("form");
-          setError(null);
-        }}
-      />
-    );
-  }
-
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        void sendCode();
+        void submit();
       }}
       className="space-y-5"
     >
@@ -162,8 +152,25 @@ export function RegisterForm() {
           className={inputClass}
           placeholder="you@example.com"
         />
+      </div>
+
+      <div className="grid gap-2">
+        <label htmlFor="reg-password" className="text-sm font-semibold text-ink">
+          Пароль
+        </label>
+        <input
+          id="reg-password"
+          type="password"
+          required
+          minLength={MIN_PASSWORD}
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className={inputClass}
+          placeholder="••••••••"
+        />
         <p className="text-xs text-ink-faint">
-          Пришлём код подтверждения — пароль не нужен.
+          Не короче {MIN_PASSWORD} символов.
         </p>
       </div>
 
@@ -195,7 +202,7 @@ export function RegisterForm() {
         disabled={busy}
         className="label-caps inline-flex min-h-12 w-full items-center justify-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px disabled:opacity-70"
       >
-        {busy ? "Отправляем код…" : "Создать аккаунт"}
+        {busy ? "Создаём аккаунт…" : "Создать аккаунт"}
       </button>
 
       <p className="text-xs leading-relaxed text-ink-soft">
