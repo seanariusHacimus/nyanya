@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { MagnifyingGlass, IdentificationBadge } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
 import { completeProfile } from "@/lib/actions/complete-profile";
-import { setSession as setDemoMirror } from "@/lib/demo";
 import { OtpStep } from "@/components/auth/otp-step";
 
 const inputClass =
@@ -56,10 +55,6 @@ export function RegisterForm() {
 
     const result = await completeProfile({ name, phone, role });
     const finalRole = result.ok ? result.role : "parent";
-    setDemoMirror({
-      role: finalRole === "specialist" ? "specialist" : "parent",
-      name: name || "Гость",
-    });
     router.push(
       finalRole === "specialist"
         ? "/specialist"

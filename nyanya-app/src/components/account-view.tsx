@@ -13,7 +13,6 @@ import {
   MagnifyingGlass,
 } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
-import { clearSession } from "@/lib/demo";
 import type { AccountData } from "@/lib/queries/account";
 import { SpecialistCard } from "@/components/specialist-card";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -56,9 +55,9 @@ export function AccountView({
         <button
           type="button"
           onClick={() => {
-            void authClient.signOut();
-            clearSession();
-            window.location.href = "/";
+            void authClient.signOut().then(() => {
+              window.location.href = "/";
+            });
           }}
           className="label-caps flex min-h-11 items-center gap-2 text-ink-soft transition-colors duration-300 hover:text-ink"
         >

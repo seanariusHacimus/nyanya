@@ -2,37 +2,30 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { List, X, CaretDown } from "@phosphor-icons/react";
 import { nav } from "@/content/home";
 import { easeOutQuart } from "@/lib/motion";
 import { ButtonLink } from "@/components/ui/button-link";
-import { authClient } from "@/lib/auth-client";
-import {
-  getSession,
-  clearSession,
-  subscribeDemo,
-  type DemoSession,
-} from "@/lib/demo";
-
-/** Полный выход: реальная сессия Better Auth + локальное зеркало кабинетов. */
-function signOutEverywhere() {
-  void authClient.signOut();
-  clearSession();
-}
+import { authClient, useSession } from "@/lib/auth-client";
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [session, setSessionState] = useState<DemoSession | null>(null);
   const reduce = useReducedMotion();
+  const router = useRouter();
   const langRef = useRef<HTMLDetailsElement>(null);
   const aboutRef = useRef<HTMLDetailsElement>(null);
 
-  // §1.6 — авторизованное состояние шапки (демо-сессия)
-  useEffect(() => {
-    setSessionState(getSession());
-    return subscribeDemo(() => setSessionState(getSession()));
-  }, []);
+  // §1.6 — авторизованное состояние шапки берётся из сессии Better Auth
+  const { data: session } = useSession();
+  const cabinetHref =
+    session?.user.role === "specialist" ? "/specialist" : "/account";
+
+  async function signOut() {
+    await authClient.signOut();
+    router.refresh();
+  }
 
   // закрытие выпадающих меню по клику вне и по Escape
   useEffect(() => {
@@ -138,14 +131,10 @@ export function SiteHeader() {
 
           {session ? (
             <div className="hidden items-center gap-5 md:flex">
-              <ButtonLink
-                href={session.role === "specialist" ? "/specialist" : "/account"}
-              >
-                Кабинет
-              </ButtonLink>
+              <ButtonLink href={cabinetHref}>Кабинет</ButtonLink>
               <button
                 type="button"
-                onClick={signOutEverywhere}
+                onClick={() => void signOut()}
                 className="label-caps min-h-11 text-ink-soft transition-colors duration-300 hover:text-ink"
               >
                 Выйти
@@ -221,9 +210,7 @@ export function SiteHeader() {
               {session ? (
                 <li className="flex items-center gap-4 pt-4 pb-2">
                   <ButtonLink
-                    href={
-                      session.role === "specialist" ? "/specialist" : "/account"
-                    }
+                    href={cabinetHref}
                     onClick={() => setMenuOpen(false)}
                     className="flex-1"
                   >
@@ -232,7 +219,7 @@ export function SiteHeader() {
                   <button
                     type="button"
                     onClick={() => {
-                      signOutEverywhere();
+                      void signOut();
                       setMenuOpen(false);
                     }}
                     className="label-caps min-h-11 px-2 text-ink-soft"

@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { setSession as setDemoMirror } from "@/lib/demo";
 import { OtpStep } from "@/components/auth/otp-step";
 
 const inputClass =
@@ -48,10 +47,9 @@ export function LoginForm() {
       setError("Неверный или устаревший код. Попробуйте ещё раз.");
       return;
     }
-    // роль — из свежей сессии; мост в demo-хранилище для кабинетов (до Ф5/Ф6)
+    // роль — из свежей сессии: она определяет, в какой кабинет вести
     const { data } = await authClient.getSession();
     const role = data?.user.role === "specialist" ? "specialist" : "parent";
-    setDemoMirror({ role, name: data?.user.name ?? "Гость" });
     router.push(
       next && next.startsWith("/")
         ? next
