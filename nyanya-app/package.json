@@ -15,6 +15,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1098.0",
     "@phosphor-icons/react": "^2.1.10",
     "better-auth": "^1.6.25",
     "drizzle-orm": "^0.45.2",
