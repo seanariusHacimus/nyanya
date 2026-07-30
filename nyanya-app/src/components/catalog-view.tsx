@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Funnel, X, MagnifyingGlass } from "@phosphor-icons/react";
 import {
@@ -87,12 +87,15 @@ export function CatalogView({
   const [shown, setShown] = useState(PAGE_SIZE);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // категория из URL (клик по навигации, когда каталог уже открыт)
-  useEffect(() => {
+  // Категория из URL (клик по навигации, когда каталог уже открыт).
+  // Синхронизация при рендере, а не в эффекте: эффект отрисовывал сначала
+  // старую категорию и только потом новую — лишний каскадный ререндер.
+  const [urlCategory, setUrlCategory] = useState(paramCategory);
+  if (paramCategory !== urlCategory) {
+    setUrlCategory(paramCategory);
     setCategory(initialCategory);
     setShown(PAGE_SIZE);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paramCategory]);
+  }
 
   const filtered = useMemo(() => {
     let list = specialists.filter((s) => {
@@ -131,15 +134,7 @@ export function CatalogView({
         list = [...list].sort((a, b) => b.trustScore - a.trustScore);
     }
     return list;
-  }, [category, district, language, maxPrice, minExp, toggles, sort]);
-
-  const hasActiveFilters =
-    category !== "all" ||
-    district !== "all" ||
-    language !== "Любой" ||
-    maxPrice !== "" ||
-    minExp !== "" ||
-    Object.values(toggles).some(Boolean);
+  }, [specialists, category, district, language, maxPrice, minExp, toggles, sort]);
 
   const reset = () => {
     setCategory("all");

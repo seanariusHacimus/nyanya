@@ -1,34 +1,38 @@
 @AGENTS.md
 
-# nyanya.uz — project guide for Claude
+# nyanya.uz — repository guide
 
-Premium **pay-to-unlock-contacts** marketplace (nannies / caregivers / tutors / drivers) for Uzbekistan. Trilingual (RU default · UZ · EN). It is **not** a booking/escrow platform — it connects families and specialists and gates contact reveal behind a (mock) payment.
+**The live application is [`nyanya-app/`](nyanya-app), not this directory.** Start there:
+[`nyanya-app/CLAUDE.md`](nyanya-app/CLAUDE.md).
 
-## Commands
-- `npm run dev` — app at http://localhost:3000 (→ `/ru`)
-- `docker compose up -d` — Postgres (host port **5434**)
-- `npm run db:migrate` · `db:seed` · `db:studio`
-- `npm run test` — Vitest (Trust Score) · `npm run lint` · `npx tsc --noEmit`
+## Repository layout
 
-## Stack
-Next.js 16 (App Router, RSC + Server Actions, Turbopack) · TypeScript · PostgreSQL + Drizzle · Better Auth · Tailwind v4 + shadcn/ui (**base-ui**, not Radix) · next-intl.
+| Path | What it is |
+|---|---|
+| `nyanya-app/` | **The current app.** Deployed to Railway (service `nyanya`, root directory `/nyanya-app`). |
+| `src/`, `messages/`, `drizzle/`, `public/` in this root | **Legacy build** — the older application from the `main` branch, kept for reference. Not deployed, not maintained. |
+| `docs/` | `ARCHITECTURE.md`, `BACKEND-PLAN.md` (the phase plan being executed), `changes/` |
+| `design-system/MASTER.md` | Visual language reference |
+| `assets-source/` | Source images for generated media |
 
-## Conventions
-- **Server actions are the mutation surface** (`src/lib/actions/*`). Every action validates input with Zod (`src/lib/validation.ts`) and checks session + role + ownership. Admin actions call `requireAdmin()`.
-- **Providers are mock-first behind interfaces**: `src/lib/providers/payment.ts` + `sms.ts`, chosen by `PAYMENT_PROVIDER` / `SMS_PROVIDER` env. Never hardcode a provider at a call site.
-- **i18n**: routes live under `src/app/[locale]/`; UI strings in `messages/{ru,uz,en}.json` via `useTranslations` / `getTranslations`; localized DB names via `localizedName()`.
-- **shadcn = base-ui**: compose Link-as-button with `buttonVariants()` (no Radix `asChild`). `typedRoutes` is **off** (next-intl `Link` uses locale-relative hrefs).
-- **Design tokens** in `src/app/globals.css` (`--royal`, `--champagne`, `--ivory`; `font-display` = Cormorant). Signature element = the gold `TrustSeal`.
-- **DB**: schema in `src/db/schema.ts`; auth tables in `src/db/auth-schema.ts`. Local = Postgres on 5434; prod = Railway (same `postgres-js` driver).
+Both trees carry their own `package.json` and lockfile. `nyanya-app/next.config.ts` pins the
+Turbopack root so the root project's files are never picked up.
 
-## Roles
-`parent` (default) · `specialist` · `admin`. Account type is chosen at signup; `admin` is set only via seed.
+Branches: **`master` is the working branch and what Railway deploys.** `main` is stale (last
+touched 2026-07-08) and holds only the legacy app.
 
-## Demo logins
-`admin@nanya.uz`/`admin12345` · `parent@nanya.uz`/`parent12345` · `dilnoza@nanya.uz`/`spec12345`. Mock OTP: **`123456`**.
+## The legacy app in this root — how it differs
 
-## Mocked / pre-launch — do NOT assume these are real
-Payments, SMS, and document upload are simulated. The Uzbekistan data-residency split (biometric/medical/phone stored in UZ) is the launch gate. Some specialists use monogram avatars (Higgsfield daily generation cap).
+Do not carry assumptions from it into `nyanya-app`. It is **not** merely an older version:
+
+- it gated contact reveal behind a **mock payment**; the current app opens contacts **free, after
+  login** (see `docs/BACKEND-PLAN.md`)
+- it was trilingual via `next-intl` under `src/app/[locale]/`; the current app is **Russian-only,
+  with no locale routing and no `next-intl`**
+- it had Vitest tests and a `src/lib/providers/` abstraction; the current app has **neither**
+- its demo password logins and mock OTP (`123456`) do not exist in the current app
 
 ## Change history
-See `docs/` — `ARCHITECTURE.md` (how it's built) and `docs/changes/*.md` (per-change logs), indexed in `docs/CHANGELOG.md`.
+
+`docs/CHANGELOG.md` indexes `docs/changes/*.md`. Note that the index stopped being maintained
+after 2026-06-28 — the phase work since then is recorded in git history on `master`, not here.
