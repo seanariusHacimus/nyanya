@@ -64,3 +64,8 @@ nyanya-app/.storage/
 # OS noise
 Thumbs.db
 desktop.ini
+
+# Учётные данные всех аккаунтов в открытом виде — никогда в репозиторий.
+# Файл выдаётся владельцу площадки и хранится вне git.
+nyanya-accounts.xlsx
+*-accounts.xlsx
