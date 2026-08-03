@@ -4,6 +4,9 @@ import { getSessionCookie } from "better-auth/cookies";
 /**
  * Ранний редирект неавторизованных с приватных страниц.
  *
+ * Файл называется proxy.ts, а не middleware.ts: в Next 16 старое имя
+ * объявлено устаревшим (runtime здесь всегда nodejs).
+ *
  * Зачем понадобился: у /account, /specialist и /admin появился loading.tsx,
  * то есть граница Suspense. Next начинает стримить каркас сразу и статус
  * ответа фиксируется как 200 ещё до того, как серверный компонент дойдёт до
@@ -17,7 +20,7 @@ import { getSessionCookie } from "better-auth/cookies";
  */
 const PROTECTED = ["/account", "/specialist", "/admin"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (!PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return NextResponse.next();
