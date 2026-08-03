@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
 import {
   UploadSimple,
   CheckCircle,
@@ -66,6 +68,8 @@ export function VerificationStepCard({
   onChange: (key: string, next: StepState) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const meta = statusMeta[state.status];
@@ -85,14 +89,19 @@ export function VerificationStepCard({
           fileKey: result.fileKey,
           reviewNote: null,
         });
+        toast.success(`«${step.title}» загружен и отправлен на проверку`);
+        // замена документа у опубликованной анкеты возвращает её на
+        // повторную модерацию — баннер статуса должен это показать
+        router.refresh();
       } else {
-        setError(
+        const message =
           result.error === "too_large"
             ? "Файл больше 10 МБ — сожмите или сфотографируйте с меньшим разрешением."
             : result.error === "bad_type"
-              ? "Подходят JPG, PNG, WEBP, HEIC или PDF."
-              : "Не удалось загрузить файл. Попробуйте ещё раз."
-        );
+              ? "Подходят JPG, PNG, WEBP, HEIC или PDF — и содержимое файла должно соответствовать формату."
+              : "Не удалось загрузить файл. Попробуйте ещё раз.";
+        setError(message);
+        toast.error(message);
       }
     });
   };

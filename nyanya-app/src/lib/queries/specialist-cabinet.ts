@@ -2,6 +2,7 @@ import { eq, asc } from "drizzle-orm";
 import { db } from "@/db";
 import { specialistProfiles, documents, districts } from "@/db/schema";
 import { verificationSteps } from "@/content/verification-steps";
+import { getNotifications, type UiNotification } from "@/lib/queries/notifications";
 import type { StepState } from "@/components/specialist/verification-step-card";
 
 export type CabinetProfile = {
@@ -34,6 +35,7 @@ export type CabinetData = {
   profile: CabinetProfile;
   steps: Record<string, StepState>;
   districts: { id: number; name: string }[];
+  notifications: UiNotification[];
 };
 
 const emptyProfile: CabinetProfile = {
@@ -64,10 +66,13 @@ export async function getCabinetData(
     .where(eq(specialistProfiles.userId, userId))
     .limit(1);
 
-  const districtRows = await db
-    .select({ id: districts.id, name: districts.nameRu })
-    .from(districts)
-    .orderBy(asc(districts.id));
+  const [districtRows, notificationRows] = await Promise.all([
+    db
+      .select({ id: districts.id, name: districts.nameRu })
+      .from(districts)
+      .orderBy(asc(districts.id)),
+    getNotifications(userId),
+  ]);
 
   const steps: Record<string, StepState> = Object.fromEntries(
     verificationSteps.map((s) => [
@@ -89,6 +94,7 @@ export async function getCabinetData(
       profile: { ...emptyProfile, fullName: userName },
       steps,
       districts: districtRows,
+      notifications: notificationRows,
     };
   }
 
@@ -140,5 +146,6 @@ export async function getCabinetData(
     },
     steps,
     districts: districtRows,
+    notifications: notificationRows,
   };
 }

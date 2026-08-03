@@ -1,13 +1,13 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   specialistProfiles,
   districts,
   favorites,
   contactUnlocks,
-  notifications,
   user,
 } from "@/db/schema";
+import { getNotifications, type UiNotification } from "@/lib/queries/notifications";
 import {
   buildContacts,
   categories,
@@ -72,13 +72,7 @@ export type UnlockedRow = {
   contacts: SpecialistContacts;
 };
 
-export type UiNotification = {
-  id: string;
-  title: string;
-  body: string | null;
-  createdAt: string;
-  read: boolean;
-};
+export type { UiNotification };
 
 export type AccountData = {
   favorites: UiSpecialist[];
@@ -116,12 +110,7 @@ export async function getAccountData(userId: string): Promise<AccountData> {
       .where(eq(contactUnlocks.parentId, userId))
       .orderBy(desc(contactUnlocks.unlockedAt)),
 
-    db
-      .select()
-      .from(notifications)
-      .where(eq(notifications.userId, userId))
-      .orderBy(desc(notifications.createdAt))
-      .limit(20),
+    getNotifications(userId),
   ]);
 
   return {
@@ -135,13 +124,7 @@ export async function getAccountData(userId: string): Promise<AccountData> {
         contacts: buildContacts(r.ownerPhone ?? "", specialist.slug),
       };
     }),
-    notifications: notificationRows.map((n) => ({
-      id: n.id,
-      title: n.title,
-      body: n.body,
-      createdAt: n.createdAt.toISOString(),
-      read: n.readAt !== null,
-    })),
+    notifications: notificationRows,
   };
 }
 
@@ -168,9 +151,3 @@ export async function getOwnProfile(userId: string) {
   return rows[0] ?? null;
 }
 
-export async function markNotificationsRead(userId: string): Promise<void> {
-  await db
-    .update(notifications)
-    .set({ readAt: new Date() })
-    .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
-}

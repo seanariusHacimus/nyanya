@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { List, X, CaretDown } from "@phosphor-icons/react";
 import { nav } from "@/content/home";
@@ -14,6 +14,7 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const reduce = useReducedMotion();
   const router = useRouter();
+  const pathname = usePathname();
   const langRef = useRef<HTMLDetailsElement>(null);
   const aboutRef = useRef<HTMLDetailsElement>(null);
 
@@ -21,6 +22,28 @@ export function SiteHeader() {
   const { data: session } = useSession();
   const cabinetHref =
     session?.user.role === "specialist" ? "/specialist" : "/account";
+
+  // Ф8 — значок непрочитанных. Счётчик берём отдельным запросом: считать его
+  // в layout значило бы сделать динамическими все статические страницы.
+  const [fetchedUnread, setFetchedUnread] = useState(0);
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    fetch("/api/notifications/unread")
+      .then((r) => (r.ok ? r.json() : { count: 0 }))
+      .then((d) => {
+        if (!cancelled) setFetchedUnread(Number(d.count) || 0);
+      })
+      .catch(() => {
+        /* значок — не критичная информация, молча пропускаем */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, pathname]);
+  // при выходе значок гаснет сам, без сброса состояния в эффекте
+  const unread = userId ? fetchedUnread : 0;
 
   async function signOut() {
     await authClient.signOut();
@@ -131,7 +154,17 @@ export function SiteHeader() {
 
           {session ? (
             <div className="hidden items-center gap-5 md:flex">
-              <ButtonLink href={cabinetHref}>Кабинет</ButtonLink>
+              <ButtonLink href={cabinetHref}>
+                Кабинет
+                {unread > 0 && (
+                  <span
+                    aria-label={`Непрочитанных уведомлений: ${unread}`}
+                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-bronze px-1.5 py-0.5 text-[11px] leading-none text-cream"
+                  >
+                    {unread > 9 ? "9+" : unread}
+                  </span>
+                )}
+              </ButtonLink>
               <button
                 type="button"
                 onClick={() => void signOut()}
@@ -215,6 +248,11 @@ export function SiteHeader() {
                     className="flex-1"
                   >
                     Кабинет
+                    {unread > 0 && (
+                      <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-bronze px-1.5 py-0.5 text-[11px] leading-none text-cream">
+                        {unread > 9 ? "9+" : unread}
+                      </span>
+                    )}
                   </ButtonLink>
                   <button
                     type="button"

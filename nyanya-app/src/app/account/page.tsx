@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getAccountData, markNotificationsRead } from "@/lib/queries/account";
+import { getAccountData } from "@/lib/queries/account";
+import { markNotificationsRead } from "@/lib/queries/notifications";
 import { AccountView } from "@/components/account-view";
 
 export const dynamic = "force-dynamic";

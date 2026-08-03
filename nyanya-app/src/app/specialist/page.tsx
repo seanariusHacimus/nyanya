@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getCabinetData } from "@/lib/queries/specialist-cabinet";
+import { markNotificationsRead } from "@/lib/queries/notifications";
 import { SpecialistCabinet } from "@/components/specialist-cabinet";
 import { ButtonLink } from "@/components/ui/button-link";
 
@@ -44,6 +45,8 @@ export default async function SpecialistPage() {
   }
 
   const data = await getCabinetData(session.user.id, session.user.name);
+  // лента показана — значок в шапке гаснет
+  await markNotificationsRead(session.user.id);
 
   return (
     <main className="flex-1">

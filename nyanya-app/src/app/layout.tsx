@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Golos_Text } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -40,9 +41,11 @@ export default function RootLayout({
       className={`${playfair.variable} ${golos.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SiteHeader />
-        {children}
-        <SiteFooter />
+        <ToastProvider>
+          <SiteHeader />
+          {children}
+          <SiteFooter />
+        </ToastProvider>
       </body>
     </html>
   );

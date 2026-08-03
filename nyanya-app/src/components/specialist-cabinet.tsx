@@ -16,6 +16,10 @@ import {
   PaperPlaneTilt,
 } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
+import {
+  NotificationHeading,
+  NotificationList,
+} from "@/components/notification-list";
 import { verificationSteps } from "@/content/verification-steps";
 import type { CabinetData, CabinetProfile } from "@/lib/queries/specialist-cabinet";
 import {
@@ -27,6 +31,7 @@ import {
   type StepState,
 } from "@/components/specialist/verification-step-card";
 import { ButtonLink } from "@/components/ui/button-link";
+import { useToast } from "@/components/ui/toast";
 
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
@@ -81,6 +86,7 @@ export function SpecialistCabinet({
   data: CabinetData;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [profile, setProfile] = useState<CabinetProfile>(data.profile);
   // состояние шагов держим локально: загрузка обновляет его мгновенно,
   // сервер остаётся источником правды при следующей загрузке страницы
@@ -122,6 +128,8 @@ export function SpecialistCabinet({
     startSave(async () => {
       const result = await saveSpecialistProfile(profile);
       setSaved(result.ok);
+      if (result.ok) toast.success("Анкета сохранена");
+      else toast.error("Не удалось сохранить анкету — проверьте поля.");
     });
 
   const submit = () =>
@@ -135,6 +143,7 @@ export function SpecialistCabinet({
       }
       const result = await submitForModeration();
       if (result.ok) {
+        toast.success("Анкета отправлена на проверку");
         router.refresh(); // статус-баннер переключается на «На проверке»
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
@@ -593,6 +602,15 @@ export function SpecialistCabinet({
             </ButtonLink>
           </div>
         )}
+      </section>
+
+      {/* Ф8 — лента уведомлений: решения модератора приходят сюда */}
+      <section id="notifications" className="mt-16 scroll-mt-24">
+        <NotificationHeading />
+        <NotificationList
+          notifications={data.notifications}
+          emptyText="Уведомлений пока нет. Здесь появятся решения модератора по анкете и документам."
+        />
       </section>
     </div>
   );

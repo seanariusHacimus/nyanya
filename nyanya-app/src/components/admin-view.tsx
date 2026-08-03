@@ -27,6 +27,7 @@ import {
   setUserBlocked,
 } from "@/lib/actions/admin";
 import { RejectionForm } from "@/components/admin/rejection-form";
+import { useToast } from "@/components/ui/toast";
 
 const STATUS_LABEL: Record<ProfileStatus, { text: string; cls: string }> = {
   draft: { text: "Черновик", cls: "text-ink-faint" },
@@ -83,6 +84,7 @@ export function AdminView({
   currentUserId: string;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -94,7 +96,8 @@ export function AdminView({
 
   function run(
     id: string,
-    call: () => Promise<{ ok: boolean; error?: string; detail?: string }>
+    call: () => Promise<{ ok: boolean; error?: string; detail?: string }>,
+    successText?: string
   ) {
     setBusyId(id);
     setError(null);
@@ -103,10 +106,15 @@ export function AdminView({
       if (!result.ok) {
         const base =
           ERROR_TEXT[result.error ?? ""] ?? "Не удалось выполнить действие.";
-        setError(result.detail ? `${base} Ожидают: ${result.detail}.` : base);
+        const message = result.detail
+          ? `${base} Ожидают: ${result.detail}.`
+          : base;
+        setError(message);
+        toast.error(message);
       } else {
         setRejectingProfile(null);
         setRejectingDocument(null);
+        if (successText) toast.success(successText);
         router.refresh();
       }
       setBusyId(null);
@@ -227,13 +235,21 @@ export function AdminView({
                     onStartReject={() => setRejectingProfile(p.id)}
                     onCancelReject={() => setRejectingProfile(null)}
                     onModerate={(action, note) =>
-                      run(p.id, () =>
-                        moderateProfile({ profileId: p.id, action, note })
+                      run(
+                        p.id,
+                        () => moderateProfile({ profileId: p.id, action, note }),
+                        action === "publish"
+                          ? `Анкета «${p.fullName}» опубликована`
+                          : action === "hide"
+                            ? `Анкета «${p.fullName}» скрыта`
+                            : `Анкета «${p.fullName}» отклонена`
                       )
                     }
                     onPremium={(premium) =>
-                      run(p.id, () =>
-                        setPremiumVerification({ profileId: p.id, premium })
+                      run(
+                        p.id,
+                        () => setPremiumVerification({ profileId: p.id, premium }),
+                        premium ? "Премиум выдан" : "Премиум снят"
                       )
                     }
                   />
@@ -296,12 +312,15 @@ export function AdminView({
                         disabled={busy}
                         onCancel={() => setRejectingDocument(null)}
                         onSubmit={(note) =>
-                          run(doc.id, () =>
-                            reviewDocument({
-                              documentId: doc.id,
-                              decision: "reject",
-                              note,
-                            })
+                          run(
+                            doc.id,
+                            () =>
+                              reviewDocument({
+                                documentId: doc.id,
+                                decision: "reject",
+                                note,
+                              }),
+                            "Документ отклонён, специалист уведомлён"
                           )
                         }
                       />
@@ -311,11 +330,14 @@ export function AdminView({
                           type="button"
                           disabled={busy}
                           onClick={() =>
-                            run(doc.id, () =>
-                              reviewDocument({
-                                documentId: doc.id,
-                                decision: "approve",
-                              })
+                            run(
+                              doc.id,
+                              () =>
+                                reviewDocument({
+                                  documentId: doc.id,
+                                  decision: "approve",
+                                }),
+                              "Документ принят"
                             )
                           }
                           className={actionButton}
@@ -411,11 +433,16 @@ export function AdminView({
                           type="button"
                           disabled={busy}
                           onClick={() =>
-                            run(u.id, () =>
-                              setUserBlocked({
-                                userId: u.id,
-                                blocked: !u.banned,
-                              })
+                            run(
+                              u.id,
+                              () =>
+                                setUserBlocked({
+                                  userId: u.id,
+                                  blocked: !u.banned,
+                                }),
+                              u.banned
+                                ? `${u.name} разблокирован`
+                                : `${u.name} заблокирован`
                             )
                           }
                           className={u.banned ? actionButton : dangerButton}
