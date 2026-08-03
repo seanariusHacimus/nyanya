@@ -7,6 +7,11 @@ import {
   user,
 } from "@/db/schema";
 import type { CategoryKey } from "@/lib/specialists-shared";
+import {
+  stepTitles,
+  summarizeDocuments,
+  type DocumentStatus,
+} from "@/lib/verification";
 
 export type ProfileStatus =
   | "draft"
@@ -39,6 +44,11 @@ export type AdminProfileRow = {
   slug: string | null;
   moderationNote: string | null;
   banned: boolean;
+  /** Сколько обязательных документов принято — публикация требует полного комплекта. */
+  approvedDocuments: number;
+  requiredDocuments: number;
+  /** Названия шагов, мешающих публикации (не загружены, ждут проверки, отклонены). */
+  blockingSteps: string;
 };
 
 export type AdminDocumentRow = {
@@ -94,6 +104,7 @@ export async function getAdminData(): Promise<AdminData> {
     documentRows,
     userRows,
     userTotalRows,
+    allDocumentRows,
   ] = await Promise.all([
     db.select({ role: user.role, n: count() }).from(user).groupBy(user.role),
     db
@@ -156,12 +167,28 @@ export async function getAdminData(): Promise<AdminData> {
       .orderBy(asc(user.createdAt))
       .limit(USERS_LIMIT),
     db.select({ n: count() }).from(user),
+    db
+      .select({
+        specialistId: documents.specialistId,
+        type: documents.type,
+        status: documents.status,
+      })
+      .from(documents),
   ]);
 
   const byRole = (role: string) =>
     roleRows.find((r) => r.role === role)?.n ?? 0;
   const parents = byRole("parent");
   const unlockingParents = unlockParentRows[0]?.n ?? 0;
+
+  // документы группируем в памяти: строк мало, а отдельный агрегирующий
+  // запрос на каждую анкету дал бы N+1
+  const docsByProfile = new Map<string, { type: string; status: DocumentStatus }[]>();
+  for (const d of allDocumentRows) {
+    const list = docsByProfile.get(d.specialistId) ?? [];
+    list.push({ type: d.type, status: d.status as DocumentStatus });
+    docsByProfile.set(d.specialistId, list);
+  }
 
   return {
     stats: {
@@ -173,7 +200,19 @@ export async function getAdminData(): Promise<AdminData> {
       unlocks: unlockRows[0]?.n ?? 0,
       conversion: parents ? Math.round((unlockingParents / parents) * 100) : 0,
     },
-    profiles: profileRows,
+    profiles: profileRows.map((p) => {
+      const summary = summarizeDocuments(docsByProfile.get(p.id) ?? []);
+      return {
+        ...p,
+        approvedDocuments: summary.approvedCount,
+        requiredDocuments: summary.requiredCount,
+        blockingSteps: stepTitles([
+          ...summary.missing,
+          ...summary.pending,
+          ...summary.rejected,
+        ]),
+      };
+    }),
     documentQueue: documentRows.map((d) => ({
       ...d,
       createdAt: d.createdAt.toISOString(),

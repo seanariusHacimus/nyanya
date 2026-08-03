@@ -14,6 +14,23 @@ import {
 } from "@/db/schema";
 import { uniqueSlug } from "@/lib/slug";
 import { stepByKey } from "@/content/verification-steps";
+import {
+  deriveVerificationLevel,
+  stepTitles,
+  summarizeDocuments,
+  type DocumentStatus,
+} from "@/lib/verification";
+
+/** Сводка по документам анкеты — нужна и при публикации, и при проверке файла. */
+async function documentSummaryFor(profileId: string) {
+  const rows = await db
+    .select({ type: documents.type, status: documents.status })
+    .from(documents)
+    .where(eq(documents.specialistId, profileId));
+  return summarizeDocuments(
+    rows.map((r) => ({ type: r.type, status: r.status as DocumentStatus }))
+  );
+}
 
 /* ------------------------- доступ ------------------------- */
 
@@ -34,9 +51,13 @@ async function requireAdmin(): Promise<AdminGuard> {
 
 type Result =
   | { ok: true }
-  | { ok: false; error: string };
+  | { ok: false; error: string; detail?: string };
 
-const fail = (error: string): Result => ({ ok: false, error });
+const fail = (error: string, detail?: string): Result => ({
+  ok: false,
+  error,
+  detail,
+});
 const done = (): Result => ({ ok: true });
 
 /** Страницы, которые зависят от состояния анкет. */
@@ -76,6 +97,7 @@ export async function moderateProfile(input: unknown): Promise<Result> {
       fullNameLatin: specialistProfiles.fullNameLatin,
       slug: specialistProfiles.slug,
       status: specialistProfiles.status,
+      verificationLevel: specialistProfiles.verificationLevel,
       publishedAt: specialistProfiles.publishedAt,
     })
     .from(specialistProfiles)
@@ -87,6 +109,19 @@ export async function moderateProfile(input: unknown): Promise<Result> {
   const now = new Date();
 
   if (action === "publish") {
+    // В каталоге значок только «Проверен»/«Премиум» — состояния «не проверен»
+    // там нет. Публикация анкеты с непринятыми документами показала бы семье
+    // проверенного специалиста, которым он не является.
+    const summary = await documentSummaryFor(profileId);
+    if (!summary.allApproved) {
+      const blocking = [
+        ...summary.missing,
+        ...summary.pending,
+        ...summary.rejected,
+      ];
+      return fail("documents_not_approved", stepTitles(blocking));
+    }
+
     // адрес каталога появляется только при первой публикации
     let slug = profile.slug;
     if (!slug) {
@@ -109,6 +144,12 @@ export async function moderateProfile(input: unknown): Promise<Result> {
         status: "active",
         slug,
         moderationNote: null,
+        // публикация возможна только при полном комплекте — значок
+        // приводим в соответствие, премиум сохраняем
+        verificationLevel:
+          profile.verificationLevel === "premium_verified"
+            ? "premium_verified"
+            : "verified",
         reviewedAt: now,
         publishedAt: profile.publishedAt ?? now,
         updatedAt: now,
@@ -168,27 +209,71 @@ export async function moderateProfile(input: unknown): Promise<Result> {
 
 const verificationSchema = z.object({
   profileId: z.string().uuid(),
-  level: z.enum(["unverified", "verified", "premium_verified"]),
+  premium: z.boolean(),
 });
 
-export async function setVerificationLevel(input: unknown): Promise<Result> {
+/**
+ * Премиум — надстройка над полной проверкой, а не независимый переключатель:
+ * выдать его анкете с непринятыми документами нельзя. Базовый уровень
+ * («проверен» / «не проверен») вручную не выставляется вообще — он выводится
+ * из документов в `syncVerificationLevel`.
+ */
+export async function setPremiumVerification(input: unknown): Promise<Result> {
   const guard = await requireAdmin();
   if (!guard.ok) return fail(guard.error);
 
   const parsed = verificationSchema.safeParse(input);
   if (!parsed.success) return fail("invalid");
+  const { profileId, premium } = parsed.data;
 
   const [profile] = await db
-    .select({ slug: specialistProfiles.slug })
+    .select({
+      slug: specialistProfiles.slug,
+      status: specialistProfiles.status,
+      userId: specialistProfiles.userId,
+    })
     .from(specialistProfiles)
-    .where(eq(specialistProfiles.id, parsed.data.profileId))
+    .where(eq(specialistProfiles.id, profileId))
     .limit(1);
   if (!profile) return fail("not_found");
 
+  const summary = await documentSummaryFor(profileId);
+  if (premium && !summary.allApproved) {
+    const blocking = [
+      ...summary.missing,
+      ...summary.pending,
+      ...summary.rejected,
+    ];
+    return fail("documents_not_approved", stepTitles(blocking));
+  }
+
+  const nextLevel = premium
+    ? ("premium_verified" as const)
+    : summary.allApproved
+      ? ("verified" as const)
+      : ("unverified" as const);
+
+  // «Не проверен» в каталоге отображается как «Проверен» — третьего значка нет.
+  // Поэтому анкета, потерявшая подтверждение, из каталога уходит.
+  const demote = profile.status === "active" && nextLevel === "unverified";
+
   await db
     .update(specialistProfiles)
-    .set({ verificationLevel: parsed.data.level, updatedAt: new Date() })
-    .where(eq(specialistProfiles.id, parsed.data.profileId));
+    .set({
+      verificationLevel: nextLevel,
+      ...(demote ? { status: "hidden" as const } : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(specialistProfiles.id, profileId));
+
+  if (demote) {
+    await db.insert(notifications).values({
+      userId: profile.userId,
+      type: "verification_status",
+      title: "Анкета скрыта из каталога",
+      body: "Подтверждение снято. Анкета вернётся в каталог после проверки документов.",
+    });
+  }
 
   revalidateCatalog(profile.slug);
   return done();
@@ -217,6 +302,10 @@ export async function reviewDocument(input: unknown): Promise<Result> {
       id: documents.id,
       type: documents.type,
       ownerId: specialistProfiles.userId,
+      profileId: specialistProfiles.id,
+      profileStatus: specialistProfiles.status,
+      profileSlug: specialistProfiles.slug,
+      verificationLevel: specialistProfiles.verificationLevel,
     })
     .from(documents)
     .innerJoin(
@@ -237,6 +326,32 @@ export async function reviewDocument(input: unknown): Promise<Result> {
       reviewedAt: new Date(),
     })
     .where(eq(documents.id, documentId));
+
+  // Уровень верификации пересчитывается после каждого решения: отклонённый
+  // документ снимает значок, а опубликованную анкету убирает из каталога —
+  // иначе семья продолжала бы видеть «Проверен» по отклонённому паспорту.
+  const summary = await documentSummaryFor(doc.profileId);
+  const nextLevel = deriveVerificationLevel(summary, doc.verificationLevel);
+  const demote = doc.profileStatus === "active" && !summary.allApproved;
+
+  await db
+    .update(specialistProfiles)
+    .set({
+      verificationLevel: nextLevel,
+      ...(demote ? { status: "hidden" as const } : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(specialistProfiles.id, doc.profileId));
+
+  if (demote) {
+    await db.insert(notifications).values({
+      userId: doc.ownerId,
+      type: "verification_status",
+      title: "Анкета скрыта из каталога",
+      body: "Один из документов больше не подтверждён. Анкета вернётся в каталог после повторной проверки.",
+    });
+    revalidateCatalog(doc.profileSlug);
+  }
 
   const stepTitle = stepByKey.get(doc.type as never)?.title ?? "Документ";
   await db.insert(notifications).values({

@@ -14,6 +14,7 @@ import {
   MAX_FILE_BYTES,
 } from "@/lib/storage";
 import { verificationSteps, stepByKey } from "@/content/verification-steps";
+import { detectMime, matchesDeclaredMime } from "@/lib/file-type";
 
 /* ------------------------- вспомогательное ------------------------- */
 
@@ -128,10 +129,18 @@ export async function uploadVerificationDocument(formData: FormData) {
   );
 
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Заявленный браузером тип не является доказательством: документ потом
+  // отдаётся с этим же mime, поэтому сверяем его с сигнатурой файла.
+  const detected = detectMime(buffer);
+  if (!detected || !matchesDeclaredMime(detected, file.type))
+    return { ok: false as const, error: "bad_type" as const };
+
   const key = await saveDocument(profile.id, {
     buffer,
     fileName: file.name,
-    mimeType: file.type,
+    // сохраняем распознанный тип, а не присланный
+    mimeType: detected,
   });
 
   // предыдущий файл этого шага заменяется
@@ -149,7 +158,7 @@ export async function uploadVerificationDocument(formData: FormData) {
       .set({
         fileKey: key,
         fileName: file.name,
-        mimeType: file.type,
+        mimeType: detected,
         fileSize: file.size,
         status: "pending",
         reviewNote: null,
@@ -165,18 +174,40 @@ export async function uploadVerificationDocument(formData: FormData) {
       type: step.key,
       fileKey: key,
       fileName: file.name,
-      mimeType: file.type,
+      mimeType: detected,
       fileSize: file.size,
       status: "pending",
     });
   }
 
-  // фото профиля сразу становится фотографией анкеты
-  if (step.key === "profile_photo") {
-    await db
-      .update(specialistProfiles)
-      .set({ photoKey: `/api/documents/${key}`, updatedAt: new Date() })
-      .where(eq(specialistProfiles.id, profile.id));
+  // Новый файл не проверен, поэтому полный комплект больше не собран (D27).
+  // Опубликованная анкета уходит на повторную модерацию — иначе замена
+  // паспорта после публикации обходила бы проверку целиком.
+  const wasActive = profile.status === "active";
+  await db
+    .update(specialistProfiles)
+    .set({
+      verificationLevel: "unverified",
+      ...(wasActive
+        ? { status: "pending_review" as const, submittedAt: new Date() }
+        : {}),
+      // фото профиля сразу становится фотографией анкеты
+      ...(step.key === "profile_photo"
+        ? { photoKey: `/api/documents/${key}` }
+        : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(specialistProfiles.id, profile.id));
+
+  if (wasActive) {
+    await db.insert(notifications).values({
+      userId: guard.session.user.id,
+      type: "verification_status",
+      title: "Анкета отправлена на повторную проверку",
+      body: `Вы заменили документ «${step.title}». Анкета вернётся в каталог после проверки модератором.`,
+    });
+    revalidatePath("/catalog");
+    if (profile.slug) revalidatePath(`/specialists/${profile.slug}`);
   }
 
   revalidatePath("/specialist");

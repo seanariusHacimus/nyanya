@@ -23,8 +23,8 @@ import { stepByKey } from "@/content/verification-steps";
 import {
   moderateProfile,
   reviewDocument,
+  setPremiumVerification,
   setUserBlocked,
-  setVerificationLevel,
 } from "@/lib/actions/admin";
 import { RejectionForm } from "@/components/admin/rejection-form";
 
@@ -51,6 +51,8 @@ const ERROR_TEXT: Record<string, string> = {
   self: "Нельзя заблокировать самого себя.",
   admin_target: "Администратора заблокировать нельзя.",
   ban_failed: "Не удалось изменить блокировку.",
+  documents_not_approved:
+    "Нельзя опубликовать: не все документы приняты. В каталоге значок только «Проверен», поэтому анкета с непринятыми документами вводила бы семьи в заблуждение.",
 };
 
 const ROLE_LABEL: Record<string, string> = {
@@ -90,13 +92,18 @@ export function AdminView({
   );
   const [userQuery, setUserQuery] = useState("");
 
-  function run(id: string, call: () => Promise<{ ok: boolean; error?: string }>) {
+  function run(
+    id: string,
+    call: () => Promise<{ ok: boolean; error?: string; detail?: string }>
+  ) {
     setBusyId(id);
     setError(null);
     startTransition(async () => {
       const result = await call();
       if (!result.ok) {
-        setError(ERROR_TEXT[result.error ?? ""] ?? "Не удалось выполнить действие.");
+        const base =
+          ERROR_TEXT[result.error ?? ""] ?? "Не удалось выполнить действие.";
+        setError(result.detail ? `${base} Ожидают: ${result.detail}.` : base);
       } else {
         setRejectingProfile(null);
         setRejectingDocument(null);
@@ -196,8 +203,8 @@ export function AdminView({
                     "Имя",
                     "Категория",
                     "Статус",
+                    "Документы",
                     "Верификация",
-                    "Доверие",
                     "Действия",
                   ].map((h) => (
                     <th
@@ -224,9 +231,9 @@ export function AdminView({
                         moderateProfile({ profileId: p.id, action, note })
                       )
                     }
-                    onVerification={(level) =>
+                    onPremium={(premium) =>
                       run(p.id, () =>
-                        setVerificationLevel({ profileId: p.id, level })
+                        setPremiumVerification({ profileId: p.id, premium })
                       )
                     }
                   />
@@ -445,7 +452,7 @@ function ProfileRow({
   onStartReject,
   onCancelReject,
   onModerate,
-  onVerification,
+  onPremium,
 }: {
   profile: AdminProfileRow;
   busy: boolean;
@@ -454,10 +461,12 @@ function ProfileRow({
   onStartReject: () => void;
   onCancelReject: () => void;
   onModerate: (action: "publish" | "hide" | "reject", note?: string) => void;
-  onVerification: (level: VerificationLevel) => void;
+  onPremium: (premium: boolean) => void;
 }) {
   const status = STATUS_LABEL[profile.status];
   const isPremium = profile.verificationLevel === "premium_verified";
+  // публикация и премиум возможны только при полном комплекте принятых документов
+  const docsReady = profile.approvedDocuments === profile.requiredDocuments;
 
   return (
     <tr className="border-b border-line/60 align-top">
@@ -483,11 +492,22 @@ function ProfileRow({
           </span>
         )}
       </td>
+      <td className="py-4 pr-6">
+        <span
+          className={
+            docsReady ? "text-bronze-text" : "text-[#a5462f]"
+          }
+        >
+          {profile.approvedDocuments}/{profile.requiredDocuments}
+        </span>
+        {!docsReady && profile.blockingSteps && (
+          <span className="mt-1 block max-w-56 text-xs text-ink-faint">
+            {profile.blockingSteps}
+          </span>
+        )}
+      </td>
       <td className="py-4 pr-6 text-ink-soft">
         {VERIFICATION_LABEL[profile.verificationLevel]}
-      </td>
-      <td className="py-4 pr-6 font-display text-lg text-bronze-text">
-        {profile.trustScore}
       </td>
       <td className="py-4">
         {rejecting ? (
@@ -502,10 +522,13 @@ function ProfileRow({
           <span className="flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={busy}
-              onClick={() =>
-                onVerification(isPremium ? "verified" : "premium_verified")
+              disabled={busy || (!isPremium && !docsReady)}
+              title={
+                !isPremium && !docsReady
+                  ? "Премиум доступен только при всех принятых документах"
+                  : undefined
               }
+              onClick={() => onPremium(!isPremium)}
               className={actionButton}
             >
               {isPremium ? "Снять премиум" : "Премиум"}
@@ -522,7 +545,12 @@ function ProfileRow({
             ) : (
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || !docsReady}
+                title={
+                  docsReady
+                    ? undefined
+                    : `Не приняты документы: ${profile.blockingSteps}`
+                }
                 onClick={() => onModerate("publish")}
                 className={actionButton}
               >
