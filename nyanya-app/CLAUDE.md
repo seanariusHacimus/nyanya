@@ -45,9 +45,15 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
 ## Roles and access
 
 `parent` (default) · `specialist` · `admin`. Role is chosen at signup; `admin` is set manually.
-`/account`, `/specialist` and `/admin` each guard themselves in `page.tsx` — **there is no
-middleware**. Blocking a user goes through Better Auth's admin plugin, which also revokes active
-sessions.
+
+**Two layers guard the private pages, and only the second one is real.** `src/middleware.ts` does an
+optimistic check for the session cookie so an anonymous request is redirected before Next starts
+streaming (`loading.tsx` creates a Suspense boundary, which otherwise commits a 200 before the page
+can call `redirect()`). The cookie proves nothing on its own — every one of `/account`,
+`/specialist`, `/admin` still validates the session and checks the role in its own `page.tsx`, and
+so does every server action.
+
+Blocking a user goes through Better Auth's admin plugin, which also revokes active sessions.
 
 ## Profile lifecycle
 
