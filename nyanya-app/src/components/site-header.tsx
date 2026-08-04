@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { List, X, CaretDown } from "@phosphor-icons/react";
-import { nav } from "@/content/home";
+import { nav, slogan } from "@/content/home";
 import { easeOutQuart } from "@/lib/motion";
 import { ButtonLink } from "@/components/ui/button-link";
 import { authClient, useSession } from "@/lib/auth-client";
@@ -81,10 +81,10 @@ export function SiteHeader() {
           <span className="font-display block text-xl font-semibold tracking-[0.08em] whitespace-nowrap text-ink">
             NYANYA.UZ
           </span>
-          {/* Пояснение к логотипу. Скрыто на узких экранах: строка длинная и
-              в мобильной шапке вытеснила бы кнопку меню */}
-          <span className="mt-1 hidden text-[10px] leading-tight whitespace-nowrap text-ink-faint xl:block">
-            nyanya.uz — премиальная платформа по поиску домашнего персонала
+          {/* Слоган под логотипом — строчными, мелко. Короткий, поэтому виден
+              и на мобильном, в отличие от прежней длинной строки-позиционирования */}
+          <span className="mt-0.5 block text-[11px] leading-tight whitespace-nowrap text-ink-faint lowercase">
+            {slogan}
           </span>
         </Link>
 
