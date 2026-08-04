@@ -18,6 +18,7 @@ import { Accordion } from "@/components/ui/accordion";
 import { ButtonLink } from "@/components/ui/button-link";
 import { TrustScore } from "@/components/ui/trust-score";
 import { Reveal } from "@/components/reveal";
+import { formatUzs, unlockFee } from "@/lib/payments";
 
 export const metadata = {
   title: "Как это работает",
@@ -40,7 +41,7 @@ const steps = [
   {
     icon: LockKeyOpen,
     title: "Откройте контакты",
-    text: "Контакты открываются бесплатно после регистрации — телефон, Telegram и WhatsApp, навсегда в вашем кабинете.",
+    text: `Разовая оплата ${formatUzs(unlockFee())} — и телефон, Telegram и WhatsApp навсегда в вашем кабинете.`,
   },
   {
     icon: Handshake,
@@ -73,11 +74,11 @@ const checks = [
   },
 ];
 
-// §6.6 — что происходит после открытия контактов (бесплатная модель)
+// §6.6 — что происходит после открытия контактов (разовая оплата за контакт)
 const afterPayment = [
   {
     icon: UserPlus,
-    text: "Открытие бесплатно — нужен только аккаунт с подтверждённой почтой.",
+    text: `Разовая оплата ${formatUzs(unlockFee())} за контакты одного специалиста.`,
   },
   {
     icon: InfinityIcon,
@@ -93,11 +94,11 @@ const afterPayment = [
 const faq = [
   {
     q: "Сколько стоит открытие контактов?",
-    a: "Нисколько — открытие контактов бесплатно. Нужен только аккаунт: регистрация с кодом на почту занимает минуту.",
+    a: `Разовая оплата ${formatUzs(unlockFee())} за контакты одного специалиста. Повторно за того же специалиста платить не нужно.`,
   },
   {
     q: "Есть ли платные услуги?",
-    a: "Сейчас всё бесплатно: каталог, просмотр анкет и открытие контактов. Никаких подписок и скрытых списаний.",
+    a: `Каталог, фильтры и просмотр анкет — бесплатно. Платное только открытие контактов. Подписок и скрытых списаний нет.`,
   },
   {
     q: "Как проверяются специалисты?",

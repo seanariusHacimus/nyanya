@@ -18,7 +18,7 @@ export const nav = {
   categories: [
     { label: "Няни", href: "/catalog?category=nanny" },
     { label: "Сиделки", href: "/catalog?category=caregiver" },
-    { label: "Репетиторы", href: "/catalog?category=tutor" },
+    { label: "Помощники по хозяйству", href: "/catalog?category=tutor" },
     { label: "Водители", href: "/catalog?category=driver" },
   ],
   /** Путь специалиста — первый уровень навигации */
@@ -46,9 +46,9 @@ export const nav = {
 
 export const hero = {
   eyebrow: "Проверенные специалисты для вашей семьи",
-  title: "Доверяйте главному",
-  subtitle:
-    "Мы тщательно проверяем специалистов, чтобы вы были спокойны за самое важное.",
+  /** Фирменный слоган — набирается строчными, крупного заголовка в первом экране нет */
+  slogan: { brand: "nyanya.uz", line: "жизнь без забот." },
+  subtitle: "Только подтвержденные анкеты специалистов.",
   primary: { label: "Подобрать специалиста", href: "/catalog" },
   secondary: { label: "Как это работает", href: "/how-it-works" },
   image: {
@@ -98,8 +98,8 @@ export const services = {
       } satisfies ContentImage,
     },
     {
-      title: "Репетиторы",
-      description: "Опытные преподаватели для обучения и развития",
+      title: "Помощники по хозяйству",
+      description: "Помощь по дому: уборка, готовка и бытовые дела",
       href: "/catalog?category=tutor",
       image: {
         src: tutorPhoto,
@@ -128,7 +128,7 @@ export const trustFeatures = {
       icon: "chat",
       title: "Прямой контакт",
       description:
-        "После бесплатной регистрации открываются телефон, Telegram и WhatsApp — общайтесь напрямую.",
+        "Разовая оплата открывает телефон, Telegram и WhatsApp — общайтесь напрямую, без посредников.",
     },
   ],
 } as const;
@@ -139,7 +139,7 @@ export const howItWorks = {
     {
       icon: "grid",
       title: "Выберите категорию",
-      description: "Няня, сиделка, репетитор или водитель",
+      description: "Няня, сиделка, помощник по хозяйству или водитель",
     },
     {
       icon: "search",
@@ -187,7 +187,7 @@ export const footer = {
       links: [
         { label: "Няни", href: "/catalog?category=nanny" },
         { label: "Сиделки", href: "/catalog?category=caregiver" },
-        { label: "Репетиторы", href: "/catalog?category=tutor" },
+        { label: "Помощники по хозяйству", href: "/catalog?category=tutor" },
         { label: "Водители", href: "/catalog?category=driver" },
       ],
     },

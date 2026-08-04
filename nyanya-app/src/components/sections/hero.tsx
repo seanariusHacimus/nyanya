@@ -24,18 +24,25 @@ export function Hero() {
     <section className="mx-auto max-w-[1400px] px-5 sm:px-8">
       <div className="grid items-center gap-12 pt-10 pb-16 lg:grid-cols-2 lg:gap-10 lg:pt-20 lg:pb-28">
         <div className="max-w-xl">
-          <motion.p {...item(0)} className="label-caps text-bronze-text">
-            {hero.eyebrow}
-          </motion.p>
+          {/* Слоган стоит первым в первом экране и служит заголовком страницы:
+              крупного H1 здесь больше нет, но без него страница осталась бы
+              вовсе без заголовка — это ломает и навигацию с клавиатуры, и выдачу */}
           <motion.h1
-            {...item(0.08)}
-            className="mt-6 font-display text-[3.25rem] leading-[1.04] font-medium tracking-[-0.01em] text-ink sm:text-6xl lg:mt-8 xl:text-[5.25rem]"
+            {...item(0)}
+            className="font-display text-2xl leading-[1.3] font-normal tracking-[0.01em] text-ink normal-case sm:text-[1.75rem]"
           >
-            {hero.title}
+            <span className="block">{hero.slogan.brand}</span>
+            <span className="block text-bronze-text">{hero.slogan.line}</span>
           </motion.h1>
           <motion.p
+            {...item(0.08)}
+            className="label-caps mt-8 text-bronze-text"
+          >
+            {hero.eyebrow}
+          </motion.p>
+          <motion.p
             {...item(0.16)}
-            className="mt-6 max-w-md text-lg leading-relaxed text-ink-soft"
+            className="mt-4 max-w-md text-lg leading-relaxed text-ink-soft"
           >
             {hero.subtitle}
           </motion.p>

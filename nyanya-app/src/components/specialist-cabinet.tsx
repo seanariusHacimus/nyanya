@@ -74,7 +74,7 @@ const banners = {
 const categoryLabels = {
   nanny: "Няня",
   caregiver: "Сиделка",
-  tutor: "Репетитор",
+  tutor: "Помощник по хозяйству",
   driver: "Водитель",
 } as const;
 

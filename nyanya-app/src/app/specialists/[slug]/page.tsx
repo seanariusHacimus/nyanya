@@ -17,6 +17,7 @@ import { TrustScore } from "@/components/ui/trust-score";
 import { Stars } from "@/components/ui/stars";
 import { ShareButton } from "@/components/share-button";
 import { UnlockPanel } from "@/components/profile/unlock-panel";
+import { formatUzs, unlockFee } from "@/lib/payments";
 import { Reveal } from "@/components/reveal";
 
 export const dynamic = "force-dynamic"; // анкета читается из PostgreSQL
@@ -231,6 +232,7 @@ export default async function SpecialistPage({
               priceLabel: formatPrice(s),
               photoUrl: s.photoUrl,
             }}
+            unlockPriceLabel={formatUzs(unlockFee())}
             initialAuthed={Boolean(session)}
             initialContacts={initialContacts}
             initialFavorite={favoriteSlugs.includes(s.slug)}

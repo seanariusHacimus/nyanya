@@ -77,11 +77,15 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-cream/90 backdrop-blur-md">
       <div className="mx-auto flex h-18 max-w-[1400px] items-center justify-between gap-4 px-5 sm:px-8 xl:gap-6">
-        <Link
-          href="/"
-          className="font-display text-xl font-semibold tracking-[0.08em] whitespace-nowrap text-ink"
-        >
-          NYANYA.UZ
+        <Link href="/" className="shrink-0 leading-none">
+          <span className="font-display block text-xl font-semibold tracking-[0.08em] whitespace-nowrap text-ink">
+            NYANYA.UZ
+          </span>
+          {/* Пояснение к логотипу. Скрыто на узких экранах: строка длинная и
+              в мобильной шапке вытеснила бы кнопку меню */}
+          <span className="mt-1 hidden text-[10px] leading-tight whitespace-nowrap text-ink-faint xl:block">
+            nyanya.uz — премиальная платформа по поиску домашнего персонала
+          </span>
         </Link>
 
         <nav aria-label="Основная навигация" className="hidden lg:block">

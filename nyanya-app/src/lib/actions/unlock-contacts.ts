@@ -9,15 +9,24 @@ import {
   specialistProfiles,
   contactUnlocks,
   notifications,
+  payments,
   user,
 } from "@/db/schema";
 import { buildContacts } from "@/lib/specialists-shared";
+import { resolveProvider, unlockFee } from "@/lib/payments";
 
 const schema = z.object({ slug: z.string().trim().min(1).max(120) });
 
 /**
- * Открытие контактов — бесплатно, но только после входа (решение владельца).
- * Идемпотентно: повторный вызов возвращает контакты без новой записи.
+ * Открытие контактов специалиста — платное (решение владельца, 2026-08-03).
+ *
+ * Порядок такой: сначала запись о платеже, потом обращение к провайдеру и
+ * только после подтверждения — открытие контактов. Контакты не отдаются
+ * раньше, чем платёж получил статус `paid`.
+ *
+ * Повторный вызов бесплатен и идемпотентен: если контакты уже открыты,
+ * возвращаем их, не создавая новый платёж. Иначе перезагрузка страницы
+ * списывала бы деньги повторно.
  */
 export async function unlockContacts(input: unknown) {
   const parsed = schema.safeParse(input);
@@ -48,9 +57,92 @@ export async function unlockContacts(input: unknown) {
   if (!specialist.ownerPhone)
     return { ok: false as const, error: "no_contacts" as const };
 
+  // уже оплачено раньше — просто отдаём контакты
+  const [existing] = await db
+    .select({ id: contactUnlocks.id })
+    .from(contactUnlocks)
+    .where(
+      and(
+        eq(contactUnlocks.parentId, session.user.id),
+        eq(contactUnlocks.specialistId, specialist.id)
+      )
+    )
+    .limit(1);
+
+  if (existing) {
+    return {
+      ok: true as const,
+      contacts: buildContacts(specialist.ownerPhone, parsed.data.slug),
+    };
+  }
+
+  const amount = unlockFee();
+
+  const [payment] = await db
+    .insert(payments)
+    .values({
+      userId: session.user.id,
+      purpose: "contact_unlock",
+      amount,
+      currency: "UZS",
+      provider: resolveProvider().name,
+      status: "pending",
+      relatedSpecialistId: specialist.id,
+    })
+    .returning({ id: payments.id });
+
+  let intent;
+  try {
+    intent = await resolveProvider().createPayment({
+      amount,
+      currency: "UZS",
+      purpose: "contact_unlock",
+      orderId: payment.id,
+      description: `Доступ к контактам: ${specialist.fullName}`,
+    });
+  } catch (error) {
+    console.error("[unlock] provider failed", { paymentId: payment.id, error });
+    await db
+      .update(payments)
+      .set({ status: "failed" })
+      .where(eq(payments.id, payment.id));
+    return { ok: false as const, error: "payment_failed" as const };
+  }
+
+  if (intent.status === "failed") {
+    await db
+      .update(payments)
+      .set({ status: "failed", raw: { reason: intent.reason } })
+      .where(eq(payments.id, payment.id));
+    return { ok: false as const, error: "payment_failed" as const };
+  }
+
+  if (intent.status === "redirect") {
+    // Платёж подтвердит вебхук провайдера; контакты откроются после этого.
+    await db
+      .update(payments)
+      .set({ providerTxnId: intent.providerTxnId })
+      .where(eq(payments.id, payment.id));
+    return { ok: true as const, redirectUrl: intent.redirectUrl };
+  }
+
+  // подтверждено сразу
+  await db
+    .update(payments)
+    .set({
+      status: "paid",
+      providerTxnId: intent.providerTxnId,
+      paidAt: new Date(),
+    })
+    .where(eq(payments.id, payment.id));
+
   const inserted = await db
     .insert(contactUnlocks)
-    .values({ parentId: session.user.id, specialistId: specialist.id })
+    .values({
+      parentId: session.user.id,
+      specialistId: specialist.id,
+      paymentId: payment.id,
+    })
     .onConflictDoNothing()
     .returning({ id: contactUnlocks.id });
 
@@ -64,7 +156,7 @@ export async function unlockContacts(input: unknown) {
       userId: specialist.ownerId,
       type: "contact_unlocked",
       title: "Ваши контакты открыли",
-      body: "Семья открыла ваши контакты в каталоге — возможно, вам скоро напишут.",
+      body: "Семья оплатила доступ к вашим контактам — возможно, вам скоро напишут.",
     });
   }
 

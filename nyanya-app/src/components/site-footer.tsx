@@ -1,12 +1,6 @@
 import Link from "next/link";
-import { InstagramLogo, TelegramLogo } from "@phosphor-icons/react/dist/ssr";
 import { footer } from "@/content/home";
 import { ButtonLink } from "@/components/ui/button-link";
-
-const socialIcons = {
-  instagram: InstagramLogo,
-  telegram: TelegramLogo,
-} as const;
 
 export function SiteFooter() {
   return (
@@ -26,28 +20,6 @@ export function SiteFooter() {
             <p className="mt-4 max-w-[26ch] text-sm leading-relaxed text-cream/60">
               {footer.tagline}
             </p>
-            <ul className="mt-7 flex gap-3">
-              {footer.social.map((item) => {
-                const Icon = socialIcons[item.icon as keyof typeof socialIcons];
-                return (
-                  <li key={item.label}>
-                    <a
-                      href={item.href}
-                      aria-label={item.label}
-                      target={item.href.startsWith("http") ? "_blank" : undefined}
-                      rel={
-                        item.href.startsWith("http")
-                          ? "noopener noreferrer"
-                          : undefined
-                      }
-                      className="flex size-11 items-center justify-center rounded-full border border-cream/20 text-cream/70 transition-colors duration-300 hover:border-cream/50 hover:text-cream"
-                    >
-                      <Icon size={18} />
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
           </div>
 
           {footer.columns.map((column) => (
@@ -69,18 +41,10 @@ export function SiteFooter() {
           ))}
 
           <div className="md:col-span-3 lg:col-span-1 lg:text-right">
-            <p>
-              <a
-                href={footer.email.href}
-                className="font-display text-2xl whitespace-nowrap text-cream transition-colors duration-300 hover:text-bronze-soft"
-              >
-                {footer.email.label}
-              </a>
-            </p>
-            <p className="mt-3 text-sm text-cream/60">
-              Отвечаем ежедневно с 9:00 до 21:00
-            </p>
-            <div className="mt-8 lg:flex lg:justify-end">
+            {/* Почта, мессенджеры и часы работы убраны по решению владельца:
+                публичных контактов у площадки пока нет. Обращения принимает
+                форма на странице «Контакты» */}
+            <div className="lg:flex lg:justify-end">
               <ButtonLink href={footer.cta.href} variant="outline-light">
                 {footer.cta.label}
               </ButtonLink>

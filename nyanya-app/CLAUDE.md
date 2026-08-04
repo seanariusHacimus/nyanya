@@ -2,10 +2,22 @@
 
 # nyanya.uz — project guide
 
-Marketplace connecting families in **Tashkent** with nannies, caregivers, tutors and drivers.
-It is **not** a booking or escrow platform: it publishes verified specialist profiles and lets a
-family open a specialist's contacts. Opening contacts is **free but requires an account** — the
-`contact_unlocks` row is kept for funnel metrics and to notify the specialist.
+Marketplace connecting families in **Tashkent** with nannies, caregivers, household helpers and
+drivers. It is **not** a booking or escrow platform: it publishes verified specialist profiles and
+lets a family open a specialist's contacts.
+
+Opening contacts is **paid** — a one-off charge per specialist (`UNLOCK_FEE_UZS`, default 29 000
+sum), decided 2026-08-03. A `payments` row is created first and contacts are released only once it
+reaches `paid`; `contact_unlocks.payment_id` links the two. Repeat access to an
+already-purchased specialist is free and creates no new payment. Browsing the catalogue and
+listing a profile as a specialist remain free.
+
+The only payment provider implemented is `mock`, which confirms instantly — see
+`src/lib/payments/`. `resolveProvider()` throws on any other value rather than falling back, so a
+misconfigured `PAYMENT_PROVIDER` cannot silently give contacts away.
+
+The `tutor` category key is still `tutor` in the database, but is labelled **«Помощник по
+хозяйству»** in the interface.
 
 Interface language is **Russian only**. There is no `next-intl` and no `[locale]` routing.
 

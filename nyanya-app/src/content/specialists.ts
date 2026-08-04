@@ -31,10 +31,10 @@ export const categories: Record<
     catalogH1: "Сиделки в Ташкенте",
   },
   tutor: {
-    label: "Репетитор",
-    plural: "Репетиторы",
+    label: "Помощник по хозяйству",
+    plural: "Помощники по хозяйству",
     unit: "час",
-    catalogH1: "Репетиторы в Ташкенте",
+    catalogH1: "Помощники по хозяйству в Ташкенте",
   },
   driver: {
     label: "Водитель",

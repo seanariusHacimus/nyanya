@@ -2,6 +2,7 @@ import { PageHero } from "@/components/ui/page-hero";
 import { ButtonLink } from "@/components/ui/button-link";
 import { FaqTabs, type FaqGroup } from "@/components/faq-tabs";
 import { Reveal } from "@/components/reveal";
+import { formatUzs, unlockFee } from "@/lib/payments";
 
 export const metadata = {
   title: "Вопросы и ответы",
@@ -45,11 +46,11 @@ const groups: readonly FaqGroup[] = [
     items: [
       {
         q: "Сколько стоит открытие контактов?",
-        a: "Нисколько — открытие контактов бесплатно. Нужен только аккаунт: регистрация с кодом на почту занимает минуту.",
+        a: `Разовая оплата ${formatUzs(unlockFee())} за контакты одного специалиста. Повторно за того же специалиста платить не нужно — контакты остаются в кабинете.`,
       },
       {
         q: "Есть ли платные услуги?",
-        a: "Сейчас всё бесплатно: каталог, просмотр анкет и открытие контактов. Открытые контакты остаются в вашем кабинете навсегда.",
+        a: `Каталог, фильтры и просмотр анкет — бесплатно. Платное только открытие контактов: ${formatUzs(unlockFee())} за специалиста. Подписок и скрытых списаний нет.`,
       },
     ],
   },
