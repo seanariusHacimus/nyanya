@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
+import { ArrowRight } from "@phosphor-icons/react";
 import { hero } from "@/content/home";
 import { easeOutQuart } from "@/lib/motion";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -24,32 +24,29 @@ export function Hero() {
     <section className="mx-auto max-w-[1400px] px-5 sm:px-8">
       <div className="grid items-center gap-12 pt-10 pb-16 lg:grid-cols-2 lg:gap-10 lg:pt-20 lg:pb-28">
         <div className="max-w-xl">
-          <motion.p {...item(0)} className="label-caps text-bronze-text">
+          <motion.p
+            {...item(0)}
+            className="max-w-md text-base leading-relaxed text-ink-soft"
+          >
             {hero.eyebrow}
           </motion.p>
+          {/* короткая бронзовая черта между позиционированием и заголовком */}
+          <motion.span
+            {...item(0.06)}
+            aria-hidden="true"
+            className="mt-8 block h-px w-24 bg-bronze"
+          />
           <motion.h1
-            {...item(0.08)}
-            className="mt-6 font-display text-[3.25rem] leading-[1.04] font-medium tracking-[-0.01em] text-ink sm:text-6xl lg:mt-8 xl:text-[5.25rem]"
+            {...item(0.12)}
+            className="mt-8 font-display text-[3.25rem] leading-[1.04] font-medium tracking-[-0.01em] text-ink sm:text-6xl xl:text-[4.5rem]"
           >
             {hero.title}
           </motion.h1>
-          <motion.p
-            {...item(0.16)}
-            className="mt-6 max-w-md text-lg leading-relaxed text-ink-soft"
-          >
-            {hero.subtitle}
-          </motion.p>
-          <motion.div
-            {...item(0.24)}
-            className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-5"
-          >
-            <ButtonLink href={hero.primary.href}>{hero.primary.label}</ButtonLink>
-            <Link
-              href={hero.secondary.href}
-              className="label-caps border-b border-ink/30 pb-1 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
-            >
-              {hero.secondary.label}
-            </Link>
+          <motion.div {...item(0.2)} className="mt-10">
+            <ButtonLink href={hero.primary.href} className="gap-4">
+              {hero.primary.label}
+              <ArrowRight size={18} aria-hidden="true" />
+            </ButtonLink>
           </motion.div>
         </div>
 
