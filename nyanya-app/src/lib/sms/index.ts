@@ -22,10 +22,28 @@ function createMockSender(): SmsSender {
   return {
     async send(message: SmsMessage): Promise<SmsSendResult> {
       const to = normalizePhone(message.to);
-      console.info(`[sms:mock] → ${to}: ${message.text}`);
+      // текст не печатаем: в нём код подтверждения, а логи хранятся и
+      // пересылаются в сторонние сервисы
+      console.info(`[sms:mock] → ${to} (${message.text.length} знаков)`);
       return { id: null, to, provider: "mock" };
     },
   };
+}
+
+/**
+ * Провайдер вычисляется в одном месте — иначе отправка и интерфейс расходятся.
+ *
+ * `||`, а не `??`: пустая строка в панели переменных Railway (`SMS_PROVIDER=`)
+ * не должна считаться заданным значением. Незнакомое значение — ошибка, а не
+ * тихий откат в мок: «включил, но SMS не приходят» обязано быть слышно.
+ */
+function resolveProvider(): "eskiz" | "mock" {
+  const raw = process.env.SMS_PROVIDER?.trim().toLowerCase();
+  const provider = raw || (readEskizConfig() ? "eskiz" : "mock");
+  if (provider !== "eskiz" && provider !== "mock") {
+    throw new Error(`SMS_PROVIDER=${provider}: допустимы только eskiz и mock`);
+  }
+  return provider;
 }
 
 let sender: SmsSender | null = null;
@@ -33,10 +51,8 @@ let sender: SmsSender | null = null;
 function getSender(): SmsSender {
   if (sender) return sender;
 
-  const eskiz = readEskizConfig();
-  const provider = process.env.SMS_PROVIDER ?? (eskiz ? "eskiz" : "mock");
-
-  if (provider === "eskiz") {
+  if (resolveProvider() === "eskiz") {
+    const eskiz = readEskizConfig();
     if (!eskiz) {
       throw new Error(
         "SMS_PROVIDER=eskiz, но не заданы ESKIZ_EMAIL / ESKIZ_SECRET " +
@@ -53,7 +69,7 @@ function getSender(): SmsSender {
 
 /** Правда ли SMS уходят наружу — для подсказок в интерфейсе и в логах. */
 export function smsEnabled(): boolean {
-  return (process.env.SMS_PROVIDER ?? (readEskizConfig() ? "eskiz" : "mock")) !== "mock";
+  return resolveProvider() === "eskiz";
 }
 
 export async function sendSms(message: SmsMessage): Promise<SmsSendResult> {

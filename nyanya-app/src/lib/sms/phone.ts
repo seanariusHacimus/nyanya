@@ -40,7 +40,11 @@ export class InvalidPhoneError extends Error {
 export function normalizePhone(raw: string): string {
   let digits = raw.replace(/\D/g, "");
 
-  if (digits.startsWith("998")) digits = digits.slice(3);
+  // Код страны срезаем только по длине. Иначе «99 812-34-56» (оператор 99,
+  // абонент 8123456) выглядит начинающимся с «998» и теряет три цифры —
+  // валидный номер отвергался в национальной записи и принимался в
+  // международной.
+  if (digits.length > 9 && digits.startsWith("998")) digits = digits.slice(3);
   else if (digits.length === 10 && digits.startsWith("8")) digits = digits.slice(1);
 
   if (digits.length !== 9) throw new InvalidPhoneError(raw);

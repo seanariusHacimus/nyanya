@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, emailOTP, phoneNumber } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { db } from "@/db";
 import { user, session, account, verification } from "@/db/auth-schema";
 import { sendOtpEmail } from "@/lib/email";
@@ -141,6 +142,58 @@ export const auth = betterAuth({
    * Список задаётся явно, а не выводится из baseURL: доменов у сервиса больше
    * одного, и адрес Railway должен продолжать работать.
    */
+  /**
+   * Плагин `phoneNumber` монтирует пять маршрутов, а нужны нам два.
+   *
+   * Лишние опасны, а не просто бесполезны:
+   *   • `/phone-number/reset-password` меняет пароль по коду из SMS. Кода мы
+   *     никуда не шлём (`sendPasswordResetOTP` не задан), но строка проверки
+   *     всё равно создаётся, и маршрут исправно перезаписывает пароль тому,
+   *     кто угадает шесть цифр. Восстановления пароля в продукте нет — и
+   *     появиться оно должно осознанно, а не как побочный эффект плагина.
+   *   • `/sign-in/phone-number` — вход по телефону и паролю, отдельный канал
+   *     входа, которого мы не проектировали.
+   */
+  disabledPaths: [
+    "/sign-in/phone-number",
+    "/phone-number/request-password-reset",
+    "/phone-number/reset-password",
+  ],
+
+  hooks: {
+    /**
+     * Два замка на оставшиеся маршруты телефона.
+     *
+     * 1. **Требуем сессию.** `/phone-number/send-otp` у плагина открыт
+     *    анониму, а каждый вызов — реальное SMS с нашего баланса. Без этой
+     *    проверки любой желающий рассылает сообщения от имени nyanya.uz на
+     *    произвольные номера за наш счёт.
+     *
+     * 2. **Требуем `updatePhoneNumber`.** Без этого флага `/phone-number/verify`
+     *    ищет пользователя ПО номеру и выдаёт его сессию — то есть вход по
+     *    одному коду из SMS, в обход пароля. Проверено: аноним запрашивал код
+     *    на чужой номер и получал cookie владельца. Подтверждение телефона
+     *    должно уметь ровно одно — привязать номер к текущему аккаунту.
+     */
+    before: createAuthMiddleware(async (ctx) => {
+      if (!ctx.path.startsWith("/phone-number")) return;
+
+      const session = await getSessionFromCtx(ctx);
+      if (!session) {
+        throw new APIError("UNAUTHORIZED", {
+          message: "Подтверждение телефона доступно только после входа.",
+        });
+      }
+
+      const body = ctx.body as { updatePhoneNumber?: unknown } | undefined;
+      if (ctx.path === "/phone-number/verify" && body?.updatePhoneNumber !== true) {
+        throw new APIError("BAD_REQUEST", {
+          message: "Подтверждение возможно только для текущего аккаунта.",
+        });
+      }
+    }),
+  },
+
   trustedOrigins: [
     "https://nyanya.uz",
     "https://www.nyanya.uz",

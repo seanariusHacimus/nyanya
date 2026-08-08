@@ -37,7 +37,11 @@ export default async function SmsTestPage() {
         subtitle="Служебная страница: подтверждение телефона кодом из SMS."
       />
       <section className="mx-auto max-w-[560px] px-5 pt-6 pb-24 sm:px-8">
-        <SmsTestView smsLive={smsEnabled()} />
+        <SmsTestView
+          smsLive={smsEnabled()}
+          currentPhone={session.user.phoneNumber ?? null}
+          currentVerified={Boolean(session.user.phoneNumberVerified)}
+        />
       </section>
     </main>
   );

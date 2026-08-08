@@ -21,7 +21,15 @@ import { formatPhone, isValidPhone, normalizePhone } from "@/lib/sms/phone";
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
 
-export function SmsTestView({ smsLive }: { smsLive: boolean }) {
+export function SmsTestView({
+  smsLive,
+  currentPhone,
+  currentVerified,
+}: {
+  smsLive: boolean;
+  currentPhone: string | null;
+  currentVerified: boolean;
+}) {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [stage, setStage] = useState<"phone" | "code" | "done">("phone");
@@ -30,8 +38,15 @@ export function SmsTestView({ smsLive }: { smsLive: boolean }) {
 
   const canonical = isValidPhone(phone) ? normalizePhone(phone) : null;
 
+  // Тот же номер, который уже привязан, подтвердить нельзя: плагин считает
+  // занятым и его, не исключая самого пользователя. Проверяем до отправки —
+  // иначе SMS оплачено, а в ответ «номер занят».
+  const alreadyMine = Boolean(
+    canonical && currentVerified && canonical === currentPhone
+  );
+
   const sendCode = async () => {
-    if (!canonical) return;
+    if (!canonical || alreadyMine) return;
     setBusy(true);
     setError(null);
     const { error: apiError } = await authClient.phoneNumber.sendOtp({
@@ -116,9 +131,11 @@ export function SmsTestView({ smsLive }: { smsLive: boolean }) {
               className={inputClass}
             />
             <p className="text-xs text-ink-faint">
-              {canonical
-                ? `Уйдёт на ${canonical}`
-                : "Любой формат — приведём сами. Нужен узбекский номер."}
+              {alreadyMine
+                ? "Этот номер уже подтверждён — SMS не нужно. Для повторной проверки возьмите другой номер."
+                : canonical
+                  ? `Уйдёт на ${canonical}`
+                  : "Любой формат — приведём сами. Нужен узбекский номер."}
             </p>
           </div>
 
@@ -126,7 +143,7 @@ export function SmsTestView({ smsLive }: { smsLive: boolean }) {
 
           <button
             type="submit"
-            disabled={!canonical || busy}
+            disabled={!canonical || alreadyMine || busy}
             className="label-caps inline-flex min-h-12 items-center justify-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal disabled:opacity-50"
           >
             {busy ? "Отправляем…" : "Отправить код"}

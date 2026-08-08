@@ -41,7 +41,7 @@ if (!email || !secret) {
 const OPERATOR_CODES = ["33", "77", "88", "90", "91", "93", "94", "95", "97", "98", "99"];
 function normalizePhone(raw) {
   let d = String(raw ?? "").replace(/\D/g, "");
-  if (d.startsWith("998")) d = d.slice(3);
+  if (d.length > 9 && d.startsWith("998")) d = d.slice(3);
   else if (d.length === 10 && d.startsWith("8")) d = d.slice(1);
   if (d.length !== 9 || !OPERATOR_CODES.includes(d.slice(0, 2))) {
     throw new Error(`не похоже на узбекский номер: ${raw}`);

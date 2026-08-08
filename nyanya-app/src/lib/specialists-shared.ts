@@ -2,6 +2,7 @@
  * Клиент-безопасная часть домена «специалисты»: типы, справочник категорий
  * и форматирование. Серверные запросы к PostgreSQL — в lib/queries/specialists.
  */
+import { formatPhone } from "@/lib/sms/phone";
 
 export type CategoryKey = "nanny" | "caregiver" | "tutor" | "driver";
 
@@ -53,10 +54,21 @@ export type SpecialistContacts = {
 };
 
 /** Контакты из телефона владельца анкеты; telegram — демо-username от slug. */
+/** Читаемый вид, но без потерь: старые записи в свободном формате остаются как есть. */
+function displayPhone(phone: string): string {
+  try {
+    return formatPhone(phone);
+  } catch {
+    return phone;
+  }
+}
+
 export function buildContacts(phone: string, slug: string): SpecialistContacts {
   const digits = phone.replace(/[^\d]/g, "");
   return {
-    phone,
+    // в базе номер лежит слитно (998901234567) — человеку показываем читаемо,
+    // а не двенадцать цифр подряд
+    phone: displayPhone(phone),
     phoneHref: `tel:+${digits}`,
     telegram: `@${slug.replace(/-/g, "_")}`,
     telegramHref: `https://t.me/${slug.replace(/-/g, "_")}`,

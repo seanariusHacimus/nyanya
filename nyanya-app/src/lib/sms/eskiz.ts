@@ -24,6 +24,13 @@ import { SmsError, type SmsMessage, type SmsSendResult, type SmsSender } from ".
 
 const API = "https://notify.eskiz.uz/api";
 
+/**
+ * Потолок ожидания шлюза. Без него зависший Eskiz держал бы запрос
+ * пользователя до тайм-аута платформы: человек смотрел бы на «Отправляем…»
+ * несколько минут вместо честной ошибки.
+ */
+const TIMEOUT_MS = 15_000;
+
 /** Единственный текст, разрешённый Eskiz в тестовом статусе аккаунта. */
 export const ESKIZ_TEST_TEXT = "Это тест от Eskiz";
 
@@ -71,15 +78,19 @@ export function createEskizSender(config: EskizConfig): SmsSender {
       password: config.secret,
     });
 
-    const res = await fetch(`${API}/auth/login`, { method: "POST", body });
+    const res = await fetch(`${API}/auth/login`, {
+      method: "POST",
+      body,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
     const json = await readJson(res);
 
     if (!res.ok) {
-      const message =
-        typeof json === "object" && json !== null && "message" in json
-          ? String((json as { message: unknown }).message)
-          : "не удалось авторизоваться";
-      throw new SmsError(`Eskiz: ${message}`, res.status, json);
+      throw new SmsError(
+        `Eskiz: ${messageOf(json) ?? "не удалось авторизоваться"}`,
+        res.status,
+        json
+      );
     }
 
     const token = extractToken(json);
@@ -100,6 +111,13 @@ export function createEskizSender(config: EskizConfig): SmsSender {
     // multipart — ровно так отправка описана в коллекции Postman
     const form = new FormData();
     form.set("mobile_phone", to);
+    if (config.forceTestText) {
+      // забытый переключатель означает, что люди платно получают «Это тест от
+      // Eskiz» вместо кода и не могут войти, а наружу это никак не проявляется
+      console.warn(
+        "[sms:eskiz] ESKIZ_FORCE_TEST_TEXT=1 — вместо настоящего текста уходит тестовый"
+      );
+    }
     form.set("message", config.forceTestText ? ESKIZ_TEST_TEXT : message.text);
     if (config.from) form.set("from", config.from);
 
@@ -107,6 +125,7 @@ export function createEskizSender(config: EskizConfig): SmsSender {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: form,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   }
 
@@ -126,8 +145,11 @@ export function createEskizSender(config: EskizConfig): SmsSender {
       const json = await readJson(res);
 
       if (!res.ok) {
+        // причина отказа приходит в теле; без неё в логе остаётся голый код
+        // состояния, по которому ничего не понять
+        console.error("[sms:eskiz] отказ", res.status, json);
         throw new SmsError(
-          `Eskiz отказал (HTTP ${res.status})`,
+          `Eskiz отказал (HTTP ${res.status}): ${messageOf(json) ?? "без пояснения"}`,
           res.status,
           json
         );
@@ -136,6 +158,14 @@ export function createEskizSender(config: EskizConfig): SmsSender {
       return { id: extractMessageId(json), to, provider: "eskiz" };
     },
   };
+}
+
+/** Пояснение от шлюза, если оно есть. */
+function messageOf(json: unknown): string | null {
+  if (typeof json === "string") return json.slice(0, 300) || null;
+  if (typeof json !== "object" || json === null) return null;
+  const message = (json as Record<string, unknown>).message;
+  return typeof message === "string" ? message : JSON.stringify(json).slice(0, 300);
 }
 
 async function readJson(res: Response): Promise<unknown> {

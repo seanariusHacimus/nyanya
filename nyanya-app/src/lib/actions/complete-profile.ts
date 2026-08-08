@@ -9,10 +9,11 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { user, account } from "@/db/auth-schema";
 import { sendWelcomeEmail } from "@/lib/email";
+import { isValidPhone, normalizePhone } from "@/lib/sms/phone";
 
 const schema = z.object({
   name: z.string().trim().min(1).max(100),
-  phone: z.string().trim().min(7).max(20),
+  phone: z.string().trim().min(7).max(20).refine(isValidPhone, "не похоже на узбекский номер"),
   role: z.enum(["parent", "specialist"]), // admin — только сидом, из формы недоступен
   password: z.string().min(8).max(200),
 });
@@ -44,6 +45,11 @@ export async function completeProfile(input: unknown) {
     .from(user)
     .where(eq(user.id, session.user.id));
 
+  // Храним номер в одном виде: подтверждение телефона сравнивает номера
+  // строками, и «+998 90 …» рядом с «998…» означало бы два человека вместо
+  // одного.
+  const phone = normalizePhone(parsed.data.phone);
+
   if (!current) return { ok: false as const, error: "unauthorized" as const };
 
   const isFreshAccount = current.role === "parent" && !current.phone;
@@ -52,7 +58,13 @@ export async function completeProfile(input: unknown) {
     .update(user)
     .set({
       name: parsed.data.name,
-      phone: parsed.data.phone,
+      phone,
+      // сменили номер — старое подтверждение к нему не относится, иначе в
+      // кабинете висело бы «Телефон подтверждён» на номере, который никто
+      // не подтверждал
+      ...(current.phone && current.phone !== phone
+        ? { phoneVerified: false }
+        : {}),
       // повышение до специалиста — только при первичном заполнении профиля
       ...(isFreshAccount ? { role: parsed.data.role } : {}),
       updatedAt: new Date(),
