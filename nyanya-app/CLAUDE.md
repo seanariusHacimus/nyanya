@@ -75,8 +75,12 @@ specialist sees in their cabinet.
 
 ## Pre-launch — do NOT assume these are real
 
-- **Email delivery is broken.** No verified Resend domain, so `EMAIL_FROM` falls back to the shared
-  `onboarding@resend.dev`, which Resend restricts to the account owner and Gmail now rejects.
+- **Email works** (since 2026-08-04): `nyanya.uz` is verified in Resend and `EMAIL_FROM` is set to
+  `NYANYA.UZ <noreply@nyanya.uz>`. The production Resend key is send-only, so it cannot list
+  domains or read delivery status — confirm delivery from the inbox, not the API.
+- **Login is email + password; the `emailOTP` plugin is still commented out** in `lib/auth.ts`. It
+  was disabled while mail was undeliverable; that reason is gone, so restoring it is now a
+  product decision rather than a blocker. There is still no password-recovery flow.
 - `BETTER_AUTH_SECRET` in production is still an unsubstituted placeholder.
 - `nyanya.uz` is not connected; the app is served from `nyanya-production.up.railway.app`.
 - SMS is mocked; the Uzbekistan data-residency requirement for biometric/medical documents is
