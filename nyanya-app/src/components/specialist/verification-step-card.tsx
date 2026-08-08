@@ -18,6 +18,11 @@ import {
   deleteVerificationDocument,
 } from "@/lib/actions/specialist-profile";
 import { PhotoGuidelinesDialog } from "@/components/specialist/photo-guidelines-dialog";
+import {
+  MAX_FILE_BYTES,
+  MAX_FILE_LABEL,
+  isAllowedMime,
+} from "@/lib/storage/limits";
 
 export type StepState = {
   status: "empty" | "pending" | "approved" | "rejected";
@@ -77,6 +82,28 @@ export function VerificationStepCard({
 
   const upload = (file: File) => {
     setError(null);
+
+    /**
+     * Размер и тип проверяем здесь, а не только на сервере. Тело серверного
+     * действия ограничивает сама платформа и обрывает запрос раньше, чем
+     * действие успевает ответить, — тогда вместо объяснения показывалась
+     * аварийная страница. Единственный, кто может не отправить такой файл, —
+     * браузер.
+     */
+    if (file.size > MAX_FILE_BYTES) {
+      const message = `Файл больше ${MAX_FILE_LABEL} — сожмите его или сфотографируйте с меньшим разрешением.`;
+      setError(message);
+      toast.error(message);
+      return;
+    }
+    if (file.type && !isAllowedMime(file.type)) {
+      const message =
+        "Подходят JPG, PNG, WEBP, HEIC или PDF — выберите файл в одном из этих форматов.";
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
     const data = new FormData();
     data.set("step", step.key);
     data.set("file", file);
@@ -96,7 +123,7 @@ export function VerificationStepCard({
       } else {
         const message =
           result.error === "too_large"
-            ? "Файл больше 10 МБ — сожмите или сфотографируйте с меньшим разрешением."
+            ? `Файл больше ${MAX_FILE_LABEL} — сожмите его или сфотографируйте с меньшим разрешением.`
             : result.error === "bad_type"
               ? "Подходят JPG, PNG, WEBP, HEIC или PDF — и содержимое файла должно соответствовать формату."
               : "Не удалось загрузить файл. Попробуйте ещё раз.";

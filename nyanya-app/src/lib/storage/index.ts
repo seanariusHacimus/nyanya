@@ -13,19 +13,9 @@ import {
 export { DocumentNotFoundError };
 export type { DocumentInput, StoredObject };
 
-export const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 МБ
-
-export const ALLOWED_MIME = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "application/pdf",
-] as const;
-
-export function isAllowedMime(mime: string): boolean {
-  return (ALLOWED_MIME as readonly string[]).includes(mime);
-}
+// ограничения вынесены в limits.ts: их должен знать и браузер, а этот модуль
+// тянет за собой node:crypto и SDK хранилища
+export { ALLOWED_MIME, MAX_FILE_BYTES, MAX_FILE_LABEL, isAllowedMime } from "./limits";
 
 /**
  * Ключ объекта: `<uuid анкеты>/<uuid файла>.<ext>`. Форма проверяется на
