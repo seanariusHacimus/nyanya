@@ -13,6 +13,7 @@ import {
   user,
 } from "@/db/schema";
 import { uniqueSlug } from "@/lib/slug";
+import { sendDocumentsApprovedEmail } from "@/lib/email";
 import { stepByKey } from "@/content/verification-steps";
 import {
   deriveVerificationLevel,
@@ -302,6 +303,8 @@ export async function reviewDocument(input: unknown): Promise<Result> {
       id: documents.id,
       type: documents.type,
       ownerId: specialistProfiles.userId,
+      ownerEmail: user.email,
+      ownerName: specialistProfiles.fullName,
       profileId: specialistProfiles.id,
       profileStatus: specialistProfiles.status,
       profileSlug: specialistProfiles.slug,
@@ -312,6 +315,7 @@ export async function reviewDocument(input: unknown): Promise<Result> {
       specialistProfiles,
       eq(specialistProfiles.id, documents.specialistId)
     )
+    .innerJoin(user, eq(user.id, specialistProfiles.userId))
     .where(eq(documents.id, documentId))
     .limit(1);
 
@@ -351,6 +355,12 @@ export async function reviewDocument(input: unknown): Promise<Result> {
       body: "Один из документов больше не подтверждён. Анкета вернётся в каталог после повторной проверки.",
     });
     revalidateCatalog(doc.profileSlug);
+  }
+
+  // Письмо о пройденной проверке — ровно в момент, когда принят последний
+  // документ: до этого вызова комплект полным быть не мог, значит уйдёт один раз.
+  if (decision === "approve" && summary.allApproved) {
+    await sendDocumentsApprovedEmail(doc.ownerEmail, doc.ownerName);
   }
 
   const stepTitle = stepByKey.get(doc.type as never)?.title ?? "Документ";

@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { user } from "@/db/auth-schema";
+import { sendWelcomeEmail } from "@/lib/email";
 
 const schema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -46,5 +47,16 @@ export async function completeProfile(input: unknown) {
     .where(eq(user.id, session.user.id));
 
   const role = isFreshAccount ? parsed.data.role : current.role;
+
+  // Приветственное письмо — только при первичном заполнении профиля, иначе
+  // оно уходило бы при каждом изменении имени или телефона.
+  if (isFreshAccount) {
+    await sendWelcomeEmail(
+      session.user.email,
+      parsed.data.name,
+      role === "specialist" ? "specialist" : "parent"
+    );
+  }
+
   return { ok: true as const, role };
 }
