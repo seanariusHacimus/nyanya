@@ -41,3 +41,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# дампы одноразовой чистки демо-аккаунтов — содержат персональные данные
+purge-backup-*.json
+purge-orphan-keys.txt
