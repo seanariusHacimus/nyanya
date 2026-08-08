@@ -417,20 +417,29 @@ export function CatalogView({
               )}
             </>
           ) : (
-            /* C5 — пустое состояние */
+            /* C5 — пустое состояние. Пустой каталог и пустая выборка — разные
+               вещи: предлагать сброс фильтров, когда анкет вообще нет, значит
+               посылать человека по кругу. */
             <div className="mt-8 flex flex-col items-center border border-line bg-paper px-8 py-20 text-center">
               <MagnifyingGlass size={36} weight="thin" className="text-bronze" />
               <p className="mt-6 max-w-sm text-base text-ink-soft">
-                По вашему запросу специалистов не найдено. Попробуйте изменить
-                фильтры.
+                {specialists.length === 0
+                  ? "Каталог пока пуст: анкеты появятся здесь сразу после проверки документов."
+                  : "По вашему запросу специалистов не найдено. Попробуйте изменить фильтры."}
               </p>
-              <button
-                type="button"
-                onClick={reset}
-                className="label-caps mt-8 inline-flex min-h-12 items-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal"
-              >
-                Сбросить фильтры
-              </button>
+              {specialists.length === 0 ? (
+                <ButtonLink href="/become-specialist" className="mt-8">
+                  Разместить анкету
+                </ButtonLink>
+              ) : (
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="label-caps mt-8 inline-flex min-h-12 items-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal"
+                >
+                  Сбросить фильтры
+                </button>
+              )}
             </div>
           )}
         </div>
