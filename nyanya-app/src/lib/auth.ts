@@ -88,6 +88,26 @@ export const auth = betterAuth({
   ],
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
+
+  /**
+   * Откуда разрешено обращаться к аутентификации.
+   *
+   * Better Auth сверяет заголовок Origin со списком доверенных и на
+   * несовпадение отвечает 403 INVALID_ORIGIN. По умолчанию в списке только
+   * `baseURL`, поэтому запросы с nyanya.uz отклонялись — а после подключения
+   * домена это весь реальный трафик. Ошибку легко не заметить: curl заголовок
+   * Origin не шлёт, и проверка через него проходит успешно.
+   *
+   * Список задаётся явно, а не выводится из baseURL: доменов у сервиса больше
+   * одного, и адрес Railway должен продолжать работать.
+   */
+  trustedOrigins: [
+    "https://nyanya.uz",
+    "https://www.nyanya.uz",
+    "https://nyanya-production.up.railway.app",
+    ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS?.split(",").map((o) => o.trim()) ??
+      []),
+  ].filter(Boolean),
 });
 
 export type Session = typeof auth.$Infer.Session;
