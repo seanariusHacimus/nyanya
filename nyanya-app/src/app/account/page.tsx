@@ -26,7 +26,7 @@ export default async function AccountPage() {
     <main className="flex-1">
       <AccountView
         name={session.user.name || "Гость"}
-        phoneVerified={Boolean(session.user.phoneVerified)}
+        phoneVerified={Boolean(session.user.phoneNumberVerified)}
         data={data}
       />
     </main>

@@ -1,10 +1,11 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, emailOTP } from "better-auth/plugins";
+import { admin, emailOTP, phoneNumber } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
 import { user, session, account, verification } from "@/db/auth-schema";
 import { sendOtpEmail } from "@/lib/email";
+import { isCanonicalPhone, sendOtpSms } from "@/lib/sms";
 
 /**
  * Код на почту — только при регистрации, вход — по паролю.
@@ -26,14 +27,12 @@ export const auth = betterAuth({
     schema: { user, session, account, verification },
   }),
   user: {
+    /**
+     * Телефона здесь нет намеренно: им владеет плагин `phoneNumber` (ниже).
+     * Объявить поле и здесь, и в плагине значило бы дать одной колонке два
+     * разных ключа — расходились бы значения в сессии и в базе.
+     */
     additionalFields: {
-      phone: { type: "string", required: false, input: true },
-      phoneVerified: {
-        type: "boolean",
-        required: false,
-        input: false,
-        defaultValue: false,
-      },
       locale: { type: "string", required: false, input: true, defaultValue: "ru" },
     },
   },
@@ -81,6 +80,47 @@ export const auth = betterAuth({
       allowedAttempts: 5,
       async sendVerificationOTP({ email, otp }) {
         await sendOtpEmail(email, otp);
+      },
+    }),
+    /**
+     * Подтверждение телефона кодом из SMS.
+     *
+     * Отправка идёт через `lib/sms`, а он без ключей Eskiz только пишет код в
+     * лог сервера — значит сам факт подключения плагина ничего наружу не шлёт
+     * и денег не тратит.
+     *
+     * `requireVerification` намеренно выключен: включить его — значит закрыть
+     * вход всем, кто зарегистрировался до появления SMS. Это отдельное
+     * решение, принимать его нужно после того, как SMS начнут доходить
+     * стабильно, и вместе с разовой миграцией для существующих аккаунтов.
+     *
+     * Схема отображается на уже существующие колонки `phone` / `phone_verified`
+     * — новой таблицы и новых колонок не появляется, старые данные остаются
+     * на месте.
+     */
+    phoneNumber({
+      otpLength: 6,
+      // столько же, сколько у кода из письма: SMS иногда идёт минуту-другую
+      expiresIn: 600,
+      allowedAttempts: 5,
+      requireVerification: false,
+      /**
+       * Принимаем только канонический `998XXXXXXXXX`. Плагин сохраняет номер
+       * дословно и проверяет занятость сравнением строк, поэтому «+998 90 …»
+       * и «998…» завели бы два аккаунта на один телефон. Приводит к канону
+       * форма — до обращения сюда.
+       */
+      phoneNumberValidator: (value) => isCanonicalPhone(value),
+      async sendOTP({ phoneNumber: to, code }) {
+        await sendOtpSms(to, code);
+      },
+      schema: {
+        user: {
+          fields: {
+            phoneNumber: "phone",
+            phoneNumberVerified: "phoneVerified",
+          },
+        },
       },
     }),
     admin({ adminRoles: ["admin"], defaultRole: "parent" }),
