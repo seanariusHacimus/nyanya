@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@theme {
+  /* nyanya.uz palette — quiet luxury, warm ivory + espresso + bronze */
+  --color-cream: #f2efe9;
+  --color-cream-deep: #e9e4da;
+  --color-paper: #fbfaf7;
+  --color-ink: #211f1a;
+  --color-ink-soft: #5d584e;
+  --color-ink-faint: #8a8478;
+  --color-bronze: #96733a;
+  /* Текстовый бронзовый: 5.4:1 на cream (WCAG AA); #96733a — только для иконок/линий */
+  --color-bronze-text: #7a5c2b;
+  --color-bronze-soft: #c2a165;
+  --color-charcoal: #26231e;
+  --color-charcoal-deep: #1c1a16;
+  --color-line: #dbd5c8;
+
+  --font-display: var(--font-playfair), "Georgia", serif;
+  --font-sans: var(--font-golos), "Arial", sans-serif;
+
+  --tracking-caps: 0.18em;
+
+  --ease-out-quart: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html {
+  color-scheme: light;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-bronze-soft);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-bronze);
+  outline-offset: 3px;
+}
+
+/* Soft rectangular vignette for the hero photo — edges feather into the
+   cream background (brand signature, per reference) */
+.hero-mask {
+  -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      black 6%,
+      black 94%,
+      transparent 100%
+    ),
+    linear-gradient(to bottom, transparent 0%, black 6%, black 94%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      black 6%,
+      black 94%,
+      transparent 100%
+    ),
+    linear-gradient(to bottom, transparent 0%, black 6%, black 94%, transparent 100%);
+  mask-composite: intersect;
+}
+
+/* Micro-label: letterspaced uppercase, used with restraint */
+.label-caps {
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Signature element: slow-turning ring text of the trust seal */
+@keyframes seal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.seal-rotate {
+  transform-origin: center;
+  animation: seal-spin 28s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seal-rotate {
+    animation: none;
+  }
+}

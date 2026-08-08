@@ -48,3 +48,24 @@ next-env.d.ts
 
 # playwright session artifacts
 .playwright-mcp/
+
+# --- nyanya-app (new frontend, lives in subfolder) ---
+nyanya-app/node_modules/
+nyanya-app/.next/
+nyanya-app/out/
+
+# локальное хранилище документов верификации (только для разработки)
+.storage/
+nyanya-app/.storage/
+
+# machine-specific agent config (absolute local paths)
+.claude/
+
+# OS noise
+Thumbs.db
+desktop.ini
+
+# Учётные данные всех аккаунтов в открытом виде — никогда в репозиторий.
+# Файл выдаётся владельцу площадки и хранится вне git.
+nyanya-accounts.xlsx
+*-accounts.xlsx
