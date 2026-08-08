@@ -17,7 +17,6 @@ import { TrustScore } from "@/components/ui/trust-score";
 import { Stars } from "@/components/ui/stars";
 import { ShareButton } from "@/components/share-button";
 import { UnlockPanel } from "@/components/profile/unlock-panel";
-import { formatUzs, unlockFee } from "@/lib/payments";
 import { Reveal } from "@/components/reveal";
 
 export const dynamic = "force-dynamic"; // анкета читается из PostgreSQL
@@ -114,7 +113,7 @@ export default async function SpecialistPage({
                   </span>
                   <span className="label-caps inline-flex items-center gap-1.5 border border-bronze/40 bg-paper px-3 py-2 text-ink">
                     <SealCheck size={13} className="text-bronze" aria-hidden="true" />
-                    {s.verification === "premium" ? "Премиум-проверка" : "Проверен"}
+                    {s.verification === "premium" ? "Премиум-проверен" : "Проверен"}
                   </span>
                 </p>
                 <h1 className="mt-5 font-display text-4xl leading-[1.08] font-medium tracking-[-0.01em] text-ink sm:text-5xl">
@@ -156,7 +155,7 @@ export default async function SpecialistPage({
             {/* P4 — о специалисте */}
             <section className="mt-16 border-t border-line pt-12">
               <h2 className="font-display text-3xl font-medium text-ink">
-                О специалисте
+                О себе
               </h2>
               <div className="mt-6 max-w-2xl space-y-4">
                 {s.about.map((paragraph) => (
@@ -232,7 +231,6 @@ export default async function SpecialistPage({
               priceLabel: formatPrice(s),
               photoUrl: s.photoUrl,
             }}
-            unlockPriceLabel={formatUzs(unlockFee())}
             initialAuthed={Boolean(session)}
             initialContacts={initialContacts}
             initialFavorite={favoriteSlugs.includes(s.slug)}

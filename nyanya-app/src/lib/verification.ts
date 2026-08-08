@@ -1,80 +1,102 @@
-import { verificationSteps } from "@/content/verification-steps";
+import {
+  requiredStepsForCategory,
+  stepsForCategory,
+  verificationSteps,
+} from "@/content/verification-steps";
+import type { CategoryKey } from "@/lib/specialists-shared";
 
 /**
  * Правила верификации специалиста — единый источник для кабинета,
  * модерации и публикации.
  *
- * Ключевой инвариант: **анкета публикуется только когда все обязательные
- * документы приняты**. В каталоге всего два состояния значка — «Проверен» и
- * «Премиум-проверка», третьего («не проверен») в интерфейсе нет. Значит,
- * опубликованная анкета с непроверенным паспортом выглядела бы как
- * проверенная — это прямой обман семьи, а не косметическая неточность.
+ * Два уровня (решение владельца, 2026-08-08):
+ *   «Проверен»         — приняты все ОБЯЗАТЕЛЬНЫЕ документы;
+ *   «Премиум-проверен» — приняты вообще все, включая рекомендуемые.
+ *
+ * Ключевой инвариант: **анкета публикуется только когда приняты все
+ * обязательные документы**. Значок в каталоге утверждает, что специалист
+ * проверен, — публиковать непроверенного значит обманывать семью.
+ *
+ * Перечень зависит от категории: водителю добавляется удостоверение.
  */
 
 export type DocumentStatus = "pending" | "approved" | "rejected";
 export type VerificationLevel = "unverified" | "verified" | "premium_verified";
 
-/** Пока обязательны все шаги: необязательных в списке нет. */
-export const REQUIRED_STEP_KEYS = verificationSteps.map((s) => s.key);
-
 export type DocumentRow = { type: string; status: DocumentStatus };
 
 export type DocumentSummary = {
-  approved: string[];
-  pending: string[];
-  rejected: string[];
-  /** Обязательные шаги, по которым файл вообще не загружен. */
-  missing: string[];
-  approvedCount: number;
+  approvedRequired: string[];
+  /** Обязательные шаги, которые ещё не приняты (нет файла, ждут проверки или отклонены). */
+  blockingRequired: string[];
+  approvedOptional: string[];
+  /** Рекомендуемые шаги, которых не хватает до премиума. */
+  blockingOptional: string[];
   requiredCount: number;
-  /** Все обязательные документы приняты — анкету можно публиковать. */
+  optionalCount: number;
+  /** Все обязательные приняты — анкету можно публиковать, значок «Проверен». */
+  allRequiredApproved: boolean;
+  /** Приняты вообще все документы — доступен «Премиум-проверен». */
   allApproved: boolean;
 };
 
-export function summarizeDocuments(rows: DocumentRow[]): DocumentSummary {
+export function summarizeDocuments(
+  rows: DocumentRow[],
+  category: CategoryKey
+): DocumentSummary {
   const byType = new Map(rows.map((r) => [r.type, r.status]));
+  const applicable = stepsForCategory(category);
+  const required = requiredStepsForCategory(category);
+  const optional = applicable.filter((s) => !s.required);
 
-  const approved: string[] = [];
-  const pending: string[] = [];
-  const rejected: string[] = [];
-  const missing: string[] = [];
+  const isApproved = (key: string) => byType.get(key) === "approved";
 
-  for (const key of REQUIRED_STEP_KEYS) {
-    const status = byType.get(key);
-    if (!status) missing.push(key);
-    else if (status === "approved") approved.push(key);
-    else if (status === "rejected") rejected.push(key);
-    else pending.push(key);
-  }
+  const approvedRequired = required.filter((s) => isApproved(s.key)).map((s) => s.key);
+  const blockingRequired = required.filter((s) => !isApproved(s.key)).map((s) => s.key);
+  const approvedOptional = optional.filter((s) => isApproved(s.key)).map((s) => s.key);
+  const blockingOptional = optional.filter((s) => !isApproved(s.key)).map((s) => s.key);
 
   return {
-    approved,
-    pending,
-    rejected,
-    missing,
-    approvedCount: approved.length,
-    requiredCount: REQUIRED_STEP_KEYS.length,
-    allApproved: approved.length === REQUIRED_STEP_KEYS.length,
+    approvedRequired,
+    blockingRequired,
+    approvedOptional,
+    blockingOptional,
+    requiredCount: required.length,
+    optionalCount: optional.length,
+    allRequiredApproved: blockingRequired.length === 0,
+    allApproved: blockingRequired.length === 0 && blockingOptional.length === 0,
   };
 }
 
 /**
- * Уровень верификации выводится из документов, а не выставляется вручную.
- * Премиум — надстройка над полной проверкой: если хоть один документ
- * перестал быть принятым, премиум тоже снимается.
+ * Уровень выводится из документов, а не выставляется вручную. Премиум не
+ * «выдаётся сверху»: он означает полный комплект, поэтому при потере любого
+ * документа падает вместе с остальным.
  */
 export function deriveVerificationLevel(
-  summary: DocumentSummary,
-  current: VerificationLevel
+  summary: DocumentSummary
 ): VerificationLevel {
-  if (!summary.allApproved) return "unverified";
-  return current === "premium_verified" ? "premium_verified" : "verified";
+  if (!summary.allRequiredApproved) return "unverified";
+  return summary.allApproved ? "premium_verified" : "verified";
 }
 
 /** Человекочитаемые названия шагов — для сообщений модератору и специалисту. */
 export function stepTitles(keys: string[]): string {
-  const titles = keys.map(
-    (k) => verificationSteps.find((s) => s.key === k)?.title ?? k
-  );
-  return titles.join(", ");
+  return keys
+    .map((k) => verificationSteps.find((s) => s.key === k)?.title ?? k)
+    .join(", ");
 }
+
+/** Подписи уровней — одинаковые в каталоге, кабинете и админке. */
+export const VERIFICATION_LABEL: Record<VerificationLevel, string> = {
+  unverified: "Не проверен",
+  verified: "Проверен",
+  premium_verified: "Премиум-проверен",
+};
+
+/** Что означает каждый уровень — для публичных страниц и подсказок. */
+export const VERIFICATION_MEANING: Record<VerificationLevel, string> = {
+  unverified: "Документы ещё не приняты модератором.",
+  verified: "Приняты все обязательные документы.",
+  premium_verified: "Приняты все документы, включая рекомендуемые.",
+};

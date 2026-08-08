@@ -13,7 +13,10 @@ import {
   isAllowedMime,
   MAX_FILE_BYTES,
 } from "@/lib/storage";
-import { verificationSteps, stepByKey } from "@/content/verification-steps";
+import {
+  requiredStepsForCategory,
+  stepByKey,
+} from "@/content/verification-steps";
 import { detectMime, matchesDeclaredMime } from "@/lib/file-type";
 
 /* ------------------------- вспомогательное ------------------------- */
@@ -280,13 +283,14 @@ export async function submitForModeration() {
   if (missingFields)
     return { ok: false as const, error: "profile_incomplete" as const };
 
-  // все шаги верификации загружены
+  // загружены все ОБЯЗАТЕЛЬНЫЕ шаги категории; рекомендуемые нужны только
+  // для «Премиум-проверен» и отправку не блокируют
   const uploaded = await db
     .select({ type: documents.type })
     .from(documents)
     .where(eq(documents.specialistId, profile.id));
   const uploadedSet = new Set(uploaded.map((d) => d.type));
-  const missingSteps = verificationSteps
+  const missingSteps = requiredStepsForCategory(profile.category)
     .filter((s) => !uploadedSet.has(s.key))
     .map((s) => s.key);
   if (missingSteps.length > 0)

@@ -47,19 +47,13 @@ export const nav = {
 export const hero = {
   /** Позиционирование бренда — стоит над заголовком */
   eyebrow: "nyanya.uz-премиальная платформа по поиску домашнего персонала.",
-  title: "Только подтвержденные анкеты специалистов.",
+  title: "Найдите того, кому можно доверять",
   primary: { label: "Подобрать специалиста", href: "/catalog" },
   image: {
     src: heroPhoto,
     alt: "Няня читает книгу вместе с девочкой на диване в светлой гостиной",
   } satisfies ContentImage,
   seal: ["Безопасность", "Доверие", "Забота"],
-} as const;
-
-// ⛳ D2: вымышленные wordmark-заглушки из референса — заменить до запуска
-export const trustBar = {
-  label: "Нам доверяют",
-  brands: ["Velmora", "Aurevia", "Nordella", "Cavendish", "Lunaria"],
 } as const;
 
 export const services = {
@@ -101,14 +95,14 @@ export const services = {
       href: "/catalog?category=tutor",
       image: {
         src: tutorPhoto,
-        alt: "Репетитор помогает подростку с занятиями за столом",
+        alt: "Помощница по хозяйству расставляет свежие цветы в светлой гостиной",
       } satisfies ContentImage,
     },
   ],
 } as const;
 
 export const trustFeatures = {
-  title: "Доверие, оформленное как роскошь",
+  title: "Спокойствие начинается с доверия",
   features: [
     {
       icon: "shield",
@@ -126,7 +120,7 @@ export const trustFeatures = {
       icon: "chat",
       title: "Прямой контакт",
       description:
-        "Разовая оплата открывает телефон, Telegram и WhatsApp — общайтесь напрямую, без посредников.",
+        "После бесплатной регистрации открываются телефон, Telegram и WhatsApp — общайтесь напрямую.",
     },
   ],
 } as const;
@@ -148,8 +142,7 @@ export const howItWorks = {
     {
       icon: "unlock",
       title: "Откройте контакты",
-      // ⛳ формулировка референса; §3.5: «Оплатите доступ — телефон, Telegram и WhatsApp»
-      description: "Разовая оплата — телефон, Telegram и WhatsApp",
+      description: "Бесплатно после регистрации — телефон, Telegram и WhatsApp",
     },
     {
       icon: "handshake",
@@ -160,10 +153,11 @@ export const howItWorks = {
 } as const;
 
 export const ctaBand = {
-  // ⛳ D3: цифра-заглушка — заменить на реальную до запуска.
-  // Перенос строки — как в референсе; внутри «10 000» — неразрывные пробелы.
-  title: "С нами более\n10 000 семей в Ташкенте",
-  subtitle: "Присоединяйтесь к тем, кто уже доверил нам самое важное.",
+  // Никаких цифр о числе семей: их пока нет, а выдумывать социальное
+  // доказательство нельзя. Перенос строки — как в макете.
+  title: "Начните с проверенных\nспециалистов",
+  subtitle:
+    "Каждая анкета проходит проверку документов до публикации в каталоге.",
   primary: { label: "Подобрать специалиста", href: "/catalog" },
   secondary: { label: "Стать специалистом", href: "/become-specialist" },
   image: { src: interiorPhoto, alt: "" } satisfies ContentImage,

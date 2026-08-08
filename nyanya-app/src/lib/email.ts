@@ -11,7 +11,7 @@ import { Resend } from "resend";
  * печатается в лог: разработка не блокируется отсутствием почты.
  */
 
-const FROM = process.env.EMAIL_FROM ?? "NYANYA.UZ <onboarding@resend.dev>";
+const FROM = process.env.EMAIL_FROM ?? "nyanya.uz <onboarding@resend.dev>";
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://nyanya-production.up.railway.app";
 
@@ -71,7 +71,7 @@ function shell(heading: string, blocks: Block[]): string {
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
         <tr><td align="center" style="padding-bottom:28px;">
-          <div style="font-family:${SERIF};font-size:22px;letter-spacing:2px;font-weight:600;color:${C.ink};">NYANYA.UZ</div>
+          <div style="font-family:${SERIF};font-size:22px;letter-spacing:2px;font-weight:600;color:${C.ink};">nyanya.uz</div>
           <div style="font-family:${SERIF};font-size:15px;color:${C.bronze};padding-top:6px;">жизнь без забот</div>
         </td></tr>
         <tr><td style="background-color:${C.card};border:1px solid ${C.line};padding:36px 32px;" align="center">
@@ -93,7 +93,7 @@ function shell(heading: string, blocks: Block[]): string {
 /** Текстовая версия — обязательна, иначе письмо чаще уходит в спам. */
 function plain(heading: string, lines: string[]): string {
   return [
-    "NYANYA.UZ — жизнь без забот",
+    "nyanya.uz — жизнь без забот",
     "",
     heading,
     "",
@@ -109,7 +109,8 @@ async function send(
   to: string,
   subject: string,
   html: string,
-  text: string
+  text: string,
+  replyTo?: string
 ): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
 
@@ -119,7 +120,14 @@ async function send(
   }
 
   const resend = new Resend(apiKey);
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html, text });
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to,
+    subject,
+    html,
+    text,
+    ...(replyTo ? { replyTo } : {}),
+  });
 
   if (error) {
     console.error("[email] resend error:", error);
@@ -149,7 +157,7 @@ async function sendQuietly(
 export async function sendOtpEmail(to: string, code: string): Promise<void> {
   await send(
     to,
-    `${code} — код подтверждения NYANYA.UZ`,
+    `${code} — код подтверждения nyanya.uz`,
     shell("Код подтверждения", [
       { kind: "text", text: "Введите этот код на сайте, чтобы продолжить. Код действует 10 минут." },
       { kind: "code", code },
@@ -191,7 +199,7 @@ export async function sendWelcomeEmail(
       kind: "list",
       items: [
         "Заполните анкету: опыт, образование, район и стоимость",
-        "Загрузите шесть документов — по одному на каждый шаг",
+        "Загрузите документы: паспорт, справку об отсутствии ВИЧ/СПИД, справки из диспансеров и об отсутствии судимости",
         "Отправьте на проверку: обычно занимает 1–2 рабочих дня",
       ],
     },
@@ -202,7 +210,7 @@ export async function sendWelcomeEmail(
   await sendQuietly("регистрация", () =>
     send(
       to,
-      "Добро пожаловать в NYANYA.UZ",
+      "Добро пожаловать в nyanya.uz",
       shell(greeting, role === "specialist" ? forSpecialist : forParent),
       plain(
         greeting,
@@ -220,7 +228,7 @@ export async function sendWelcomeEmail(
   );
 }
 
-/** Все шесть документов приняты модератором. */
+/** Приняты все обязательные документы — анкету можно публиковать. */
 export async function sendDocumentsApprovedEmail(
   to: string,
   name: string
@@ -230,13 +238,14 @@ export async function sendDocumentsApprovedEmail(
   await sendQuietly("проверка документов", () =>
     send(
       to,
-      "Документы проверены — NYANYA.UZ",
+      "Документы проверены — nyanya.uz",
       shell(greeting, [
-        { kind: "text", text: "Все шесть документов приняты модератором. Проверка пройдена полностью." },
+        { kind: "text", text: "Модератор принял все обязательные документы. Проверка пройдена." },
         {
           kind: "list",
           items: [
             "В каталоге у вашей анкеты появится значок «Проверен»",
+            "Загрузите рекомендуемые справки, чтобы получить «Премиум-проверен»",
             "Семьи смогут открыть ваши контакты",
             "Если вы замените документ, анкета вернётся на повторную проверку",
           ],
@@ -245,10 +254,64 @@ export async function sendDocumentsApprovedEmail(
         { kind: "note", text: "Публикация анкеты в каталоге подтверждается отдельно — об этом придёт уведомление." },
       ]),
       plain(greeting, [
-        "Все шесть документов приняты модератором.",
+        "Модератор принял все обязательные документы.",
         "После публикации анкета появится в каталоге со значком «Проверен».",
         `Кабинет: ${APP_URL}/specialist`,
       ])
     )
+  );
+}
+
+/** Куда приходят обращения с формы обратной связи. */
+const CONTACT_TO = process.env.CONTACT_EMAIL_TO ?? "shokhedu@gmail.com";
+
+/** Экранирование пользовательского текста перед вставкой в HTML письма. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * Обращение с формы обратной связи — владельцу на почту.
+ *
+ * Если посетитель оставил адрес электронной почты, он подставляется в
+ * `replyTo`: ответить можно прямо из почтового клиента, не копируя контакт
+ * руками. Ошибку отправки здесь НЕ глушим — посетителю нужно честно сказать,
+ * что сообщение не ушло, иначе он будет ждать ответа впустую.
+ */
+export async function sendContactMessage(input: {
+  name: string;
+  contact: string;
+  message: string;
+}): Promise<void> {
+  const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.contact);
+
+  await send(
+    CONTACT_TO,
+    `Обращение с сайта — ${input.name}`,
+    shell("Новое обращение с сайта", [
+      { kind: "text", text: `<b>Имя:</b> ${escapeHtml(input.name)}` },
+      { kind: "text", text: `<b>Контакт:</b> ${escapeHtml(input.contact)}` },
+      {
+        kind: "text",
+        text: escapeHtml(input.message).replace(/\n/g, "<br>"),
+      },
+      {
+        kind: "note",
+        text: looksLikeEmail
+          ? "Ответьте на это письмо — ответ уйдёт прямо посетителю."
+          : "Контакт указан не почтой — ответьте способом, который указал посетитель.",
+      },
+    ]),
+    plain("Новое обращение с сайта", [
+      `Имя: ${input.name}`,
+      `Контакт: ${input.contact}`,
+      "",
+      input.message,
+    ]),
+    looksLikeEmail ? input.contact : undefined
   );
 }

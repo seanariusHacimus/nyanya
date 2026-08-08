@@ -34,23 +34,17 @@ type PanelProps = {
   initialAuthed: boolean;
   initialContacts: SpecialistContacts | null;
   initialFavorite?: boolean;
-  /** Стоимость открытия контактов, отформатированная на сервере.
-   *  Не путать с s.priceLabel — там ставка специалиста за час/день. */
-  unlockPriceLabel: string;
 };
 
 /**
- * §5 P3 — панель контактов. Открытие платное (решение владельца, 2026-08-03):
- * гостю — модальное окно с предложением зарегистрироваться, вошедшему —
- * оплата, после подтверждения которой server action открывает контакты.
- * Повторное открытие уже оплаченного специалиста бесплатно.
+ * §5 P3 — панель контактов. Открытие бесплатное, но после входа: гостю —
+ * окно с предложением зарегистрироваться, вошедшему — кнопка открытия.
  */
 export function UnlockPanel({
   s,
   initialAuthed,
   initialContacts,
   initialFavorite = false,
-  unlockPriceLabel,
 }: PanelProps) {
   const reduce = useReducedMotion();
   const [contacts, setContacts] = useState<SpecialistContacts | null>(
@@ -82,16 +76,9 @@ export function UnlockPanel({
     startTransition(async () => {
       const result = await unlockContacts({ slug: s.slug });
       if (result.ok) {
-        if ("redirectUrl" in result && result.redirectUrl) {
-          // провайдер требует оплату на своей стороне
-          window.location.href = result.redirectUrl;
-          return;
-        }
-        if ("contacts" in result && result.contacts) setContacts(result.contacts);
+        setContacts(result.contacts);
       } else if (result.error === "unauthorized") {
         setGuestModal(true);
-      } else if (result.error === "payment_failed") {
-        setError("Оплата не прошла. Попробуйте ещё раз или выберите другой способ.");
       } else if (result.error === "no_contacts") {
         setError("У специалиста не указан телефон — контакты недоступны.");
       } else {
@@ -138,11 +125,8 @@ export function UnlockPanel({
                 Откройте контакты, чтобы связаться напрямую — телефон, Telegram и
                 WhatsApp.
               </p>
-              <p className="mt-4 font-display text-3xl font-medium text-ink">
-                {unlockPriceLabel}
-              </p>
-              <p className="mt-2 text-sm text-ink-soft">
-                Разовая оплата за этот контакт. Повторный доступ — бесплатно.
+              <p className="mt-3 text-sm text-ink-soft">
+                Бесплатно — нужен только аккаунт.
               </p>
               <div className="mt-6 grid gap-3">
                 <button
@@ -151,7 +135,7 @@ export function UnlockPanel({
                   disabled={pending}
                   className="label-caps inline-flex min-h-12 items-center justify-center bg-ink px-6 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px disabled:opacity-70"
                 >
-                  {pending ? "Открываем…" : "Оплатить и открыть контакты"}
+                  {pending ? "Открываем…" : "Открыть контакты"}
                 </button>
                 {favoriteButton}
               </div>
@@ -161,8 +145,7 @@ export function UnlockPanel({
                 </p>
               )}
               <p className="mt-6 border-t border-line pt-5 text-xs leading-relaxed text-ink-soft">
-                После оплаты контакты останутся доступны в вашем кабинете —
-                платить второй раз за того же специалиста не нужно.
+                Контакты останутся доступны в вашем кабинете.
               </p>
             </>
           ) : (
@@ -238,7 +221,7 @@ export function UnlockPanel({
             disabled={pending}
             className="label-caps inline-flex min-h-11 shrink-0 items-center bg-ink px-5 text-cream active:translate-y-px disabled:opacity-70"
           >
-            Оплатить и открыть
+            Открыть контакты
           </button>
         )}
       </div>
@@ -282,8 +265,8 @@ export function UnlockPanel({
                 Для доступа к контактам нужно зарегистрироваться
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                Регистрация бесплатна и занимает минуту. Доступ к контактам
-                специалиста оплачивается отдельно — {unlockPriceLabel} за контакт.
+                Это бесплатно и занимает минуту: подтвердите почту кодом — и
+                контакты специалистов будут открываться в один клик.
               </p>
 
               <div className="mt-6 flex items-center gap-4 border border-line bg-paper p-4">

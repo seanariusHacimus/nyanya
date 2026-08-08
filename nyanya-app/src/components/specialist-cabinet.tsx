@@ -20,7 +20,7 @@ import {
   NotificationHeading,
   NotificationList,
 } from "@/components/notification-list";
-import { verificationSteps } from "@/content/verification-steps";
+import { stepsForCategory } from "@/content/verification-steps";
 import type { CabinetData, CabinetProfile } from "@/lib/queries/specialist-cabinet";
 import {
   saveSpecialistProfile,
@@ -42,7 +42,7 @@ const banners = {
   draft: {
     icon: Circle,
     title: "Черновик",
-    text: "Заполните анкету и пройдите шесть шагов верификации — затем отправьте всё на проверку модератору.",
+    text: "Заполните анкету и загрузите обязательные документы — затем отправьте всё на проверку модератору.",
     box: "border-line bg-paper",
   },
   pending_review: {
@@ -100,12 +100,25 @@ export function SpecialistCabinet({
   const banner = banners[data.status];
   const BannerIcon = banner.icon;
 
-  const uploadedCount = useMemo(
-    () =>
-      verificationSteps.filter((s) => steps[s.key]?.status !== "empty").length,
-    [steps]
+  // перечень зависит от категории: водителю добавляется удостоверение
+  const applicableSteps = useMemo(
+    () => stepsForCategory(profile.category),
+    [profile.category]
   );
-  const progress = Math.round((uploadedCount / verificationSteps.length) * 100);
+  const requiredSteps = useMemo(
+    () => applicableSteps.filter((s) => s.required),
+    [applicableSteps]
+  );
+  // на проверку пускают обязательные документы; рекомендуемые нужны только
+  // для «Премиум-проверен», поэтому в прогресс отправки не входят
+  const uploadedRequired = useMemo(
+    () => requiredSteps.filter((s) => steps[s.key]?.status !== "empty").length,
+    [requiredSteps, steps]
+  );
+  const requiredReady = uploadedRequired === requiredSteps.length;
+  const progress = requiredSteps.length
+    ? Math.round((uploadedRequired / requiredSteps.length) * 100)
+    : 0;
 
   const profileReady =
     profile.fullName.trim().length > 1 &&
@@ -113,8 +126,7 @@ export function SpecialistCabinet({
     Boolean(profile.districtId) &&
     profile.description.trim().length > 0 &&
     profile.priceAmount > 0;
-  const canSubmit =
-    !locked && profileReady && uploadedCount === verificationSteps.length;
+  const canSubmit = !locked && profileReady && requiredReady;
 
   const set = <K extends keyof CabinetProfile>(
     key: K,
@@ -151,7 +163,7 @@ export function SpecialistCabinet({
           result.error === "profile_incomplete"
             ? "Заполните обязательные поля анкеты: имя, дата рождения, район, стоимость и рассказ о себе."
             : result.error === "documents_missing"
-              ? "Загрузите файлы на всех шести шагах верификации."
+              ? "Загрузите все обязательные документы — без них анкету нельзя отправить на проверку."
               : "Не удалось отправить анкету. Попробуйте ещё раз."
         );
       }
@@ -243,12 +255,14 @@ export function SpecialistCabinet({
               Верификация
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
-              Шесть шагов — по одному документу на каждый. Файлы видят только вы
-              и модератор; в каталоге показывается лишь ваша фотография.
+              Обязательные документы нужны для публикации и значка «Проверен»;
+              рекомендуемые поднимают анкету до «Премиум-проверен». Файлы видят
+              только вы и модератор — в каталоге показывается лишь ваша
+              фотография.
             </p>
           </div>
           <p className="font-display text-2xl font-medium text-bronze-text">
-            {uploadedCount} из {verificationSteps.length}
+            {uploadedRequired} из {requiredSteps.length}
           </p>
         </div>
 
@@ -274,7 +288,7 @@ export function SpecialistCabinet({
         )}
 
         <ul className="mt-8 space-y-4">
-          {verificationSteps.map((step, i) => (
+          {applicableSteps.map((step, i) => (
             <VerificationStepCard
               key={step.key}
               step={step}
@@ -552,19 +566,14 @@ export function SpecialistCabinet({
             </span>
           </li>
           <li className="flex items-center gap-2.5">
-            {uploadedCount === verificationSteps.length ? (
+            {requiredReady ? (
               <CheckCircle size={16} weight="fill" className="text-bronze" />
             ) : (
               <Circle size={16} className="text-ink-faint" />
             )}
-            <span
-              className={
-                uploadedCount === verificationSteps.length
-                  ? "text-ink"
-                  : "text-ink-soft"
-              }
-            >
-              Загружены все документы ({uploadedCount} из {verificationSteps.length})
+            <span className={requiredReady ? "text-ink" : "text-ink-soft"}>
+              Загружены обязательные документы ({uploadedRequired} из{" "}
+              {requiredSteps.length})
             </span>
           </li>
         </ul>

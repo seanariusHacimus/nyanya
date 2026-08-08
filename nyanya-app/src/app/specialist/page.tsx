@@ -27,7 +27,7 @@ export default async function SpecialistPage() {
             Раздел для специалистов
           </h1>
           <p className="mx-auto mt-5 max-w-md text-lg leading-relaxed text-ink-soft">
-            Вы вошли как родитель. Анкеты размещают няни, сиделки, репетиторы и
+            Вы вошли как родитель. Анкеты размещают няни, сиделки, помощники по хозяйству и
             водители.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-5">

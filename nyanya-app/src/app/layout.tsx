@@ -19,8 +19,8 @@ const golos = Golos_Text({
 
 export const metadata: Metadata = {
   title: {
-    default: "NYANYA.UZ — жизнь без забот",
-    template: "%s — NYANYA.UZ",
+    default: "nyanya.uz — жизнь без забот",
+    template: "%s — nyanya.uz",
   },
   description:
     "Премиальная платформа по поиску домашнего персонала в Ташкенте: няни, сиделки, помощники по хозяйству и водители. Только подтверждённые анкеты специалистов.",

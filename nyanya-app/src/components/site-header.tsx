@@ -78,8 +78,8 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-line bg-cream/90 backdrop-blur-md">
       <div className="mx-auto flex h-18 max-w-[1400px] items-center justify-between gap-4 px-5 sm:px-8 xl:gap-6">
         <Link href="/" className="shrink-0 leading-none">
-          <span className="font-display block text-xl font-semibold tracking-[0.08em] whitespace-nowrap text-ink">
-            NYANYA.UZ
+          <span className="font-display block text-xl font-medium tracking-[0.02em] whitespace-nowrap text-ink lowercase">
+            nyanya.uz
           </span>
           {/* Слоган под логотипом — строчными, мелко. Короткий, поэтому виден
               и на мобильном, в отличие от прежней длинной строки-позиционирования */}

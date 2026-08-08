@@ -1,17 +1,15 @@
 /**
- * Приём формы обращения (§15 CT3) и отправка в Telegram.
+ * Приём формы обращения (§15 CT3) и отправка владельцу на почту.
  *
- * Работает на сервере Next.js — токен бота живёт в переменных окружения
- * Railway и никогда не попадает в браузер. Отдельный бэкенд не нужен.
- *
- * Переменные окружения:
- *   TELEGRAM_BOT_TOKEN — токен из @BotFather
- *   TELEGRAM_CHAT_ID   — id чата/группы, куда слать обращения
+ * Раньше обращения уходили в Telegram, но токен бота так и не был задан —
+ * маршрут отвечал 503, а форма показывала посетителю ошибку и просила
+ * написать на почту, которой на сайте уже нет. Теперь письмо отправляется
+ * через Resend с подтверждённого домена, адрес получателя — CONTACT_EMAIL_TO.
  */
+import { sendContactMessage } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
-const TELEGRAM_API = "https://api.telegram.org";
 const LIMITS = { name: 100, contact: 120, message: 2000 };
 
 /** Простое окно частоты: не больше 5 обращений с одного IP за 10 минут. */
@@ -33,25 +31,7 @@ function rateLimited(ip: string): boolean {
   return recent.length > MAX_PER_WINDOW;
 }
 
-/** Экранирование под parse_mode=HTML — текст пользователя не должен ломать разметку. */
-function esc(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
 export async function POST(request: Request) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-
-  if (!token || !chatId) {
-    return Response.json(
-      { ok: false, error: "not_configured" },
-      { status: 503 }
-    );
-  }
-
   let payload: unknown;
   try {
     payload = await request.json();
@@ -90,42 +70,11 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "rate_limited" }, { status: 429 });
   }
 
-  const text = [
-    "<b>Новое обращение с сайта</b>",
-    "",
-    `<b>Имя:</b> ${esc(name)}`,
-    `<b>Контакт:</b> ${esc(contact)}`,
-    "",
-    esc(message),
-  ].join("\n");
-
   try {
-    const response = await fetch(`${TELEGRAM_API}/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-      }),
-      signal: AbortSignal.timeout(10_000),
-    });
-
-    if (!response.ok) {
-      const detail = await response.text();
-      console.error("[contact] telegram error", response.status, detail);
-      return Response.json(
-        { ok: false, error: "telegram_failed" },
-        { status: 502 }
-      );
-    }
+    await sendContactMessage({ name, contact, message });
   } catch (error) {
-    console.error("[contact] telegram request failed", error);
-    return Response.json(
-      { ok: false, error: "telegram_unreachable" },
-      { status: 502 }
-    );
+    console.error("[contact] не удалось отправить письмо", error);
+    return Response.json({ ok: false, error: "send_failed" }, { status: 502 });
   }
 
   return Response.json({ ok: true });

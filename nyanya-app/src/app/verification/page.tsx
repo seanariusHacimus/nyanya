@@ -7,6 +7,7 @@ import {
   Star,
 } from "@phosphor-icons/react/dist/ssr";
 import { PageHero } from "@/components/ui/page-hero";
+import { verificationSteps } from "@/content/verification-steps";
 import { ButtonLink } from "@/components/ui/button-link";
 import { TrustScore } from "@/components/ui/trust-score";
 import { Reveal } from "@/components/reveal";
@@ -36,13 +37,19 @@ const stages = [
   },
 ];
 
-// §14 V3 — документы по категориям
-const docsByCategory = [
-  { category: "Няня", docs: "Паспорт · медицинские справки (терапевт, психиатр, анализы)" },
-  { category: "Сиделка", docs: "Паспорт · медицинские справки" },
-  { category: "Помощник по хозяйству", docs: "Паспорт · дипломы и сертификаты (рекомендуется)" },
-  { category: "Водитель", docs: "Паспорт · водительское удостоверение" },
-];
+/**
+ * §14 V3 — перечень документов. Один и тот же для всех категорий; отличается
+ * только водительское удостоверение. Названия берём из общего источника
+ * (content/verification-steps.ts), чтобы список на сайте не разошёлся с тем,
+ * что специалист реально загружает в кабинете.
+ */
+const requiredDocs = verificationSteps.filter(
+  (s) => s.required && !s.categories && s.key !== "profile_photo"
+);
+const driverDocs = verificationSteps.filter(
+  (s) => s.categories?.includes("driver")
+);
+const optionalDocs = verificationSteps.filter((s) => !s.required);
 
 export default function VerificationPage() {
   return (
@@ -93,21 +100,45 @@ export default function VerificationPage() {
             <h2 className="max-w-md font-display text-3xl leading-[1.12] font-medium text-ink sm:text-4xl">
               Какие документы проверяются
             </h2>
-            <dl className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2">
-              {docsByCategory.map((row) => (
-                <div key={row.category} className="border-l border-bronze/40 pl-6">
-                  <dt className="text-base font-semibold text-ink">
-                    {row.category}
-                  </dt>
-                  <dd className="mt-2 text-sm leading-relaxed text-ink-soft">
-                    {row.docs}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            <p className="mt-10 text-sm text-ink-soft">
-              Рекомендации предыдущих семей — по желанию, для всех категорий.
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-ink-soft">
+              Перечень одинаковый для всех категорий. Отличие одно: водителям
+              дополнительно нужно водительское удостоверение.
             </p>
+
+            <div className="mt-10 grid gap-10 lg:grid-cols-2">
+              <div>
+                <p className="label-caps text-bronze-text">Обязательные</p>
+                <ul className="mt-5 space-y-4">
+                  {requiredDocs.map((doc) => (
+                    <li key={doc.key} className="border-l border-bronze/40 pl-6">
+                      <p className="text-base font-semibold text-ink">{doc.title}</p>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-6 border-l border-bronze/40 pl-6 text-sm leading-relaxed text-ink-soft">
+                  Для водителей дополнительно:{" "}
+                  <span className="font-semibold text-ink">
+                    {driverDocs.map((d) => d.title).join(", ").toLowerCase()}
+                  </span>
+                  .
+                </p>
+              </div>
+
+              <div>
+                <p className="label-caps text-bronze-text">Рекомендуемые</p>
+                <ul className="mt-5 space-y-4">
+                  {optionalDocs.map((doc) => (
+                    <li key={doc.key} className="border-l border-line pl-6">
+                      <p className="text-base text-ink">{doc.title}</p>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-6 text-sm leading-relaxed text-ink-soft">
+                  Не обязательны, но именно они дают статус
+                  «Премиум-проверен».
+                </p>
+              </div>
+            </div>
           </div>
         </Reveal>
       </section>
@@ -123,16 +154,16 @@ export default function VerificationPage() {
               <ShieldCheck size={36} weight="thin" className="text-bronze" />
               <h3 className="mt-6 text-base font-semibold text-ink">Проверен</h3>
               <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                Личность и обязательные документы подтверждены модератором.
+                Модератор принял все обязательные документы.
               </p>
             </div>
             <div className="sm:border-l sm:border-line sm:px-8 lg:px-10">
               <Star size={36} weight="thin" className="text-bronze" />
               <h3 className="mt-6 text-base font-semibold text-ink">
-                Премиум-проверка
+                Премиум-проверен
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                Полный пакет документов и рекомендации предыдущих семей.
+                Приняты все документы — и обязательные, и рекомендуемые.
               </p>
             </div>
           </div>

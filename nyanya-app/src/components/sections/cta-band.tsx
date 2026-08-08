@@ -4,7 +4,7 @@ import { Reveal } from "@/components/reveal";
 import { ButtonLink } from "@/components/ui/button-link";
 
 /**
- * ⛳ D3: «10 000 семей» — строка-заглушка, заменить реальной метрикой до запуска.
+ * Полоса-призыв в конце главной. Выдуманных цифр здесь нет и быть не должно.
  * D4: две кнопки — для семей и для специалистов.
  */
 export function CtaBand() {

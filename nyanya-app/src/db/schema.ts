@@ -56,6 +56,10 @@ export const documentTypeEnum = pgEnum("document_type", [
   // шаги верификации специалиста (2026-07)
   "criminal_record",
   "narcology",
+  // единый перечень документов (2026-08): ВИЧ, ЗППП и права водителя
+  "medical_hiv",
+  "medical_std",
+  "driver_license",
 ]);
 export const documentStatusEnum = pgEnum("document_status", [
   "pending",

@@ -44,11 +44,14 @@ export type AdminProfileRow = {
   slug: string | null;
   moderationNote: string | null;
   banned: boolean;
-  /** Сколько обязательных документов принято — публикация требует полного комплекта. */
+  /** Принято обязательных документов из скольких — публикация требует всех. */
   approvedDocuments: number;
   requiredDocuments: number;
-  /** Названия шагов, мешающих публикации (не загружены, ждут проверки, отклонены). */
+  /** Названия обязательных шагов, мешающих публикации. */
   blockingSteps: string;
+  /** Сколько рекомендуемых принято — от них зависит «Премиум-проверен». */
+  approvedOptional: number;
+  optionalDocuments: number;
 };
 
 export type AdminDocumentRow = {
@@ -201,16 +204,14 @@ export async function getAdminData(): Promise<AdminData> {
       conversion: parents ? Math.round((unlockingParents / parents) * 100) : 0,
     },
     profiles: profileRows.map((p) => {
-      const summary = summarizeDocuments(docsByProfile.get(p.id) ?? []);
+      const summary = summarizeDocuments(docsByProfile.get(p.id) ?? [], p.category);
       return {
         ...p,
-        approvedDocuments: summary.approvedCount,
+        approvedDocuments: summary.approvedRequired.length,
         requiredDocuments: summary.requiredCount,
-        blockingSteps: stepTitles([
-          ...summary.missing,
-          ...summary.pending,
-          ...summary.rejected,
-        ]),
+        blockingSteps: stepTitles(summary.blockingRequired),
+        approvedOptional: summary.approvedOptional.length,
+        optionalDocuments: summary.optionalCount,
       };
     }),
     documentQueue: documentRows.map((d) => ({

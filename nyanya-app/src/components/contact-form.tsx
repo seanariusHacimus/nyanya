@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { CheckCircle, CircleNotch, Warning } from "@phosphor-icons/react";
-import { footer } from "@/content/home";
 
 type State = "idle" | "sending" | "sent" | "error";
 
@@ -11,7 +10,7 @@ const inputClass =
 
 /**
  * §15 CT3 — форма обращения. Отправляется на /api/contact, оттуда сервер
- * пересылает сообщение в Telegram (токен бота остаётся на сервере).
+ * письмом через Resend на адрес владельца (CONTACT_EMAIL_TO).
  */
 export function ContactForm() {
   const [state, setState] = useState<State>("idle");
@@ -63,12 +62,12 @@ export function ContactForm() {
           setErrorText(
             json.error === "rate_limited"
               ? "Слишком много обращений подряд. Попробуйте через несколько минут."
-              : `Не удалось отправить сообщение. Напишите нам на ${footer.email.label} — ответим так же быстро.`
+              : "Не удалось отправить сообщение. Попробуйте ещё раз через минуту."
           );
         } catch {
           setState("error");
           setErrorText(
-            `Не удалось отправить сообщение. Напишите нам на ${footer.email.label} — ответим так же быстро.`
+            "Не удалось отправить сообщение. Попробуйте ещё раз через минуту."
           );
         }
       }}

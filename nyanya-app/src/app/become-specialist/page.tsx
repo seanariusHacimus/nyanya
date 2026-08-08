@@ -14,7 +14,7 @@ import {
   GraduationCap,
   EnvelopeSimple,
 } from "@phosphor-icons/react/dist/ssr";
-import { getSpecialistBySlug } from "@/lib/queries/specialists";
+import { getActiveSpecialists } from "@/lib/queries/specialists";
 import { SpecialistCard } from "@/components/specialist-card";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Accordion } from "@/components/ui/accordion";
@@ -77,28 +77,32 @@ const steps = [
   },
 ];
 
-// §7.5 — какие документы нужны
+/**
+ * §7.5 — какие документы нужны. Перечень одинаковый для всех категорий;
+ * водителям добавляется удостоверение. Полный список с формулировками —
+ * в content/verification-steps.ts и на странице «Проверка специалистов».
+ */
 const documents = [
-  { icon: IdentificationCard, title: "Паспорт", text: "Для всех специалистов." },
-  { icon: FirstAid, title: "Медицинские справки", text: "Для нянь и сиделок." },
+  {
+    icon: IdentificationCard,
+    title: "Паспорт или ID-карта",
+    text: "Обязательно, для всех категорий.",
+  },
+  {
+    icon: FirstAid,
+    title: "Медицинские справки",
+    text: "Сертификат об отсутствии ВИЧ/СПИД — обязательно. ЗППП, туберкулёз и общее состояние здоровья — рекомендуются.",
+  },
   {
     icon: GraduationCap,
-    title: "Дипломы и сертификаты",
-    text: "Подтверждают квалификацию.",
+    title: "Справка из психоневрологического и наркологического диспансеров",
+    text: "Обязательно, для всех категорий.",
   },
   {
     icon: EnvelopeSimple,
-    title: "Рекомендации",
-    text: "По желанию, повышают доверие.",
+    title: "Справка об отсутствии судимости",
+    text: "Обязательно. Водителям дополнительно — водительское удостоверение.",
   },
-];
-
-// §7.7 — диапазоны заработка (D23: публикуем, данные из каталога)
-const earnings = [
-  { category: "Няни", range: "22 000–45 000 сум/час" },
-  { category: "Помощники по хозяйству", range: "до 70 000 сум/час" },
-  { category: "Сиделки", range: "350 000–400 000 сум/день" },
-  { category: "Водители", range: "25 000–35 000 сум/час" },
 ];
 
 // §7.9 — FAQ для специалистов
@@ -130,7 +134,9 @@ const faq = [
 ];
 
 export default async function BecomeSpecialistPage() {
-  const example = await getSpecialistBySlug("sevara-toshpulatova");
+  // показываем настоящую опубликованную анкету, а не заранее выбранную:
+  // пока каталог пуст, блок «Так выглядит ваша анкета» просто не выводится
+  const [example] = await getActiveSpecialists();
 
   return (
     <main className="flex-1">
@@ -139,7 +145,7 @@ export default async function BecomeSpecialistPage() {
         <div className="grid items-center gap-12 pt-10 pb-16 lg:grid-cols-2 lg:gap-10 lg:pt-16 lg:pb-24">
           <div className="max-w-xl">
             <p className="label-caps text-bronze-text">
-              Для нянь · сиделок · репетиторов · водителей
+              Для нянь · сиделок · помощников по хозяйству · водителей
             </p>
             <h1 className="mt-6 font-display text-[2.75rem] leading-[1.06] font-medium tracking-[-0.01em] text-ink sm:text-5xl xl:text-6xl">
               Работайте с семьями, которые вам доверяют
@@ -276,27 +282,6 @@ export default async function BecomeSpecialistPage() {
         )}
       </section>
 
-      {/* S6 — сколько зарабатывают (D23) */}
-      <section className="mx-auto max-w-[1400px] px-5 py-20 sm:px-8 lg:py-28">
-        <Reveal className="grid gap-10 lg:grid-cols-[1fr_2fr] lg:gap-20">
-          <h2 className="max-w-[14ch] font-display text-3xl leading-[1.12] font-medium text-ink sm:text-4xl">
-            Сколько зарабатывают специалисты
-          </h2>
-          <div>
-            <dl className="grid gap-x-10 gap-y-8 sm:grid-cols-2">
-              {earnings.map((row) => (
-                <div key={row.category} className="border-l border-bronze/40 pl-6">
-                  <dt className="label-caps text-ink-faint">{row.category}</dt>
-                  <dd className="mt-2 font-display text-xl font-medium text-ink">
-                    {row.range}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            <p className="mt-8 text-sm text-ink-soft">Цену вы устанавливаете сами.</p>
-          </div>
-        </Reveal>
-      </section>
 
       {/* S7 — условия размещения (⛳ D22: бесплатно) */}
       <section className="mx-auto max-w-[1400px] px-5 sm:px-8">

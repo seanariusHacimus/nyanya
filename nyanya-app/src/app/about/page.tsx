@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { ShieldCheck, Gauge, ChatsCircle } from "@phosphor-icons/react/dist/ssr";
 import { trustFeatures } from "@/content/home";
-import { specialists, districts } from "@/content/specialists";
+import { districts } from "@/content/specialists";
+import { getActiveSpecialists } from "@/lib/queries/specialists";
 import { PageHero } from "@/components/ui/page-hero";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Reveal } from "@/components/reveal";
 
+export const dynamic = "force-dynamic"; // число анкет читается из PostgreSQL
+
 export const metadata = {
   title: "О сервисе",
   description:
-    "nyanya.uz — премиальный сервис подбора проверенных специалистов для семьи в Ташкенте: няни, сиделки, репетиторы и водители.",
+    "nyanya.uz — премиальный сервис подбора проверенных специалистов для семьи в Ташкенте: няни, сиделки, помощники по хозяйству и водители.",
 };
 
 const icons = {
@@ -18,14 +21,24 @@ const icons = {
   chat: ChatsCircle,
 } as const;
 
-// §18 O3 — только реальные цифры (дисциплина D3)
-const numbers = [
-  { value: "4", label: "категории специалистов" },
-  { value: String(districts.length), label: "районов Ташкента" },
-  { value: String(specialists.length), label: "анкет в каталоге" },
-];
+/**
+ * §18 O3 — только реальные цифры (дисциплина D3). Число анкет берём из базы:
+ * жёсткая константа врала бы при пустом каталоге. Пока анкет нет, показываем
+ * две цифры вместо трёх, а не ноль.
+ */
+async function realNumbers() {
+  const active = await getActiveSpecialists();
+  return [
+    { value: "4", label: "категории специалистов" },
+    { value: String(districts.length), label: "районов Ташкента" },
+    ...(active.length
+      ? [{ value: String(active.length), label: "анкет в каталоге" }]
+      : []),
+  ];
+}
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const numbers = await realNumbers();
   return (
     <main className="flex-1">
       <PageHero title="О сервисе" />

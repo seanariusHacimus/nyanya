@@ -7,7 +7,7 @@ import { Reveal } from "@/components/reveal";
 export const metadata = {
   title: "Блог",
   description:
-    "О доверии, заботе и правильном выборе: как выбирать няню, сиделку, репетитора и водителя — советы nyanya.uz.",
+    "О доверии, заботе и правильном выборе: как выбирать няню, сиделку, помощника по хозяйству и водителя — советы nyanya.uz.",
 };
 
 export default function BlogPage() {

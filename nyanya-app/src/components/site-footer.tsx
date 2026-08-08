@@ -10,9 +10,9 @@ export function SiteFooter() {
           <div className="md:col-span-3 lg:col-span-1">
             <Link
               href="/"
-              className="font-display text-xl font-semibold tracking-[0.08em] text-cream"
+              className="font-display text-xl font-medium tracking-[0.02em] text-cream lowercase"
             >
-              NYANYA.UZ
+              nyanya.uz
             </Link>
             <p className="mt-3 font-display text-2xl leading-snug font-medium text-bronze-soft">
               {footer.slogan}

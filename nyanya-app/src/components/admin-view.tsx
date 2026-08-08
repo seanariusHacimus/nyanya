@@ -16,14 +16,13 @@ import type {
   AdminData,
   AdminProfileRow,
   ProfileStatus,
-  VerificationLevel,
 } from "@/lib/queries/admin";
 import { categories } from "@/lib/specialists-shared";
+import { VERIFICATION_LABEL } from "@/lib/verification";
 import { stepByKey } from "@/content/verification-steps";
 import {
   moderateProfile,
   reviewDocument,
-  setPremiumVerification,
   setUserBlocked,
 } from "@/lib/actions/admin";
 import { RejectionForm } from "@/components/admin/rejection-form";
@@ -37,12 +36,6 @@ const STATUS_LABEL: Record<ProfileStatus, { text: string; cls: string }> = {
   rejected: { text: "Отклонена", cls: "text-[#a5462f]" },
 };
 
-const VERIFICATION_LABEL: Record<VerificationLevel, string> = {
-  unverified: "Не проверен",
-  verified: "Проверен",
-  premium_verified: "Премиум-проверка",
-};
-
 const ERROR_TEXT: Record<string, string> = {
   unauthorized: "Сессия истекла — войдите заново.",
   forbidden: "Недостаточно прав.",
@@ -53,7 +46,7 @@ const ERROR_TEXT: Record<string, string> = {
   admin_target: "Администратора заблокировать нельзя.",
   ban_failed: "Не удалось изменить блокировку.",
   documents_not_approved:
-    "Нельзя опубликовать: не все документы приняты. В каталоге значок только «Проверен», поэтому анкета с непринятыми документами вводила бы семьи в заблуждение.",
+    "Нельзя опубликовать: приняты не все обязательные документы. Значок в каталоге утверждает, что специалист проверен.",
 };
 
 const ROLE_LABEL: Record<string, string> = {
@@ -243,13 +236,6 @@ export function AdminView({
                           : action === "hide"
                             ? `Анкета «${p.fullName}» скрыта`
                             : `Анкета «${p.fullName}» отклонена`
-                      )
-                    }
-                    onPremium={(premium) =>
-                      run(
-                        p.id,
-                        () => setPremiumVerification({ profileId: p.id, premium }),
-                        premium ? "Премиум выдан" : "Премиум снят"
                       )
                     }
                   />
@@ -479,7 +465,6 @@ function ProfileRow({
   onStartReject,
   onCancelReject,
   onModerate,
-  onPremium,
 }: {
   profile: AdminProfileRow;
   busy: boolean;
@@ -488,10 +473,8 @@ function ProfileRow({
   onStartReject: () => void;
   onCancelReject: () => void;
   onModerate: (action: "publish" | "hide" | "reject", note?: string) => void;
-  onPremium: (premium: boolean) => void;
 }) {
   const status = STATUS_LABEL[profile.status];
-  const isPremium = profile.verificationLevel === "premium_verified";
   // публикация и премиум возможны только при полном комплекте принятых документов
   const docsReady = profile.approvedDocuments === profile.requiredDocuments;
 
@@ -520,12 +503,11 @@ function ProfileRow({
         )}
       </td>
       <td className="py-4 pr-6">
-        <span
-          className={
-            docsReady ? "text-bronze-text" : "text-[#a5462f]"
-          }
-        >
+        <span className={docsReady ? "text-bronze-text" : "text-[#a5462f]"}>
           {profile.approvedDocuments}/{profile.requiredDocuments}
+        </span>
+        <span className="mt-1 block text-xs text-ink-faint">
+          доп. {profile.approvedOptional}/{profile.optionalDocuments}
         </span>
         {!docsReady && profile.blockingSteps && (
           <span className="mt-1 block max-w-56 text-xs text-ink-faint">
@@ -547,19 +529,6 @@ function ProfileRow({
           />
         ) : (
           <span className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={busy || (!isPremium && !docsReady)}
-              title={
-                !isPremium && !docsReady
-                  ? "Премиум доступен только при всех принятых документах"
-                  : undefined
-              }
-              onClick={() => onPremium(!isPremium)}
-              className={actionButton}
-            >
-              {isPremium ? "Снять премиум" : "Премиум"}
-            </button>
             {profile.status === "active" ? (
               <button
                 type="button"

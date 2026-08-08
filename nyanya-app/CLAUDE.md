@@ -6,15 +6,11 @@ Marketplace connecting families in **Tashkent** with nannies, caregivers, househ
 drivers. It is **not** a booking or escrow platform: it publishes verified specialist profiles and
 lets a family open a specialist's contacts.
 
-Opening contacts is **paid** — a one-off charge per specialist (`UNLOCK_FEE_UZS`, default 29 000
-sum), decided 2026-08-03. A `payments` row is created first and contacts are released only once it
-reaches `paid`; `contact_unlocks.payment_id` links the two. Repeat access to an
-already-purchased specialist is free and creates no new payment. Browsing the catalogue and
-listing a profile as a specialist remain free.
-
-The only payment provider implemented is `mock`, which confirms instantly — see
-`src/lib/payments/`. `resolveProvider()` throws on any other value rather than falling back, so a
-misconfigured `PAYMENT_PROVIDER` cannot silently give contacts away.
+**The service is free.** Opening contacts costs nothing — a logged-in family presses the button
+and sees the phone, Telegram and WhatsApp. Payment for contacts was introduced 2026-08-03 and
+removed 2026-08-08 by the owner; `src/lib/payments/` is gone and no page may mention price,
+payment or «оплатить». The `payments` table and `contact_unlocks.payment_id` still exist in the
+schema but are unused — nothing writes to them.
 
 The `tutor` category key is still `tutor` in the database, but is labelled **«Помощник по
 хозяйству»** in the interface.
@@ -50,7 +46,11 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   `/api/documents/[...key]`, which checks owner-or-admin. Profile photos are the one public
   exception.
 - **Verification steps have a single source of truth**: `src/content/verification-steps.ts`, used
-  by the specialist form, the server actions and the admin queue.
+  by the specialist form, the server actions, the admin queue and the public pages. Steps are
+  **required or recommended**, and the list is **category-aware** (`stepsForCategory`) — only
+  drivers see the licence. Publication requires every *required* step approved; a profile with
+  every step approved, recommended included, becomes «Премиум-проверен».
+  `deriveVerificationLevel` computes the badge — it is never set by hand.
 - **DB**: `src/db/schema.ts`; auth tables in `src/db/auth-schema.ts` (Better Auth column keys are
   camelCase so the Drizzle adapter resolves them). Local = Postgres on 5434, prod = Railway.
 
