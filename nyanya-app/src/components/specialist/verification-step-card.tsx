@@ -64,9 +64,15 @@ export function VerificationStepCard({
   state,
   locked,
   onChange,
+  /**
+   * `screen` — карточка внутри полноэкранного мастера: название и описание
+   * шага там уже стоят в заголовке экрана, повторять их незачем.
+   */
+  variant = "list",
 }: {
   step: VerificationStep;
   index: number;
+  variant?: "list" | "screen";
   state: StepState;
   /** во время модерации менять документы нельзя */
   locked: boolean;
@@ -138,20 +144,24 @@ export function VerificationStepCard({
       className={`border p-6 transition-colors duration-300 sm:p-7 ${meta.box}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-4">
-          <span
-            aria-hidden="true"
-            className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-bronze/50 font-display text-sm text-bronze-text"
-          >
-            {String(index + 1).padStart(2, "0")}
-          </span>
-          <div className="min-w-0">
-            <h3 className="text-base font-semibold text-ink">{step.title}</h3>
-            <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
-              {step.description}
-            </p>
+        {variant === "list" ? (
+          <div className="flex min-w-0 items-start gap-4">
+            <span
+              aria-hidden="true"
+              className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-bronze/50 font-display text-sm text-bronze-text"
+            >
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <div className="min-w-0">
+              <h3 className="text-base font-semibold text-ink">{step.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+                {step.description}
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <span />
+        )}
         <span
           className={`label-caps flex shrink-0 items-center gap-1.5 ${meta.tone}`}
         >
@@ -163,7 +173,7 @@ export function VerificationStepCard({
         </span>
       </div>
 
-      <ul className="mt-5 space-y-1.5 sm:ml-13">
+      <ul className={`mt-5 space-y-1.5 ${variant === "list" ? "sm:ml-13" : ""}`}>
         {step.hints.map((hint) => (
           <li key={hint} className="flex gap-2.5 text-xs text-ink-soft">
             <span
