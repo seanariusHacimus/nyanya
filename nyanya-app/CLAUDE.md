@@ -78,11 +78,14 @@ specialist sees in their cabinet.
 - **Email works** (since 2026-08-04): `nyanya.uz` is verified in Resend and `EMAIL_FROM` is set to
   `NYANYA.UZ <noreply@nyanya.uz>`. The production Resend key is send-only, so it cannot list
   domains or read delivery status — confirm delivery from the inbox, not the API.
-- **Login is email + password; the `emailOTP` plugin is still commented out** in `lib/auth.ts`. It
-  was disabled while mail was undeliverable; that reason is gone, so restoring it is now a
-  product decision rather than a blocker. There is still no password-recovery flow.
-- `BETTER_AUTH_SECRET` in production is still an unsubstituted placeholder.
-- `nyanya.uz` is not connected; the app is served from `nyanya-production.up.railway.app`.
+- **Signup is email-OTP, login is email + password.** The code proves the address once, at
+  registration; afterwards only the password is used. The password is written by `completeProfile`
+  (Better Auth has no public set-password endpoint) and only when none exists yet. There is still
+  no password-recovery flow.
+- `nyanya.uz` is connected. `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` point at `https://www.nyanya.uz`
+  (the apex still resolves to an old host for some resolvers). `trustedOrigins` in `lib/auth.ts`
+  lists apex, www and the Railway domain — Better Auth answers 403 INVALID_ORIGIN for anything
+  else, and `curl` will not reveal it because it sends no `Origin` header.
 - SMS is mocked; the Uzbekistan data-residency requirement for biometric/medical documents is
   unaddressed and remains the launch gate.
 
