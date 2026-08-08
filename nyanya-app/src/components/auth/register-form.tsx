@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { MagnifyingGlass, IdentificationBadge } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
 import { completeProfile } from "@/lib/actions/complete-profile";
+import { OtpStep } from "@/components/auth/otp-step";
 
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
@@ -13,16 +14,19 @@ const inputClass =
 const MIN_PASSWORD = 8; // должно совпадать с minPasswordLength в lib/auth.ts
 
 /**
- * §9 R2 — регистрация: роль + данные + пароль, аккаунт готов сразу.
+ * §9 R2 — регистрация в три шага: адрес → код из письма → остальные данные.
  *
- * ⛳ Подтверждения адреса нет: письма сейчас не доставляются, а проверка
- * почты заблокировала бы регистрацию полностью — см. lib/auth.ts.
+ * Код нужен только здесь: он подтверждает, что почта принадлежит человеку.
+ * `signIn.emailOtp` заводит аккаунт с подтверждённым адресом и открывает
+ * сессию, а пароль задаётся на последнем шаге — им пользователь и будет
+ * входить дальше, без кодов.
  */
 export function RegisterForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next");
 
+  const [step, setStep] = useState<"email" | "otp" | "details">("email");
   const [role, setRole] = useState<"parent" | "specialist">("parent");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,7 +35,40 @@ export function RegisterForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const submit = async () => {
+  /** Шаг 1 — отправка кода на указанный адрес. */
+  const sendCode = async () => {
+    setBusy(true);
+    setError(null);
+    const { error: sendError } = await authClient.emailOtp.sendVerificationOtp({
+      email,
+      type: "sign-in",
+    });
+    setBusy(false);
+    if (sendError) {
+      setError("Не удалось отправить код. Проверьте адрес и попробуйте ещё раз.");
+      return;
+    }
+    setStep("otp");
+  };
+
+  /** Шаг 2 — код заводит аккаунт с подтверждённой почтой и открывает сессию. */
+  const verify = async (code: string) => {
+    setBusy(true);
+    setError(null);
+    const { error: signInError } = await authClient.signIn.emailOtp({
+      email,
+      otp: code,
+    });
+    setBusy(false);
+    if (signInError) {
+      setError("Неверный или устаревший код. Попробуйте ещё раз.");
+      return;
+    }
+    setStep("details");
+  };
+
+  /** Шаг 3 — имя, телефон, роль и пароль для последующих входов. */
+  const submitDetails = async () => {
     if (password.length < MIN_PASSWORD) {
       setError(`Пароль должен быть не короче ${MIN_PASSWORD} символов.`);
       return;
@@ -39,30 +76,14 @@ export function RegisterForm() {
 
     setBusy(true);
     setError(null);
-
-    // autoSignIn: true — сессия появляется сразу, отдельный вход не нужен
-    const { error: signUpError } = await authClient.signUp.email({
-      email,
-      password,
-      name,
-    });
-
-    if (signUpError) {
+    const result = await completeProfile({ name, phone, role, password });
+    if (!result.ok) {
       setBusy(false);
-      setError(
-        signUpError.status === 422
-          ? "Этот адрес уже зарегистрирован — войдите."
-          : "Не удалось создать аккаунт. Проверьте данные и попробуйте ещё раз."
-      );
+      setError("Не удалось сохранить данные. Проверьте поля и попробуйте ещё раз.");
       return;
     }
-
-    // роль и телефон дописываются отдельным действием: Better Auth создаёт
-    // пользователя с ролью по умолчанию (parent)
-    const result = await completeProfile({ name, phone, role });
-    const finalRole = result.ok ? result.role : "parent";
     router.push(
-      finalRole === "specialist"
+      result.role === "specialist"
         ? "/specialist"
         : next && next.startsWith("/")
           ? next
@@ -70,14 +91,57 @@ export function RegisterForm() {
     );
   };
 
+  if (step === "otp") {
+    return (
+      <OtpStep
+        email={email}
+        busy={busy}
+        error={error}
+        onVerify={verify}
+        onResend={sendCode}
+        onChangeEmail={() => {
+          setStep("email");
+          setError(null);
+        }}
+      />
+    );
+  }
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        void submit();
+        void (step === "email" ? sendCode() : submitDetails());
       }}
       className="space-y-5"
     >
+      {step === "email" ? (
+        <>
+      <div className="grid gap-2">
+        <label htmlFor="reg-email" className="text-sm font-semibold text-ink">
+          Email
+        </label>
+        <input
+          id="reg-email"
+          type="email"
+          required
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={inputClass}
+          placeholder="you@example.com"
+        />
+      </div>
+          <p className="text-xs leading-relaxed text-ink-faint">
+            Пришлём код подтверждения. Пароль зададите на следующем шаге — им
+            и будете входить дальше.
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
+            Почта подтверждена: <span className="font-semibold text-ink">{email}</span>
+          </p>
       <div className="grid gap-2">
         <span className="text-sm font-semibold text-ink">Кто вы?</span>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -139,22 +203,6 @@ export function RegisterForm() {
       </div>
 
       <div className="grid gap-2">
-        <label htmlFor="reg-email" className="text-sm font-semibold text-ink">
-          Email
-        </label>
-        <input
-          id="reg-email"
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={inputClass}
-          placeholder="you@example.com"
-        />
-      </div>
-
-      <div className="grid gap-2">
         <label htmlFor="reg-password" className="text-sm font-semibold text-ink">
           Пароль
         </label>
@@ -190,6 +238,8 @@ export function RegisterForm() {
           placeholder="+998 __ ___ __ __"
         />
       </div>
+        </>
+      )}
 
       {error && (
         <p role="alert" className="text-sm text-[#a5462f]">
@@ -202,7 +252,13 @@ export function RegisterForm() {
         disabled={busy}
         className="label-caps inline-flex min-h-12 w-full items-center justify-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px disabled:opacity-70"
       >
-        {busy ? "Создаём аккаунт…" : "Создать аккаунт"}
+        {busy
+          ? step === "email"
+            ? "Отправляем код…"
+            : "Создаём аккаунт…"
+          : step === "email"
+            ? "Получить код"
+            : "Создать аккаунт"}
       </button>
 
       <p className="text-xs leading-relaxed text-ink-soft">

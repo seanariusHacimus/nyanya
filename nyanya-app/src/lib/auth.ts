@@ -1,27 +1,22 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin } from "better-auth/plugins";
-// import { emailOTP } from "better-auth/plugins";
+import { admin, emailOTP } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
 import { user, session, account, verification } from "@/db/auth-schema";
-// import { sendOtpEmail } from "@/lib/email";
+import { sendOtpEmail } from "@/lib/email";
 
 /**
- * Вход и регистрация — почта + пароль, подтверждение адреса не требуется.
+ * Код на почту — только при регистрации, вход — по паролю.
  *
- * ⛳ Временная конфигурация. Задумано было беспарольно (код на почту), но
- * доставка писем сейчас невозможна: в Resend нет подтверждённого домена,
- * поэтому отправка идёт с общего onboarding@resend.dev — Resend разрешает
- * его только владельцу аккаунта, а Gmail такие письма отклоняет. С кодом на
- * почту зарегистрироваться не мог никто.
+ * Регистрация: адрес → код из письма → `signIn.emailOtp` заводит аккаунт с
+ * уже подтверждённой почтой и сразу открывает сессию → пользователь задаёт
+ * имя, телефон и пароль (`completeProfile`). Дальше он входит паролем, и
+ * никакие коды больше не нужны.
  *
- * Как вернуть email-OTP, когда домен будет подтверждён:
- *   1. раскомментировать импорты emailOTP и sendOtpEmail и блок плагина ниже;
- *   2. раскомментировать emailOTPClient() в lib/auth-client.ts;
- *   3. вернуть шаг с кодом в формах входа и регистрации (см. components/auth/
- *      otp-step.tsx — компонент оставлен на месте);
- *   4. решить, что делать с уже заведёнными паролями (можно оставить оба входа).
+ * Подтверждение адреса при входе по паролю намеренно не требуется
+ * (`requireEmailVerification: false`): у аккаунтов, заведённых до этой схемы,
+ * почта не подтверждена, и включение проверки закрыло бы им вход.
  *
  * Роли: parent (по умолчанию) · specialist · admin (только вручную/сидом).
  */
@@ -78,16 +73,16 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    // emailOTP({
-    //   otpLength: 6,
-    //   // 10 минут: письмо может идти минуту-другую, а запрос нового кода
-    //   // аннулирует предыдущий — запас снижает шанс «устаревшего кода»
-    //   expiresIn: 600,
-    //   allowedAttempts: 5,
-    //   async sendVerificationOTP({ email, otp }) {
-    //     await sendOtpEmail(email, otp);
-    //   },
-    // }),
+    emailOTP({
+      otpLength: 6,
+      // 10 минут: письмо может идти минуту-другую, а запрос нового кода
+      // аннулирует предыдущий — запас снижает шанс «устаревшего кода»
+      expiresIn: 600,
+      allowedAttempts: 5,
+      async sendVerificationOTP({ email, otp }) {
+        await sendOtpEmail(email, otp);
+      },
+    }),
     admin({ adminRoles: ["admin"], defaultRole: "parent" }),
     nextCookies(), // должен оставаться последним
   ],
