@@ -7,7 +7,10 @@ import {
   Star,
 } from "@phosphor-icons/react/dist/ssr";
 import { PageHero } from "@/components/ui/page-hero";
-import { verificationSteps } from "@/content/verification-steps";
+import {
+  DOCUMENTS_PAUSED,
+  verificationSteps,
+} from "@/content/verification-steps";
 import { ButtonLink } from "@/components/ui/button-link";
 import { TrustScore } from "@/components/ui/trust-score";
 import { Reveal } from "@/components/reveal";
@@ -100,12 +103,34 @@ export default function VerificationPage() {
             <h2 className="max-w-md font-display text-3xl leading-[1.12] font-medium text-ink sm:text-4xl">
               Какие документы проверяются
             </h2>
-            <p className="mt-4 max-w-xl text-base leading-relaxed text-ink-soft">
-              Перечень одинаковый для всех категорий. Отличие одно: водителям
-              дополнительно нужно водительское удостоверение.
-            </p>
+            {DOCUMENTS_PAUSED ? (
+              <div className="mt-6 max-w-xl border-l-2 border-bronze bg-cream px-6 py-5">
+                <p className="text-base leading-relaxed text-ink">
+                  <span className="font-semibold">Сейчас мы запрашиваем только
+                  фотографию.</span>{" "}
+                  Сбор остальных документов временно приостановлен — перечень
+                  ниже показан для понимания, что будет проверяться, когда мы
+                  его возобновим.
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+                  Значок «Премиум-проверен» получают только анкеты, документы
+                  которых проверил администратор. Остальные отмечены как
+                  «Опубликована»: модератор проверил саму анкету, документы не
+                  проверялись.
+                </p>
+              </div>
+            ) : (
+              <p className="mt-4 max-w-xl text-base leading-relaxed text-ink-soft">
+                Перечень одинаковый для всех категорий. Отличие одно: водителям
+                дополнительно нужно водительское удостоверение.
+              </p>
+            )}
 
-            <div className="mt-10 grid gap-10 lg:grid-cols-2">
+            <div
+              className={`mt-10 grid gap-10 lg:grid-cols-2 ${
+                DOCUMENTS_PAUSED ? "opacity-55" : ""
+              }`}
+            >
               <div>
                 <p className="label-caps text-bronze-text">Обязательные</p>
                 <ul className="mt-5 space-y-4">

@@ -167,13 +167,50 @@ export const photoGuidelines = {
     "Качественная фотография повышает доверие родителей и увеличивает вероятность того, что именно вас выберут.",
 } as const;
 
+/**
+ * ПАУЗА ДОКУМЕНТОВ (решение владельца, 2026-08-10).
+ *
+ * Пока запрашивается только фотография: справки собирать долго, а каталог
+ * нужно наполнять уже сейчас. Остальные шаги не удалены — они выключены, и
+ * включаются обратно одной строкой: допишите ключи в `ACTIVE_STEP_KEYS`.
+ *
+ * Фильтр навешен ровно в одном месте — `stepsForCategory`. Сам массив
+ * `verificationSteps`, `stepByKey` и `stepTitles` НЕ фильтруются намеренно:
+ * это словари для чтения истории. Отфильтруй их — и уже загруженные
+ * документы исчезнут из кабинета, а модератор увидит в очереди сырые ключи
+ * `passport` вместо человеческих названий.
+ *
+ * Что важно помнить при обратном включении: уровень верификации лежит в
+ * колонке и пересчитывается только при действиях админа. Фонового пересчёта
+ * нет, поэтому анкеты не «отвалятся» сразу — каталог будет разъезжаться по
+ * одной. Порядок обратного включения описан в docs/.
+ */
+export const ACTIVE_STEP_KEYS: readonly VerificationStepKey[] = ["profile_photo"];
+
+export const DOCUMENTS_PAUSED =
+  ACTIVE_STEP_KEYS.length < verificationSteps.length;
+
+export function isStepActive(key: VerificationStepKey): boolean {
+  return ACTIVE_STEP_KEYS.includes(key);
+}
+
 export const stepByKey = new Map(verificationSteps.map((s) => [s.key, s]));
 
-/** Шаги, применимые к категории: общий перечень + документы только для неё. */
-export function stepsForCategory(category: CategoryKey): VerificationStep[] {
+/** Все шаги категории, включая выключенные, — для истории и архивных экранов. */
+export function allStepsForCategory(category: CategoryKey): VerificationStep[] {
   return verificationSteps.filter(
     (s) => !s.categories || s.categories.includes(category)
   );
+}
+
+/**
+ * Шаги, которые запрашиваются сейчас: применимые к категории и включённые.
+ *
+ * Это единственная точка, где действует пауза. Всё, что решает «что просить у
+ * специалиста» и «что нужно для публикации», ходит сюда.
+ */
+export function stepsForCategory(category: CategoryKey): VerificationStep[] {
+  return allStepsForCategory(category).filter((s) => isStepActive(s.key));
 }
 
 /** Обязательные шаги категории — от них зависит значок «Проверен». */
