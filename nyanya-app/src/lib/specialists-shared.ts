@@ -27,7 +27,13 @@ export type UiSpecialist = {
   priceFrom: number;
   priceUnit: "час" | "день";
   trustScore: number;
-  verification: "premium" | "verified";
+  /**
+   * Что сайт обещает семье:
+   *   published — анкету проверил модератор, документы не проверялись;
+   *   premium   — документы проверены администратором.
+   * Третьего не бывает: неопубликованных анкет в каталоге нет.
+   */
+  verification: "premium" | "published";
   languages: string[];
   english: "Нет" | "Базовый" | "Свободный";
   education: string;
@@ -47,19 +53,22 @@ export function formatPrice(
 export type SpecialistContacts = {
   phone: string;
   phoneHref: string;
-  telegram: string;
-  telegramHref: string;
-  whatsappHref: string;
 };
 
-/** Контакты из телефона владельца анкеты; telegram — демо-username от slug. */
-export function buildContacts(phone: string, slug: string): SpecialistContacts {
+/**
+ * Контакты специалиста — только телефон.
+ *
+ * Telegram и WhatsApp отсюда убраны: они строились из slug анкеты
+ * («Севара Тошпулатова» → t.me/sevara_toshpulatova) и с настоящим аккаунтом
+ * совпали бы разве что случайно. Семья, открывшая контакты, писала бы
+ * постороннему человеку и думала, что пишет специалисту.
+ *
+ * Вернутся, когда специалисты начнут указывать их сами в анкете.
+ */
+export function buildContacts(phone: string): SpecialistContacts {
   const digits = phone.replace(/[^\d]/g, "");
   return {
     phone,
     phoneHref: `tel:+${digits}`,
-    telegram: `@${slug.replace(/-/g, "_")}`,
-    telegramHref: `https://t.me/${slug.replace(/-/g, "_")}`,
-    whatsappHref: `https://wa.me/${digits}`,
   };
 }

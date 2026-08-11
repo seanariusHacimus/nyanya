@@ -40,7 +40,7 @@ const steps = [
   {
     icon: LockKeyOpen,
     title: "Откройте контакты",
-    text: "Зарегистрируйтесь — и телефон, Telegram и WhatsApp останутся в вашем кабинете.",
+    text: "Зарегистрируйтесь — и телефон специалиста останется в вашем кабинете.",
   },
   {
     icon: Handshake,
@@ -85,7 +85,7 @@ const afterUnlock = [
   },
   {
     icon: ChatsCircle,
-    text: "Вы общаетесь напрямую — телефон, Telegram, WhatsApp.",
+    text: "Вы общаетесь напрямую по телефону, без посредников.",
   },
 ];
 

@@ -8,8 +8,6 @@ import {
   LockKeyOpen,
   Heart,
   Phone,
-  TelegramLogo,
-  WhatsappLogo,
   UserPlus,
   X,
 } from "@phosphor-icons/react";
@@ -122,8 +120,7 @@ export function UnlockPanel({
             <>
               <LockKeyOpen size={30} weight="thin" className="text-bronze" />
               <p className="mt-5 text-base leading-relaxed text-ink">
-                Откройте контакты, чтобы связаться напрямую — телефон, Telegram и
-                WhatsApp.
+                Откройте контакты, чтобы связаться напрямую по телефону.
               </p>
               <p className="mt-3 text-sm text-ink-soft">
                 Бесплатно — нужен только аккаунт.
@@ -161,36 +158,6 @@ export function UnlockPanel({
                     </span>
                     <span className="text-base font-medium text-ink transition-colors duration-300 group-hover:text-bronze-text">
                       {contacts.phone}
-                    </span>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href={contacts.telegramHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group flex items-center gap-4"
-                  >
-                    <span className="flex size-11 items-center justify-center rounded-full border border-bronze/40">
-                      <TelegramLogo size={18} weight="thin" className="text-bronze" />
-                    </span>
-                    <span className="text-base font-medium text-ink transition-colors duration-300 group-hover:text-bronze-text">
-                      {contacts.telegram}
-                    </span>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href={contacts.whatsappHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group flex items-center gap-4"
-                  >
-                    <span className="flex size-11 items-center justify-center rounded-full border border-bronze/40">
-                      <WhatsappLogo size={18} weight="thin" className="text-bronze" />
-                    </span>
-                    <span className="text-base font-medium text-ink transition-colors duration-300 group-hover:text-bronze-text">
-                      WhatsApp
                     </span>
                   </a>
                 </li>

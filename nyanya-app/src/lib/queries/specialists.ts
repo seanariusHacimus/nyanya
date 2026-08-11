@@ -44,7 +44,7 @@ export async function getUnlockedContactsForUser(
     )
     .limit(1);
   const phone = rows[0]?.phone;
-  return phone ? buildContacts(phone, slug) : null;
+  return phone ? buildContacts(phone) : null;
 }
 
 export { categories, formatPrice };
@@ -85,8 +85,11 @@ function toUi(row: Row): UiSpecialist {
     priceFrom: row.priceAmount,
     priceUnit: row.priceUnit === "day" ? "день" : "час",
     trustScore: row.trustScore,
+    // «Премиум» = документы проверил администратор. Всё остальное —
+    // опубликованная анкета без проверки документов; называть её
+    // «проверенной» значит обещать семье то, чего не было.
     verification:
-      row.verificationLevel === "premium_verified" ? "premium" : "verified",
+      row.verificationLevel === "premium_verified" ? "premium" : "published",
     languages: row.languages ?? [],
     english: englishLabels[row.englishLevel] ?? "Нет",
     education: row.education ?? "",

@@ -63,7 +63,34 @@ if (doomed.length === 0) {
   process.exit(0);
 }
 
+/**
+ * Предохранитель. Скрипт писался под разовую чистку демо-данных, когда живых
+ * анкет не было ни одной. Теперь они есть, а админ будет заводить аккаунты
+ * специалистов сам — и запуск с прежним списком `--keep` снёс бы их вместе с
+ * документами, файлами в хранилище и открытыми контактами (везде каскад).
+ *
+ * Поэтому: опубликованная или ждущая проверки анкета — стоп-сигнал. Разрешить
+ * можно только осознанно, флагом --force-active.
+ */
 const ids = doomed.map((u) => u.id);
+const liveProfiles = ids.length
+  ? await sql`select p.full_name, p.status, u.email
+              from specialist_profiles p join "user" u on u.id = p.user_id
+              where p.user_id in ${sql(ids)}
+                and p.status in ('active', 'pending_review')`
+  : [];
+if (liveProfiles.length && !args.includes("--force-active")) {
+  console.error(
+    `\nОстановлено: под удаление попадают живые анкеты (${liveProfiles.length}).`
+  );
+  for (const p of liveProfiles) {
+    console.error(`  ${p.full_name} <${p.email}> — ${p.status}`);
+  }
+  console.error(
+    "\nДобавьте их в --keep. Если удаление действительно нужно — --force-active."
+  );
+  process.exit(1);
+}
 const profiles = await sql`select * from specialist_profiles where user_id in ${sql(ids)}`;
 const profileIds = profiles.map((p) => p.id);
 const inProfiles = (col) =>

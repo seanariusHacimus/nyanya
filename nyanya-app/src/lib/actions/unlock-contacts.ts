@@ -76,6 +76,6 @@ export async function unlockContacts(input: unknown) {
 
   return {
     ok: true as const,
-    contacts: buildContacts(specialist.ownerPhone, parsed.data.slug),
+    contacts: buildContacts(specialist.ownerPhone),
   };
 }

@@ -124,7 +124,7 @@ export const trustFeatures = {
       icon: "chat",
       title: "Прямой контакт",
       description:
-        "После бесплатной регистрации открываются телефон, Telegram и WhatsApp — общайтесь напрямую.",
+        "После бесплатной регистрации открывается телефон специалиста — общайтесь напрямую, без посредников.",
     },
   ],
 } as const;
@@ -146,7 +146,7 @@ export const howItWorks = {
     {
       icon: "unlock",
       title: "Откройте контакты",
-      description: "Бесплатно после регистрации — телефон, Telegram и WhatsApp",
+      description: "Бесплатно после регистрации — телефон специалиста",
     },
     {
       icon: "handshake",

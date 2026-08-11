@@ -54,8 +54,11 @@ function toUi(row: ProfileRow, districtName: string | null): UiSpecialist {
     priceFrom: row.priceAmount,
     priceUnit: row.priceUnit === "day" ? "день" : "час",
     trustScore: row.trustScore,
+    // «Премиум» = документы проверил администратор. Всё остальное —
+    // опубликованная анкета без проверки документов; называть её
+    // «проверенной» значит обещать семье то, чего не было.
     verification:
-      row.verificationLevel === "premium_verified" ? "premium" : "verified",
+      row.verificationLevel === "premium_verified" ? "premium" : "published",
     languages: row.languages ?? [],
     english: englishLabels[row.englishLevel] ?? "Нет",
     education: row.education ?? "",
@@ -121,7 +124,7 @@ export async function getAccountData(userId: string): Promise<AccountData> {
         specialist,
         categoryLabel: categories[specialist.category].label,
         unlockedAt: r.unlockedAt.toISOString(),
-        contacts: buildContacts(r.ownerPhone ?? "", specialist.slug),
+        contacts: buildContacts(r.ownerPhone ?? ""),
       };
     }),
     notifications: notificationRows,

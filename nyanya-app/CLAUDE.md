@@ -7,7 +7,8 @@ drivers. It is **not** a booking or escrow platform: it publishes verified speci
 lets a family open a specialist's contacts.
 
 **The service is free.** Opening contacts costs nothing — a logged-in family presses the button
-and sees the phone, Telegram and WhatsApp. Payment for contacts was introduced 2026-08-03 and
+and sees the phone. Telegram/WhatsApp were removed 2026-08-10: they were built from the
+profile slug and pointed at strangers. Payment for contacts was introduced 2026-08-03 and
 removed 2026-08-08 by the owner; `src/lib/payments/` is gone and no page may mention price,
 payment or «оплатить». The `payments` table and `contact_unlocks.payment_id` still exist in the
 schema but are unused — nothing writes to them.
@@ -51,6 +52,10 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   drivers see the licence. Publication requires every *required* step approved; a profile with
   every step approved, recommended included, becomes «Премиум-проверен».
   `deriveVerificationLevel` computes the badge — it is never set by hand.
+  In the catalogue a profile is either «Опубликована» (moderator checked the profile, documents
+  were not verified) or «Премиум-проверен» (an administrator verified the documents). The word
+  «Проверен» is never used for a profile whose documents nobody has seen — owner decision,
+  2026-08-10.
 - **DB**: `src/db/schema.ts`; auth tables in `src/db/auth-schema.ts` (Better Auth column keys are
   camelCase so the Drizzle adapter resolves them). Local = Postgres on 5434, prod = Railway.
 

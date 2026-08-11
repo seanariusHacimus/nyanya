@@ -6,8 +6,6 @@ import {
   SealCheck,
   Heart,
   Phone,
-  TelegramLogo,
-  WhatsappLogo,
   Bell,
   SignOut,
   MagnifyingGlass,
@@ -166,24 +164,6 @@ export function AccountView({
                     className="flex size-11 items-center justify-center rounded-full border border-bronze/40 text-bronze transition-colors duration-300 hover:bg-cream-deep"
                   >
                     <Phone size={17} />
-                  </a>
-                  <a
-                    href={contacts.telegramHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Telegram: ${specialist.name}`}
-                    className="flex size-11 items-center justify-center rounded-full border border-bronze/40 text-bronze transition-colors duration-300 hover:bg-cream-deep"
-                  >
-                    <TelegramLogo size={17} />
-                  </a>
-                  <a
-                    href={contacts.whatsappHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`WhatsApp: ${specialist.name}`}
-                    className="flex size-11 items-center justify-center rounded-full border border-bronze/40 text-bronze transition-colors duration-300 hover:bg-cream-deep"
-                  >
-                    <WhatsappLogo size={17} />
                   </a>
                 </span>
               </li>
