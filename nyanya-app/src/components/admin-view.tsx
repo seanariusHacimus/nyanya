@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Users,
@@ -11,6 +12,7 @@ import {
   Percent,
   Warning,
   MagnifyingGlass,
+  Plus,
 } from "@phosphor-icons/react";
 import type {
   AdminData,
@@ -186,15 +188,34 @@ export function AdminView({
           <h2 className="font-display text-3xl font-medium text-ink">
             Модерация специалистов
           </h2>
-          <p className="text-sm text-ink-soft">
-            Опубликовано: {publishedCount} из {data.profiles.length}
-          </p>
+          <div className="flex flex-wrap items-center gap-6">
+            <p className="text-sm text-ink-soft">
+              Опубликовано: {publishedCount} из {data.profiles.length}
+            </p>
+            <Link
+              href="/admin/new"
+              className="label-caps inline-flex min-h-11 items-center gap-2 bg-ink px-6 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px"
+            >
+              <Plus size={15} aria-hidden="true" />
+              Добавить анкету
+            </Link>
+          </div>
         </div>
 
         {data.profiles.length === 0 ? (
-          <p className="mt-8 border border-line bg-paper px-5 py-8 text-sm text-ink-soft">
-            Анкет пока нет.
-          </p>
+          <div className="mt-8 border border-line bg-paper px-5 py-10 text-center">
+            <p className="text-sm text-ink-soft">
+              Анкет пока нет. Специалисты заполняют их сами, но вы можете
+              завести анкету за человека.
+            </p>
+            <Link
+              href="/admin/new"
+              className="label-caps mt-6 inline-flex min-h-11 items-center gap-2 border border-ink px-6 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream"
+            >
+              <Plus size={15} aria-hidden="true" />
+              Добавить анкету
+            </Link>
+          </div>
         ) : (
           <div className="mt-8 overflow-x-auto">
             <table className="w-full min-w-[880px] text-left text-sm">
