@@ -224,7 +224,7 @@ export function AdminView({
                       документов: {p.approvedDocuments}/{p.requiredDocuments}
                     </span>
                     <Link
-                      href="/admin/profiles"
+                      href={`/admin/profiles/${p.id}`}
                       className="label-caps border-b border-ink/30 pb-0.5 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
                     >
                       Разобрать
@@ -560,7 +560,13 @@ function ProfileRow({
   return (
     <tr className="border-b border-line/60 align-top">
       <td className="py-4 pr-6 font-medium text-ink">
-        {profile.fullName}
+        {/* карточка анкеты: документы, решения и то, что видит семья */}
+        <Link
+          href={`/admin/profiles/${profile.id}`}
+          className="border-b border-ink/30 pb-0.5 transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
+        >
+          {profile.fullName}
+        </Link>
         <span className="mt-1 block text-xs font-normal text-ink-faint">
           {profile.email}
         </span>

@@ -168,11 +168,14 @@ export const photoGuidelines = {
 } as const;
 
 /**
- * ПАУЗА ДОКУМЕНТОВ (решение владельца, 2026-08-10).
+ * Какие шаги запрашиваются сейчас.
  *
- * Пока запрашивается только фотография: справки собирать долго, а каталог
- * нужно наполнять уже сейчас. Остальные шаги не удалены — они выключены, и
- * включаются обратно одной строкой: допишите ключи в `ACTIVE_STEP_KEYS`.
+ * С 2026-08-10 по 2026-08-12 здесь стояла только фотография: владелец
+ * приостановил сбор справок, чтобы наполнить каталог. Пауза снята — перечень
+ * снова полный, «Премиум-проверен» снова достижим.
+ *
+ * Механизм оставлен намеренно: чтобы снова приостановить сбор, достаточно
+ * сократить этот список. Ничего другого править не нужно.
  *
  * Фильтр навешен ровно в одном месте — `stepsForCategory`. Сам массив
  * `verificationSteps`, `stepByKey` и `stepTitles` НЕ фильтруются намеренно:
@@ -185,7 +188,17 @@ export const photoGuidelines = {
  * нет, поэтому анкеты не «отвалятся» сразу — каталог будет разъезжаться по
  * одной. Порядок обратного включения описан в docs/.
  */
-export const ACTIVE_STEP_KEYS: readonly VerificationStepKey[] = ["profile_photo"];
+export const ACTIVE_STEP_KEYS: readonly VerificationStepKey[] = [
+  "profile_photo",
+  "passport",
+  "medical_hiv",
+  "narcology",
+  "criminal_record",
+  "driver_license",
+  "medical_std",
+  "medical_tb_aids",
+  "medical_general",
+];
 
 export const DOCUMENTS_PAUSED =
   ACTIVE_STEP_KEYS.length < verificationSteps.length;

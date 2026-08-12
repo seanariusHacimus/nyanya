@@ -55,7 +55,13 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   In the catalogue a profile is either «Опубликована» (moderator checked the profile, documents
   were not verified) or «Премиум-проверен» (an administrator verified the documents). The word
   «Проверен» is never used for a profile whose documents nobody has seen — owner decision,
-  2026-08-10.
+  2026-08-10. Documents were paused 2026-08-10 (photo only) and re-enabled 2026-08-12;
+  `ACTIVE_STEP_KEYS` in that file is the single switch — shorten the list to pause again.
+- **An administrator can create a profile and upload documents for a specialist**
+  (`src/lib/actions/admin-create-specialist.ts`, `admin-documents.ts`, `/admin/profiles/[id]`).
+  Creating a profile also creates a real specialist account (email + password), because
+  `specialist_profiles.user_id` is unique — one profile per user. A document uploaded by an
+  administrator is marked approved immediately: the moderator uploaded it themselves.
 - **DB**: `src/db/schema.ts`; auth tables in `src/db/auth-schema.ts` (Better Auth column keys are
   camelCase so the Drizzle adapter resolves them). Local = Postgres on 5434, prod = Railway.
 
