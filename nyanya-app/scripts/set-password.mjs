@@ -39,7 +39,13 @@ if (password.length < 8) {
   process.exit(1);
 }
 
-const sql = postgres(url, { ssl: "require", max: 1 });
+/**
+ * TLS обязателен для Railway и невозможен для локального Postgres в докере:
+ * жёсткое `ssl: "require"` роняло скрипт на локальной базе ошибкой
+ * «socket disconnected before secure TLS connection». Смотрим на адрес.
+ */
+const isLocal = /(^|@|\/\/)(localhost|127\.0\.0\.1)/.test(url);
+const sql = postgres(url, { ssl: isLocal ? false : "require", max: 1 });
 
 const [account] = await sql`
   select u.id as user_id, u.email, u.role, a.id as account_id
