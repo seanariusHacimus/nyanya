@@ -143,8 +143,9 @@ export default async function AdminProfilePage({
         profileId={row.id}
         status={row.status}
         slug={row.slug}
-        canPublish={summary.allRequiredApproved}
+        canPublish={summary.photoApproved}
         blocking={summary.blockingRequired.length}
+        premiumReady={summary.allApproved}
         moderationNote={row.moderationNote}
       />
 

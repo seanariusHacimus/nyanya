@@ -36,10 +36,16 @@ export type DocumentSummary = {
   blockingOptional: string[];
   requiredCount: number;
   optionalCount: number;
-  /** Все обязательные приняты — анкету можно публиковать, значок «Проверен». */
+  /** Все обязательные приняты. */
   allRequiredApproved: boolean;
   /** Приняты вообще все документы — доступен «Премиум-проверен». */
   allApproved: boolean;
+  /**
+   * Фотография принята — минимум для публикации (решение владельца,
+   * 2026-08-12). Каталогу нужна анкета с лицом и рассказом о себе; справки
+   * поднимают её до премиума, но не решают, показывать человека или нет.
+   */
+  photoApproved: boolean;
 };
 
 export function summarizeDocuments(
@@ -67,6 +73,7 @@ export function summarizeDocuments(
     optionalCount: optional.length,
     allRequiredApproved: blockingRequired.length === 0,
     allApproved: blockingRequired.length === 0 && blockingOptional.length === 0,
+    photoApproved: isApproved("profile_photo"),
   };
 }
 
@@ -78,18 +85,25 @@ export function summarizeDocuments(
 export function deriveVerificationLevel(
   summary: DocumentSummary
 ): VerificationLevel {
-  if (!summary.allRequiredApproved) return "unverified";
-
   /**
-   * На паузе документов премиум не выдаётся автоматически — и это не
-   * придирка. Запрашивается один шаг, фотография; список рекомендуемых пуст,
-   * поэтому `allApproved` становится истиной сразу после её принятия, и
-   * каждая анкета получала бы «Премиум-проверен» за одну селфи. Премиум по
-   * решению владельца означает, что документы проверил администратор, —
-   * пока их не спрашивают, его выдаёт только явное действие в админке.
+   * Два уровня, и граница между ними — не «сколько документов», а «что мы
+   * можем утверждать» (решение владельца, 2026-08-12):
+   *
+   *   «Проверен модератором» — модератор видел фотографию и анкету. Этого
+   *      достаточно, чтобы показать человека семье: она видит лицо, район,
+   *      цену и рассказ о себе, и понимает, что документы не проверялись.
+   *   «Премиум-проверен» — приняты ВСЕ документы: личность, здоровье,
+   *      отсутствие судимости. Только это мы называем верификацией.
+   *
+   * Фотография — минимум, потому что без лица анкета бесполезна семье и
+   * бессмысленна для модератора: проверять нечего.
+   *
+   * На паузе документов (когда запрашивается только фото) премиум не
+   * выдаётся автоматически: список рекомендуемых пуст, `allApproved` стал бы
+   * истиной сразу после селфи, и каждая анкета получала бы премиум ни за что.
    */
+  if (!summary.photoApproved) return "unverified";
   if (DOCUMENTS_PAUSED) return "verified";
-
   return summary.allApproved ? "premium_verified" : "verified";
 }
 
@@ -122,6 +136,7 @@ export function summarizeAllDocuments(
     optionalCount: 0,
     allRequiredApproved: blocking.length === 0 && missing.length === 0,
     allApproved: blocking.length === 0 && missing.length === 0,
+    photoApproved: isApproved("profile_photo"),
   };
 }
 

@@ -22,13 +22,17 @@ export function AdminProfileActions({
   slug,
   canPublish,
   blocking,
+  premiumReady,
   moderationNote,
 }: {
   profileId: string;
   status: "draft" | "pending_review" | "active" | "hidden" | "rejected";
   slug: string | null;
+  /** Принята фотография — минимум для публикации. */
   canPublish: boolean;
+  /** Сколько обязательных документов не принято — до премиума. */
   blocking: number;
+  premiumReady: boolean;
   moderationNote: string | null;
 }) {
   const router = useRouter();
@@ -47,8 +51,8 @@ export function AdminProfileActions({
       });
       if (!result.ok) {
         setError(
-          result.error === "documents_pending"
-            ? "Сначала примите обязательные документы."
+          result.error === "photo_required"
+            ? "Сначала примите фотографию — без неё публиковать нельзя."
             : result.error === "note_required"
               ? "Укажите причину отклонения."
               : "Не удалось выполнить действие."
@@ -122,9 +126,18 @@ export function AdminProfileActions({
           </button>
         )}
 
-        {!canPublish && status !== "active" && (
+        {!canPublish ? (
           <span className="text-sm text-ink-soft">
-            Не принято обязательных документов: {blocking}
+            Для публикации примите фотографию.
+          </span>
+        ) : !premiumReady ? (
+          <span className="text-sm text-ink-soft">
+            Публиковать можно. До «Премиум-проверен» не хватает документов:{" "}
+            {blocking}
+          </span>
+        ) : (
+          <span className="text-sm text-bronze-text">
+            Все документы приняты — анкета получит «Премиум-проверен».
           </span>
         )}
       </div>

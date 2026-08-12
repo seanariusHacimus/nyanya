@@ -18,7 +18,6 @@ import { stepByKey } from "@/content/verification-steps";
 import type { CategoryKey } from "@/lib/specialists-shared";
 import {
   deriveVerificationLevel,
-  stepTitles,
   summarizeDocuments,
   type DocumentStatus,
 } from "@/lib/verification";
@@ -116,12 +115,18 @@ export async function moderateProfile(input: unknown): Promise<Result> {
   const now = new Date();
 
   if (action === "publish") {
-    // Значок в каталоге утверждает, что специалист проверен. Публиковать
-    // анкету, у которой не приняты обязательные документы, значит обманывать
-    // семью, поэтому это запрещено на сервере, а не только в интерфейсе.
+    /**
+     * Для публикации достаточно принятой фотографии: каталог показывает
+     * лицо, район, цену и рассказ о себе, а значок честно говорит, что
+     * документы не проверялись. Справки поднимают анкету до премиума, но не
+     * решают, показывать человека семье или нет.
+     *
+     * Без фотографии публиковать нельзя ни при каких условиях: карточка без
+     * лица бесполезна семье, а модератору нечего проверять.
+     */
     const summary = await documentSummaryFor(profileId, profile.category);
-    if (!summary.allRequiredApproved) {
-      return fail("documents_not_approved", stepTitles(summary.blockingRequired));
+    if (!summary.photoApproved) {
+      return fail("photo_required", "Фотография");
     }
 
     // адрес каталога появляется только при первой публикации
@@ -270,7 +275,12 @@ export async function reviewDocument(input: unknown): Promise<Result> {
   // иначе семья продолжала бы видеть «Проверен» по отклонённому паспорту.
   const summary = await documentSummaryFor(doc.profileId, doc.profileCategory);
   const nextLevel = deriveVerificationLevel(summary);
-  const demote = doc.profileStatus === "active" && !summary.allRequiredApproved;
+  /**
+   * Из каталога анкету убирает только потеря фотографии — она единственная
+   * обязательна для публикации. Отклонённая справка снимает премиум, но не
+   * прячет человека: значок честно скажет, что документы не проверены.
+   */
+  const demote = doc.profileStatus === "active" && !summary.photoApproved;
 
   await db
     .update(specialistProfiles)
@@ -293,7 +303,7 @@ export async function reviewDocument(input: unknown): Promise<Result> {
 
   // Письмо о пройденной проверке — ровно в момент, когда принят последний
   // документ: до этого вызова комплект полным быть не мог, значит уйдёт один раз.
-  if (decision === "approve" && summary.allRequiredApproved) {
+  if (decision === "approve" && summary.allApproved) {
     await sendDocumentsApprovedEmail(doc.ownerEmail, doc.ownerName);
   }
 

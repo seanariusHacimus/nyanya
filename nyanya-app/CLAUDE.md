@@ -49,8 +49,10 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
 - **Verification steps have a single source of truth**: `src/content/verification-steps.ts`, used
   by the specialist form, the server actions, the admin queue and the public pages. Steps are
   **required or recommended**, and the list is **category-aware** (`stepsForCategory`) — only
-  drivers see the licence. Publication requires every *required* step approved; a profile with
-  every step approved, recommended included, becomes «Премиум-проверен».
+  drivers see the licence. **Publication requires only the approved photo** (owner decision,
+  2026-08-12): the catalogue shows a face, district, price and the person's own words, and the
+  badge says plainly that documents were not checked. A profile with every step approved,
+  recommended included, becomes «Премиум-проверен».
   `deriveVerificationLevel` computes the badge — it is never set by hand.
   In the catalogue a profile is either «Опубликована» (moderator checked the profile, documents
   were not verified) or «Премиум-проверен» (an administrator verified the documents). The word

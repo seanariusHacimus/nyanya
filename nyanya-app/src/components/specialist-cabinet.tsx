@@ -38,7 +38,7 @@ const banners = {
   draft: {
     icon: Circle,
     title: "Черновик",
-    text: "Заполните анкету и загрузите обязательные документы — затем отправьте всё на проверку модератору.",
+    text: "Заполните анкету и загрузите фотографию — этого достаточно, чтобы отправить её на проверку. Остальные документы можно догрузить позже.",
     box: "border-line bg-paper",
   },
   pending_review: {
@@ -149,9 +149,14 @@ export function SpecialistCabinet({
     [requiredSteps, steps]
   );
   const requiredReady = uploadedRequired === requiredSteps.length;
+  /**
+   * Отправить анкету можно с одной фотографией — тот же минимум, что и у
+   * публикации. Остальные документы поднимают её до «Премиум-проверен».
+   */
+  const photoReady = steps["profile_photo"]?.status !== "empty";
 
   // сводка для карточки обзора: те же признаки, что и внутри мастера
-  const checkDone = computeStepDone(profile, requiredReady);
+  const checkDone = computeStepDone(profile, photoReady);
   const doneCount = WIZARD_CHECKS.filter((c) => checkDone[c.key]).length;
   const allDone = doneCount === WIZARD_CHECKS.length;
   // «анкета» без документов — по ней подписана первая кнопка
@@ -166,7 +171,7 @@ export function SpecialistCabinet({
     Boolean(profile.districtId) &&
     profile.description.trim().length > 0 &&
     profile.priceAmount > 0;
-  const canSubmit = !locked && profileReady && requiredReady;
+  const canSubmit = !locked && profileReady && photoReady;
 
   const submit = () =>
     startSubmit(async () => {
@@ -187,7 +192,7 @@ export function SpecialistCabinet({
           result.error === "profile_incomplete"
             ? "Заполните обязательные поля анкеты: имя, дата рождения, район, стоимость и рассказ о себе."
             : result.error === "documents_missing"
-              ? "Загрузите все обязательные документы — без них анкету нельзя отправить на проверку."
+              ? "Загрузите фотографию — без неё анкету нельзя отправить на проверку."
               : "Не удалось отправить анкету. Попробуйте ещё раз."
         );
       }

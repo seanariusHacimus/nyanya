@@ -14,7 +14,6 @@ import {
   MAX_FILE_BYTES,
 } from "@/lib/storage";
 import {
-  requiredStepsForCategory,
   stepByKey,
 } from "@/content/verification-steps";
 import { detectMime, matchesDeclaredMime } from "@/lib/file-type";
@@ -289,12 +288,19 @@ export async function submitForModeration() {
     .select({ type: documents.type })
     .from(documents)
     .where(eq(documents.specialistId, profile.id));
+  /**
+   * Для отправки достаточно фотографии — того же минимума, что и для
+   * публикации. Справки собирают неделями, и держать человека вне каталога,
+   * пока он бегает по диспансерам, значит терять и его, и семьи. Остальные
+   * документы он догрузит потом: с ними анкета поднимется до «Премиум-проверен».
+   */
   const uploadedSet = new Set(uploaded.map((d) => d.type));
-  const missingSteps = requiredStepsForCategory(profile.category)
-    .filter((s) => !uploadedSet.has(s.key))
-    .map((s) => s.key);
-  if (missingSteps.length > 0)
-    return { ok: false as const, error: "documents_missing" as const, missingSteps };
+  if (!uploadedSet.has("profile_photo"))
+    return {
+      ok: false as const,
+      error: "documents_missing" as const,
+      missingSteps: ["profile_photo"],
+    };
 
   await db
     .update(specialistProfiles)

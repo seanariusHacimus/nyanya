@@ -5,8 +5,14 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
+import type { CategoryKey } from "@/lib/specialists-shared";
 import { documents, notifications, specialistProfiles } from "@/db/schema";
 import { stepByKey } from "@/content/verification-steps";
+import {
+  deriveVerificationLevel,
+  summarizeDocuments,
+  type DocumentStatus,
+} from "@/lib/verification";
 import {
   MAX_FILE_BYTES,
   isAllowedMime,
@@ -47,6 +53,7 @@ export async function adminUploadDocument(formData: FormData): Promise<Result> {
     .select({
       id: specialistProfiles.id,
       userId: specialistProfiles.userId,
+      category: specialistProfiles.category,
       status: specialistProfiles.status,
       slug: specialistProfiles.slug,
     })
@@ -113,9 +120,19 @@ export async function adminUploadDocument(formData: FormData): Promise<Result> {
     });
   }
 
+  /**
+   * Уровень пересчитывается прямо здесь.
+   *
+   * Раньше этого не было, и получалась ложь: администратор догружал последнюю
+   * справку, карточка писала «все документы приняты — анкета получит
+   * Премиум-проверен», а в колонке оставался прежний уровень. Значок в
+   * каталоге менялся бы только при следующем действии модератора — то есть,
+   * возможно, никогда.
+   */
   await db
     .update(specialistProfiles)
     .set({
+      verificationLevel: await levelFor(profile.id, profile.category),
       // фотография сразу становится фотографией анкеты
       ...(step.key === "profile_photo"
         ? { photoKey: `/api/documents/${key}` }
@@ -133,8 +150,23 @@ export async function adminUploadDocument(formData: FormData): Promise<Result> {
 
   revalidatePath("/admin");
   revalidatePath("/specialist");
+  revalidatePath("/catalog");
   if (profile.slug) revalidatePath(`/specialists/${profile.slug}`);
   return { ok: true, step: step.key, fileKey: key, fileName: file.name };
+}
+
+/** Уровень по фактическому состоянию документов анкеты. */
+async function levelFor(profileId: string, category: CategoryKey) {
+  const rows = await db
+    .select({ type: documents.type, status: documents.status })
+    .from(documents)
+    .where(eq(documents.specialistId, profileId));
+  return deriveVerificationLevel(
+    summarizeDocuments(
+      rows.map((r) => ({ type: r.type, status: r.status as DocumentStatus })),
+      category
+    )
+  );
 }
 
 /**
@@ -154,6 +186,17 @@ export async function adminDeleteDocument(input: {
   const step = stepByKey.get(input.step as never);
   if (!step) return { ok: false, error: "invalid_step" };
 
+  const [profile] = await db
+    .select({
+      category: specialistProfiles.category,
+      status: specialistProfiles.status,
+      slug: specialistProfiles.slug,
+    })
+    .from(specialistProfiles)
+    .where(eq(specialistProfiles.id, input.profileId))
+    .limit(1);
+  if (!profile) return { ok: false, error: "not_found" };
+
   const [row] = await db
     .select({ id: documents.id, fileKey: documents.fileKey })
     .from(documents)
@@ -169,14 +212,27 @@ export async function adminDeleteDocument(input: {
   await db.delete(documents).where(eq(documents.id, row.id));
   await removeDocument(row.fileKey);
 
-  if (step.key === "profile_photo") {
-    await db
-      .update(specialistProfiles)
-      .set({ photoKey: null, updatedAt: new Date() })
-      .where(eq(specialistProfiles.id, input.profileId));
-  }
+  /**
+   * После удаления уровень пересчитывается, а анкета без фотографии уходит из
+   * каталога: фотография — единственное, без чего публиковать нельзя.
+   */
+  const level = await levelFor(input.profileId, profile.category);
+  const losesPhoto = step.key === "profile_photo";
+  await db
+    .update(specialistProfiles)
+    .set({
+      verificationLevel: level,
+      ...(losesPhoto ? { photoKey: null } : {}),
+      ...(losesPhoto && profile.status === "active"
+        ? { status: "hidden" as const }
+        : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(specialistProfiles.id, input.profileId));
 
   revalidatePath("/admin");
   revalidatePath("/specialist");
+  revalidatePath("/catalog");
+  if (profile.slug) revalidatePath(`/specialists/${profile.slug}`);
   return { ok: true };
 }
