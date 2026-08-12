@@ -53,7 +53,7 @@ export function SpecialistCard({
         )}
         <span className="label-caps absolute top-4 left-4 inline-flex items-center gap-1.5 bg-cream/95 px-3 py-2 text-ink">
           <SealCheck size={13} className="text-bronze" aria-hidden="true" />
-          {s.verification === "premium" ? "Премиум-проверен" : "Опубликована"}
+          {s.verification === "premium" ? "Премиум-проверен" : "Проверена"}
         </span>
       </div>
 
