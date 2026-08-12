@@ -155,8 +155,16 @@ export function AdminView({
     );
   }, [data.users, userQuery]);
 
-  /** Анкеты, ждущие решения модератора, — то, ради чего сюда заходят. */
-  const waiting = data.profiles.filter((p) => p.status === "pending_review");
+  /**
+   * Всё, что ещё не в каталоге, — то, ради чего сюда заходят.
+   *
+   * Раньше здесь были только анкеты со статусом pending_review, то есть
+   * присланные специалистами. Анкета, заведённая самим администратором,
+   * остаётся черновиком и в список не попадала — человек создавал её и терял
+   * из виду, хотя работа по ней его же. Теперь показываем и черновики, и
+   * отклонённые, и снятые, подписывая, что с ними не так.
+   */
+  const waiting = data.profiles.filter((p) => p.status !== "active");
 
   const titles: Record<AdminSection, string> = {
     overview: "Обзор",
@@ -200,11 +208,11 @@ export function AdminView({
       {section === "overview" && (
         <section className="mt-10">
           <h2 className="font-display text-2xl font-medium text-ink">
-            Ждёт вашего решения
+            Не в каталоге
           </h2>
           {waiting.length === 0 ? (
             <p className="mt-5 border border-line bg-paper px-5 py-8 text-sm text-ink-soft">
-              Ничего не ждёт — все анкеты разобраны.
+              Все анкеты опубликованы — разбирать нечего.
             </p>
           ) : (
             <ul className="mt-5 divide-y divide-line border border-line bg-paper">
@@ -217,6 +225,17 @@ export function AdminView({
                     <p className="text-base font-semibold text-ink">{p.fullName}</p>
                     <p className="mt-0.5 text-sm text-ink-soft">
                       {categories[p.category].label} · {p.email}
+                    </p>
+                    <p className="mt-1 text-xs text-ink-faint">
+                      {
+                        {
+                          draft: "Черновик — заполните документы и опубликуйте",
+                          pending_review: "Специалист отправил на проверку",
+                          rejected: "Отклонена — специалист исправляет",
+                          hidden: "Снята с публикации",
+                          active: "",
+                        }[p.status]
+                      }
                     </p>
                   </div>
                   <div className="flex items-center gap-5">
