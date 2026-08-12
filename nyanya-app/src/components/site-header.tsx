@@ -20,8 +20,16 @@ export function SiteHeader() {
 
   // §1.6 — авторизованное состояние шапки берётся из сессии Better Auth
   const { data: session } = useSession();
+  /**
+   * Куда ведёт кнопка в шапке. Администратора она отправляла в /account —
+   * тот же кабинет, что у родителя, — а ссылки на /admin не было нигде на
+   * сайте: панель существовала, но попасть в неё можно было только набрав
+   * адрес руками.
+   */
+  const role = session?.user.role;
   const cabinetHref =
-    session?.user.role === "specialist" ? "/specialist" : "/account";
+    role === "admin" ? "/admin" : role === "specialist" ? "/specialist" : "/account";
+  const cabinetLabel = role === "admin" ? "Админ-панель" : "Кабинет";
 
   // Ф8 — значок непрочитанных. Счётчик берём отдельным запросом: считать его
   // в layout значило бы сделать динамическими все статические страницы.
@@ -159,7 +167,7 @@ export function SiteHeader() {
           {session ? (
             <div className="hidden items-center gap-5 md:flex">
               <ButtonLink href={cabinetHref}>
-                Кабинет
+                {cabinetLabel}
                 {unread > 0 && (
                   <span
                     aria-label={`Непрочитанных уведомлений: ${unread}`}
@@ -251,7 +259,7 @@ export function SiteHeader() {
                     onClick={() => setMenuOpen(false)}
                     className="flex-1"
                   >
-                    Кабинет
+                    {cabinetLabel}
                     {unread > 0 && (
                       <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-bronze px-1.5 py-0.5 text-[11px] leading-none text-cream">
                         {unread > 9 ? "9+" : unread}

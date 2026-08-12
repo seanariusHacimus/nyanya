@@ -44,16 +44,14 @@ export function LoginForm() {
       return;
     }
 
-    // роль — из свежей сессии: она определяет, в какой кабинет вести
+    // роль — из свежей сессии: она определяет, куда вести после входа.
+    // Администратора раньше отправляло в /account, как родителя, и панель
+    // приходилось искать по прямому адресу.
     const { data } = await authClient.getSession();
-    const role = data?.user.role === "specialist" ? "specialist" : "parent";
-    router.push(
-      next && next.startsWith("/")
-        ? next
-        : role === "specialist"
-          ? "/specialist"
-          : "/account"
-    );
+    const role = data?.user.role;
+    const home =
+      role === "admin" ? "/admin" : role === "specialist" ? "/specialist" : "/account";
+    router.push(next && next.startsWith("/") ? next : home);
   };
 
   return (
