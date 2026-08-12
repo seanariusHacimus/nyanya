@@ -71,12 +71,17 @@ const dangerButton =
   "label-caps min-h-9 border border-line px-3 text-[#a5462f] transition-colors duration-300 hover:border-[#a5462f] disabled:opacity-40";
 
 /** §13 — админ-панель: сводка, модерация анкет, проверка документов, доступ. */
+export type AdminSection = "overview" | "profiles" | "documents" | "users";
+
 export function AdminView({
   data,
   currentUserId,
+  section,
 }: {
   data: AdminData;
   currentUserId: string;
+  /** Какой раздел показать: панель разбита на страницы, но данные общие. */
+  section: AdminSection;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -150,11 +155,20 @@ export function AdminView({
     );
   }, [data.users, userQuery]);
 
+  /** Анкеты, ждущие решения модератора, — то, ради чего сюда заходят. */
+  const waiting = data.profiles.filter((p) => p.status === "pending_review");
+
+  const titles: Record<AdminSection, string> = {
+    overview: "Обзор",
+    profiles: "Анкеты",
+    documents: "Документы на проверке",
+    users: "Пользователи",
+  };
+
   return (
-    <div className="mx-auto max-w-[1400px] px-5 pt-14 pb-24 sm:px-8 lg:pt-20">
-      <p className="label-caps text-bronze-text">Админ-панель</p>
-      <h1 className="mt-3 font-display text-4xl leading-[1.08] font-medium text-ink sm:text-5xl">
-        Управление платформой
+    <div>
+      <h1 className="font-display text-3xl leading-[1.08] font-medium text-ink sm:text-4xl">
+        {titles[section]}
       </h1>
 
       {error && (
@@ -167,8 +181,8 @@ export function AdminView({
         </p>
       )}
 
-      {/* AD1 — сводка из базы */}
-      <dl className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+      {section === "overview" && (
+      <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         {stats.map((s) => (
           <div key={s.label} className="border border-line bg-paper p-5">
             <dt className="label-caps flex items-center gap-2 text-ink-faint">
@@ -181,9 +195,50 @@ export function AdminView({
           </div>
         ))}
       </dl>
+      )}
 
-      {/* AD2 — модерация анкет */}
-      <section className="mt-14">
+      {section === "overview" && (
+        <section className="mt-10">
+          <h2 className="font-display text-2xl font-medium text-ink">
+            Ждёт вашего решения
+          </h2>
+          {waiting.length === 0 ? (
+            <p className="mt-5 border border-line bg-paper px-5 py-8 text-sm text-ink-soft">
+              Ничего не ждёт — все анкеты разобраны.
+            </p>
+          ) : (
+            <ul className="mt-5 divide-y divide-line border border-line bg-paper">
+              {waiting.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex flex-wrap items-center justify-between gap-4 px-5 py-4"
+                >
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold text-ink">{p.fullName}</p>
+                    <p className="mt-0.5 text-sm text-ink-soft">
+                      {categories[p.category].label} · {p.email}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-5">
+                    <span className="label-caps text-ink-faint">
+                      документов: {p.approvedDocuments}/{p.requiredDocuments}
+                    </span>
+                    <Link
+                      href="/admin/profiles"
+                      className="label-caps border-b border-ink/30 pb-0.5 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
+                    >
+                      Разобрать
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {section === "profiles" && (
+      <section className="mt-8">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-display text-3xl font-medium text-ink">
             Модерация специалистов
@@ -270,9 +325,10 @@ export function AdminView({
           конкретно и доброжелательно.
         </p>
       </section>
+      )}
 
-      {/* AD3 — очередь проверки документов */}
-      <section className="mt-14">
+      {section === "documents" && (
+      <section className="mt-8">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-display text-3xl font-medium text-ink">
             Проверка документов
@@ -368,9 +424,10 @@ export function AdminView({
           </ul>
         )}
       </section>
+      )}
 
-      {/* AD4 — пользователи и доступ */}
-      <section className="mt-14">
+      {section === "users" && (
+      <section className="mt-8">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-display text-3xl font-medium text-ink">
             Пользователи
@@ -474,6 +531,7 @@ export function AdminView({
           заблокированного специалиста скрывается из каталога.
         </p>
       </section>
+      )}
     </div>
   );
 }

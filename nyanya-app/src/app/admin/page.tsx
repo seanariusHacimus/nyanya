@@ -18,9 +18,5 @@ export default async function AdminPage() {
 
   const data = await getAdminData();
 
-  return (
-    <main className="flex-1">
-      <AdminView data={data} currentUserId={session.user.id} />
-    </main>
-  );
+  return <AdminView data={data} currentUserId={session.user.id} section="overview" />;
 }
