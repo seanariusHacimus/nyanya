@@ -4,6 +4,7 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
+import { asc } from "drizzle-orm";
 import { documents, districts, specialistProfiles } from "@/db/schema";
 import { user } from "@/db/auth-schema";
 import { stepsForCategory } from "@/content/verification-steps";
@@ -16,6 +17,7 @@ import {
 } from "@/lib/verification";
 import { AdminDocumentRow } from "@/components/admin/admin-document-row";
 import { AdminProfileActions } from "@/components/admin/admin-profile-actions";
+import { AdminProfileEditor } from "@/components/admin/admin-profile-editor";
 
 /**
  * Карточка анкеты у администратора.
@@ -56,12 +58,19 @@ export default async function AdminProfilePage({
       verificationLevel: specialistProfiles.verificationLevel,
       slug: specialistProfiles.slug,
       birthDate: specialistProfiles.birthDate,
+      districtId: specialistProfiles.districtId,
       districtName: districts.nameRu,
       priceAmount: specialistProfiles.priceAmount,
       priceUnit: specialistProfiles.priceUnit,
       experienceYears: specialistProfiles.experienceYears,
       education: specialistProfiles.education,
       description: specialistProfiles.description,
+      englishLevel: specialistProfiles.englishLevel,
+      languages: specialistProfiles.languages,
+      hasCar: specialistProfiles.hasCar,
+      liveIn: specialistProfiles.liveIn,
+      nightAvailable: specialistProfiles.nightAvailable,
+      newbornExp: specialistProfiles.newbornExp,
       moderationNote: specialistProfiles.moderationNote,
       photoKey: specialistProfiles.photoKey,
     })
@@ -85,15 +94,17 @@ export default async function AdminProfilePage({
     .from(documents)
     .where(eq(documents.specialistId, row.id));
 
+  const districtRows = await db
+    .select({ id: districts.id, name: districts.nameRu })
+    .from(districts)
+    .orderBy(asc(districts.nameRu));
+
   const byType = new Map(docRows.map((d) => [d.type, d]));
   const steps = stepsForCategory(row.category);
   const summary = summarizeDocuments(
     docRows.map((d) => ({ type: d.type, status: d.status as DocumentStatus })),
     row.category
   );
-
-  const priceUnitLabel =
-    row.priceUnit === "hour" ? "час" : row.priceUnit === "day" ? "день" : "месяц";
 
   return (
     <div className="max-w-[860px]">
@@ -111,30 +122,33 @@ export default async function AdminProfilePage({
         {categories[row.category].label} · {row.email} · {row.phone ?? "телефон не указан"}
       </p>
 
-      {/* что видит семья */}
-      <dl className="mt-8 grid gap-x-8 gap-y-4 border border-line bg-paper p-6 sm:grid-cols-2">
-        <Row label="Район" value={row.districtName ?? "не выбран"} />
-        <Row
-          label="Стоимость"
-          value={
-            row.priceAmount
-              ? `от ${row.priceAmount.toLocaleString("ru-RU")} сум/${priceUnitLabel}`
-              : "не указана"
-          }
-        />
-        <Row label="Опыт" value={row.experienceYears ? `${row.experienceYears} лет` : "не указан"} />
-        <Row label="Образование" value={row.education || "не указано"} />
-        <Row label="Дата рождения" value={row.birthDate || "не указана"} />
-        <Row label="Уровень" value={VERIFICATION_LABEL[row.verificationLevel]} />
-        <div className="sm:col-span-2">
-          <dt className="label-caps text-ink-faint">О себе</dt>
-          <dd className="mt-2 text-sm leading-relaxed text-ink">
-            {row.description || "не заполнено"}
-          </dd>
-        </div>
-      </dl>
+      <AdminProfileEditor
+        published={row.status === "active"}
+        districts={districtRows}
+        districtName={row.districtName}
+        initial={{
+          profileId: row.id,
+          fullName: row.fullName,
+          category: row.category,
+          birthDate: row.birthDate ?? "",
+          districtId: row.districtId,
+          priceAmount: row.priceAmount,
+          priceUnit: row.priceUnit,
+          experienceYears: row.experienceYears,
+          education: row.education ?? "",
+          description: row.description ?? "",
+          englishLevel: row.englishLevel,
+          languages: row.languages ?? [],
+          hasCar: row.hasCar,
+          liveIn: row.liveIn,
+          nightAvailable: row.nightAvailable,
+          newbornExp: row.newbornExp,
+          phone: row.phone ?? "",
+        }}
+      />
 
       <p className="mt-3 text-xs leading-relaxed text-ink-soft">
+        Уровень: {VERIFICATION_LABEL[row.verificationLevel]} —{" "}
         {VERIFICATION_MEANING[row.verificationLevel]}
       </p>
 
@@ -190,11 +204,3 @@ export default async function AdminProfilePage({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="label-caps text-ink-faint">{label}</dt>
-      <dd className="mt-1 text-sm text-ink">{value}</dd>
-    </div>
-  );
-}
