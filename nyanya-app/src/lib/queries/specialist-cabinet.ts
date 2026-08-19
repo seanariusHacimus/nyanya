@@ -1,8 +1,9 @@
-import { eq, asc } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { specialistProfiles, documents, districts } from "@/db/schema";
+import { specialistProfiles, documents } from "@/db/schema";
 import { verificationSteps } from "@/content/verification-steps";
 import { getNotifications, type UiNotification } from "@/lib/queries/notifications";
+import { getDistrictOptions } from "@/lib/queries/districts";
 import type { StepState } from "@/components/specialist/verification-step-card";
 
 export type CabinetProfile = {
@@ -67,10 +68,7 @@ export async function getCabinetData(
     .limit(1);
 
   const [districtRows, notificationRows] = await Promise.all([
-    db
-      .select({ id: districts.id, name: districts.nameRu })
-      .from(districts)
-      .orderBy(asc(districts.id)),
+    getDistrictOptions(),
     getNotifications(userId),
   ]);
 

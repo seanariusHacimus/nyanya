@@ -43,6 +43,13 @@
       "when": 1786194165428,
       "tag": "0005_unified-documents",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787124956119,
+      "tag": "0006_tashkent-districts",
+      "breakpoints": true
     }
   ]
 }

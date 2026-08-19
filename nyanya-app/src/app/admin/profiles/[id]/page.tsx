@@ -4,7 +4,6 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { asc } from "drizzle-orm";
 import { documents, districts, specialistProfiles } from "@/db/schema";
 import { user } from "@/db/auth-schema";
 import { stepsForCategory } from "@/content/verification-steps";
@@ -18,6 +17,7 @@ import {
 import { AdminDocumentRow } from "@/components/admin/admin-document-row";
 import { AdminProfileActions } from "@/components/admin/admin-profile-actions";
 import { AdminProfileEditor } from "@/components/admin/admin-profile-editor";
+import { getDistrictOptions } from "@/lib/queries/districts";
 
 /**
  * Карточка анкеты у администратора.
@@ -94,10 +94,7 @@ export default async function AdminProfilePage({
     .from(documents)
     .where(eq(documents.specialistId, row.id));
 
-  const districtRows = await db
-    .select({ id: districts.id, name: districts.nameRu })
-    .from(districts)
-    .orderBy(asc(districts.nameRu));
+  const districtRows = await getDistrictOptions();
 
   const byType = new Map(docRows.map((d) => [d.type, d]));
   const steps = stepsForCategory(row.category);

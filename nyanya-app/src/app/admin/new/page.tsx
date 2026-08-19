@@ -1,9 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { asc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { db } from "@/db";
-import { districts } from "@/db/schema";
+import { getDistrictOptions } from "@/lib/queries/districts";
 import { CreateSpecialistForm } from "@/components/admin/create-specialist-form";
 
 /**
@@ -25,10 +23,7 @@ export default async function AdminNewProfilePage() {
   if (!session) redirect("/login?next=/admin/new");
   if (session.user.role !== "admin") notFound();
 
-  const rows = await db
-    .select({ id: districts.id, name: districts.nameRu })
-    .from(districts)
-    .orderBy(asc(districts.nameRu));
+  const rows = await getDistrictOptions();
 
   return (
     <div className="max-w-[760px]">
