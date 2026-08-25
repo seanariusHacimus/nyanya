@@ -200,7 +200,7 @@ export function CreateSpecialistForm({
         </Field>
 
         <Field label="Опыт, лет" id="af-exp">
-          <input id="af-exp" name="experienceYears" type="number" min={0} max={60}
+          <input id="af-exp" name="experienceYears" type="number" min={0} max={99}
             defaultValue={0} className={inputClass} />
         </Field>
 

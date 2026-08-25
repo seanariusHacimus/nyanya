@@ -42,7 +42,7 @@ const schema = z.object({
   priceAmount: z.number().int().positive(),
   priceUnit: z.enum(["hour", "day", "month"]),
   description: z.string().trim().max(4000).optional().default(""),
-  experienceYears: z.number().int().min(0).max(60).optional().default(0),
+  experienceYears: z.number().int().min(0).max(99).optional().default(0),
   education: z.string().trim().max(300).optional().default(""),
 });
 

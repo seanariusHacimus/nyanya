@@ -42,7 +42,16 @@ const schema = z.object({
   districtId: z.number().int().positive(),
   priceAmount: z.number().int().positive(),
   priceUnit: z.enum(["hour", "day", "month"]),
-  experienceYears: z.number().int().min(0).max(60),
+  /**
+   * Опыт не сверяется с возрастом.
+   *
+   * Такая проверка тут была и мешала: она отвергала правку, когда неверна
+   * оказывалась дата рождения, а не опыт, — то есть блокировала исправление
+   * ровно той ошибки, ради которой в форму и зашли. Верхняя граница осталась
+   * только техническая, чтобы в колонку не попало число, которое она не
+   * вмещает.
+   */
+  experienceYears: z.number().int().min(0).max(99),
   education: z.string().trim().max(300),
   description: z.string().trim().max(4000),
   englishLevel: z.enum(["none", "basic", "fluent"]),
@@ -88,25 +97,6 @@ export async function adminUpdateProfile(
     .where(eq(specialistProfiles.id, d.profileId))
     .limit(1);
   if (!current) return { ok: false, error: "not_found" };
-
-  /**
-   * Опыт не может превышать возраст минус шестнадцать. Проверка появилась
-   * после живого случая: у человека 34 лет в анкете стояло «опыт 35 лет» —
-   * в поле опыта попал возраст, и семья видела нелепицу в каталоге.
-   */
-  const born = new Date(d.birthDate);
-  if (!Number.isNaN(born.getTime())) {
-    const age = Math.floor(
-      (Date.now() - born.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
-    );
-    if (d.experienceYears > Math.max(0, age - 16)) {
-      return {
-        ok: false,
-        error: "experience_too_high",
-        detail: `При возрасте ${age} лет опыт не может быть больше ${Math.max(0, age - 16)}.`,
-      };
-    }
-  }
 
   // категория меняет перечень документов — уровень пересчитываем по новой
   const categoryChanged = current.category !== d.category;

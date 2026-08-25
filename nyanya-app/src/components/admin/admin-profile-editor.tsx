@@ -86,9 +86,7 @@ export function AdminProfileEditor({
       if (!result.ok) {
         setError(
           result.detail ??
-            (result.error === "experience_too_high"
-              ? "Опыт больше возраста — проверьте поля."
-              : "Не удалось сохранить. Проверьте поля.")
+"Не удалось сохранить. Проверьте поля."
         );
         return;
       }
@@ -249,8 +247,8 @@ export function AdminProfileEditor({
           </select>
         </Field>
 
-        <Field label="Опыт, лет" id="ed-exp" hint="Не больше, чем возраст минус 16.">
-          <input id="ed-exp" type="number" min={0} max={60} value={form.experienceYears || ""}
+        <Field label="Опыт, лет" id="ed-exp">
+          <input id="ed-exp" type="number" min={0} max={99} value={form.experienceYears || ""}
             onChange={(e) => set("experienceYears", Number(e.target.value))} className={inputClass} />
         </Field>
 
