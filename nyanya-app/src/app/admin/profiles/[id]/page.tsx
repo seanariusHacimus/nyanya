@@ -4,7 +4,7 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { documents, districts, specialistProfiles } from "@/db/schema";
+import { documents, districts, reviews, specialistProfiles } from "@/db/schema";
 import { user } from "@/db/auth-schema";
 import { stepsForCategory } from "@/content/verification-steps";
 import { categories } from "@/lib/specialists-shared";
@@ -18,6 +18,7 @@ import { AdminDocumentRow } from "@/components/admin/admin-document-row";
 import { AdminProfileActions } from "@/components/admin/admin-profile-actions";
 import { AdminProfileEditor } from "@/components/admin/admin-profile-editor";
 import { getDistrictOptions } from "@/lib/queries/districts";
+import { AdminReviews } from "@/components/admin/admin-reviews";
 
 /**
  * Карточка анкеты у администратора.
@@ -96,6 +97,19 @@ export default async function AdminProfilePage({
 
   const districtRows = await getDistrictOptions();
 
+  const reviewRows = await db
+    .select({
+      id: reviews.id,
+      rating: reviews.rating,
+      text: reviews.text,
+      status: reviews.status,
+      createdAt: reviews.createdAt,
+      author: user.name,
+    })
+    .from(reviews)
+    .innerJoin(user, eq(user.id, reviews.authorParentId))
+    .where(eq(reviews.specialistId, id));
+
   const byType = new Map(docRows.map((d) => [d.type, d]));
   const steps = stepsForCategory(row.category);
   const summary = summarizeDocuments(
@@ -159,6 +173,23 @@ export default async function AdminProfilePage({
         premiumReady={summary.allApproved}
         moderationNote={row.moderationNote}
       />
+
+      {/* отзывы */}
+      <section className="mt-12">
+        <h2 className="font-display text-2xl font-medium text-ink">
+          Отзывы ({reviewRows.filter((r) => r.status === "visible").length})
+        </h2>
+        <AdminReviews
+          reviews={reviewRows.map((r) => ({
+            id: r.id,
+            rating: r.rating,
+            text: r.text ?? "",
+            author: r.author,
+            hidden: r.status === "hidden",
+            createdAt: r.createdAt.toLocaleDateString("ru-RU"),
+          }))}
+        />
+      </section>
 
       {/* документы */}
       <section className="mt-12">

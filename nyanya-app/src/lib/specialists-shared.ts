@@ -3,6 +3,19 @@
  * и форматирование. Серверные запросы к PostgreSQL — в lib/queries/specialists.
  */
 
+/**
+ * Единицы оплаты. Их три, и разбирать их двоичным «день или час» нельзя:
+ * именно так анкета с месячной оплатой показывала семье «сум/час».
+ */
+export const PRICE_UNIT_LABEL = {
+  hour: "час",
+  day: "день",
+  month: "месяц",
+} as const;
+
+export type PriceUnit = keyof typeof PRICE_UNIT_LABEL;
+export type PriceUnitLabel = (typeof PRICE_UNIT_LABEL)[PriceUnit];
+
 export type CategoryKey = "nanny" | "caregiver" | "tutor" | "driver";
 
 export const categories: Record<
@@ -25,7 +38,7 @@ export type UiSpecialist = {
   rating: number;
   reviewCount: number;
   priceFrom: number;
-  priceUnit: "час" | "день";
+  priceUnit: PriceUnitLabel;
   trustScore: number;
   /**
    * Что сайт обещает семье:
@@ -42,7 +55,13 @@ export type UiSpecialist = {
   photoUrl: string | null;
 };
 
-export type UiReview = { rating: number; text: string; author: string };
+export type UiReview = {
+  id: string;
+  rating: number;
+  /** Пустой, если человек поставил оценку и ничего не написал. */
+  text: string;
+  author: string;
+};
 
 /**
  * Русское склонение после числа: 1 год, 2 года, 5 лет, 21 год, 111 лет.

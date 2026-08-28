@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, CircleNotch, Warning } from "@phosphor-icons/react";
+import { CheckCircle, CircleNotch, Star, Warning } from "@phosphor-icons/react";
 
 type State = "idle" | "sending" | "sent" | "error";
 
@@ -15,6 +15,13 @@ const inputClass =
 export function ContactForm() {
   const [state, setState] = useState<State>("idle");
   const [errorText, setErrorText] = useState("");
+  /**
+   * Оценка сервиса — необязательная. Люди пишут сюда и с вопросом, и с
+   * благодарностью, и с жалобой; требовать звёзды от человека, который просто
+   * спрашивает про район работы, незачем.
+   */
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
 
   if (state === "sent") {
     return (
@@ -48,6 +55,7 @@ export function ContactForm() {
               name: data.get("name"),
               contact: data.get("contact"),
               message: data.get("message"),
+              rating, // оценка сервиса, 0 — не поставлена
               company: data.get("company"), // honeypot
             }),
           });
@@ -119,6 +127,44 @@ export function ContactForm() {
           placeholder="Чем мы можем помочь?"
         />
       </div>
+
+      <fieldset className="grid gap-2">
+        <legend className="text-sm font-semibold text-ink">
+          Оценка сервиса{" "}
+          <span className="font-normal text-ink-faint">— по желанию</span>
+        </legend>
+        <div
+          className="mt-1 flex items-center gap-1"
+          onMouseLeave={() => setHoverRating(0)}
+        >
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              aria-label={`Оценка ${n} из 5`}
+              aria-pressed={rating === n}
+              onMouseEnter={() => setHoverRating(n)}
+              onFocus={() => setHoverRating(n)}
+              onClick={() => setRating(rating === n ? 0 : n)}
+              className="p-1 transition-transform duration-200 hover:scale-110"
+            >
+              <Star
+                size={26}
+                weight={n <= (hoverRating || rating) ? "fill" : "regular"}
+                className={
+                  n <= (hoverRating || rating) ? "text-bronze" : "text-ink-faint"
+                }
+              />
+            </button>
+          ))}
+          {rating > 0 && (
+            <span className="ml-3 text-sm text-ink-soft">{rating} из 5</span>
+          )}
+        </div>
+        <p className="text-xs text-ink-faint">
+          Оценка приходит нам вместе с сообщением и в каталоге не публикуется.
+        </p>
+      </fieldset>
 
       {/* ловушка для спам-ботов: человек это поле не видит и не заполняет */}
       <div aria-hidden="true" className="hidden">

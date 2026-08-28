@@ -44,6 +44,12 @@ export async function POST(request: Request) {
   const contact = String(body.contact ?? "").trim();
   const message = String(body.message ?? "").trim();
   const honeypot = String(body.company ?? "").trim(); // скрытое поле для ботов
+  // оценка сервиса: 1–5, ноль означает «не поставили»
+  const ratingRaw = Number(body.rating ?? 0);
+  const rating =
+    Number.isInteger(ratingRaw) && ratingRaw >= 1 && ratingRaw <= 5
+      ? ratingRaw
+      : null;
 
   if (honeypot) {
     // тихо подтверждаем, чтобы спам-бот не искал обход
@@ -71,7 +77,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await sendContactMessage({ name, contact, message });
+    await sendContactMessage({ name, contact, message, rating });
   } catch (error) {
     console.error("[contact] не удалось отправить письмо", error);
     return Response.json({ ok: false, error: "send_failed" }, { status: 502 });

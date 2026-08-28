@@ -14,6 +14,7 @@ import {
   type SpecialistContacts,
   type UiSpecialist,
   type CategoryKey,
+  PRICE_UNIT_LABEL,
 } from "@/lib/specialists-shared";
 
 /** §11 — данные кабинета заказчика из PostgreSQL. */
@@ -52,7 +53,9 @@ function toUi(row: ProfileRow, districtName: string | null): UiSpecialist {
     rating: Number(row.ratingAvg),
     reviewCount: row.reviewCount,
     priceFrom: row.priceAmount,
-    priceUnit: row.priceUnit === "day" ? "день" : "час",
+    // «месяц» раньше проваливался в «час»: тройку значений разбирала
+    // двоичная проверка, и анкета с месячной оплатой показывала «сум/час»
+    priceUnit: PRICE_UNIT_LABEL[row.priceUnit],
     trustScore: row.trustScore,
     // «Премиум» = документы проверил администратор. Всё остальное —
     // опубликованная анкета без проверки документов; называть её

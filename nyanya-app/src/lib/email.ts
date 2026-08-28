@@ -286,13 +286,24 @@ export async function sendContactMessage(input: {
   name: string;
   contact: string;
   message: string;
+  /** Оценка сервиса 1–5; null — человек её не ставил. */
+  rating?: number | null;
 }): Promise<void> {
   const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.contact);
+  // оценка выносится в тему: по списку писем сразу видно, где недовольство
+  const stars = input.rating
+    ? `${"★".repeat(input.rating)}${"☆".repeat(5 - input.rating)}`
+    : null;
 
   await send(
     CONTACT_TO,
-    `Обращение с сайта — ${input.name}`,
-    shell("Новое обращение с сайта", [
+    stars
+      ? `Отзыв о сервисе ${input.rating}/5 — ${input.name}`
+      : `Обращение с сайта — ${input.name}`,
+    shell(stars ? "Отзыв о сервисе" : "Новое обращение с сайта", [
+      ...(stars
+        ? [{ kind: "text" as const, text: `<b>Оценка:</b> ${stars} (${input.rating} из 5)` }]
+        : []),
       { kind: "text", text: `<b>Имя:</b> ${escapeHtml(input.name)}` },
       { kind: "text", text: `<b>Контакт:</b> ${escapeHtml(input.contact)}` },
       {
@@ -306,7 +317,8 @@ export async function sendContactMessage(input: {
           : "Контакт указан не почтой — ответьте способом, который указал посетитель.",
       },
     ]),
-    plain("Новое обращение с сайта", [
+    plain(stars ? "Отзыв о сервисе" : "Новое обращение с сайта", [
+      ...(input.rating ? [`Оценка: ${input.rating} из 5`] : []),
       `Имя: ${input.name}`,
       `Контакт: ${input.contact}`,
       "",

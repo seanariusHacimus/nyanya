@@ -13,6 +13,8 @@ import {
   formatPrice,
 } from "@/lib/queries/specialists";
 import { getFavoriteSlugs } from "@/lib/queries/account";
+import { getReviewAccess } from "@/lib/queries/reviews";
+import { ReviewForm } from "@/components/profile/review-form";
 import { SpecialistCard } from "@/components/specialist-card";
 import { TrustScore } from "@/components/ui/trust-score";
 import { Stars } from "@/components/ui/stars";
@@ -57,12 +59,13 @@ export default async function SpecialistPage({
 
   // состояние доступа к контактам — на сервере, до первого рендера
   const session = await auth.api.getSession({ headers: await headers() });
-  const [initialContacts, favoriteSlugs] = session
+  const [initialContacts, favoriteSlugs, reviewAccess] = session
     ? await Promise.all([
         getUnlockedContactsForUser(s.slug, session.user.id),
         getFavoriteSlugs(session.user.id),
+        getReviewAccess(session.user.id, s.slug),
       ])
-    : [null, [] as string[]];
+    : [null, [] as string[], { canReview: false, existing: null }];
 
   return (
     <main className="flex-1 pb-24 lg:pb-0">
@@ -190,7 +193,7 @@ export default async function SpecialistPage({
               )}
             </section>
 
-            {/* P6 — отзывы (D14: только отображение) */}
+            {/* P6 — отзывы: показ и форма для той семьи, что открывала контакты */}
             <section
               id="reviews"
               className="mt-16 scroll-mt-24 border-t border-line pt-12"
@@ -202,13 +205,19 @@ export default async function SpecialistPage({
                 <ul className="mt-8 grid gap-6 lg:grid-cols-2">
                   {s.reviews.map((review) => (
                     <li
-                      key={review.text.slice(0, 40)}
+                      key={review.id}
                       className="flex flex-col border border-line bg-paper p-7"
                     >
                       <Stars rating={review.rating} />
-                      <p className="mt-4 flex-1 text-sm leading-relaxed text-ink-soft">
-                        {review.text}
-                      </p>
+                      {review.text ? (
+                        <p className="mt-4 flex-1 text-sm leading-relaxed text-ink-soft">
+                          {review.text}
+                        </p>
+                      ) : (
+                        <p className="mt-4 flex-1 text-sm text-ink-faint">
+                          Оценка без комментария
+                        </p>
+                      )}
                       <p className="mt-5 text-sm font-semibold text-ink">
                         {review.author}
                       </p>
@@ -216,7 +225,20 @@ export default async function SpecialistPage({
                   ))}
                 </ul>
               ) : (
-                <p className="mt-6 text-base text-ink-soft">Пока нет отзывов</p>
+                <p className="mt-6 text-base text-ink-soft">
+                  Пока нет отзывов. Первый оставит семья, которая уже работала
+                  с этим специалистом.
+                </p>
+              )}
+
+              {reviewAccess.canReview ? (
+                <ReviewForm slug={slug} existing={reviewAccess.existing} />
+              ) : (
+                <p className="mt-8 border border-line bg-paper px-5 py-4 text-sm leading-relaxed text-ink-soft">
+                  Отзыв может оставить семья, которая открыла контакты этого
+                  специалиста, — так в отзывах остаются те, кто с ним
+                  действительно общался.
+                </p>
               )}
             </section>
           </div>

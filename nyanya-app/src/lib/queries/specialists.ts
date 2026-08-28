@@ -20,6 +20,7 @@ import {
   type UiSpecialist,
   type UiReview,
   type SpecialistContacts,
+  PRICE_UNIT_LABEL,
 } from "@/lib/specialists-shared";
 import { contactUnlocks } from "@/db/schema";
 
@@ -83,7 +84,9 @@ function toUi(row: Row): UiSpecialist {
     rating: Number(row.ratingAvg),
     reviewCount: row.reviewCount,
     priceFrom: row.priceAmount,
-    priceUnit: row.priceUnit === "day" ? "день" : "час",
+    // «месяц» раньше проваливался в «час»: тройку значений разбирала
+    // двоичная проверка, и анкета с месячной оплатой показывала «сум/час»
+    priceUnit: PRICE_UNIT_LABEL[row.priceUnit],
     trustScore: row.trustScore,
     // «Премиум» = документы проверил администратор. Всё остальное —
     // опубликованная анкета без проверки документов; называть её
@@ -127,7 +130,12 @@ export async function getSpecialistBySlug(
 
   const profileRow = rows[0];
   const reviewRows = await db
-    .select({ rating: reviews.rating, text: reviews.text, author: user.name })
+    .select({
+      id: reviews.id,
+      rating: reviews.rating,
+      text: reviews.text,
+      author: user.name,
+    })
     .from(reviews)
     .innerJoin(user, eq(user.id, reviews.authorParentId))
     .where(
@@ -141,6 +149,7 @@ export async function getSpecialistBySlug(
   return {
     ...toUi({ ...profileRow.profile, districtName: profileRow.districtName }),
     reviews: reviewRows.map((r) => ({
+      id: r.id,
       rating: r.rating,
       text: r.text ?? "",
       author: r.author,
