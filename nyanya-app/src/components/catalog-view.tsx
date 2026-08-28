@@ -7,6 +7,7 @@ import {
   categories,
   type CategoryKey,
   type UiSpecialist,
+  yearsLabel,
 } from "@/lib/specialists-shared";
 import { SpecialistCard } from "@/components/specialist-card";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -187,7 +188,7 @@ export function CatalogView({
       clear: () => setMaxPrice(""),
     });
   if (minExp)
-    chips.push({ label: `опыт от ${minExp} лет`, clear: () => setMinExp("") });
+    chips.push({ label: `опыт от ${yearsLabel(Number(minExp))}`, clear: () => setMinExp("") });
   toggleDefs.forEach((t) => {
     if (toggles[t.key])
       chips.push({

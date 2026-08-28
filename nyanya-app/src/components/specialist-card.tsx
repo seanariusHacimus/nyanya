@@ -5,6 +5,7 @@ import {
   categories,
   formatPrice,
   type UiSpecialist,
+  yearsLabel,
 } from "@/lib/specialists-shared";
 import { TrustScore } from "@/components/ui/trust-score";
 import { Stars } from "@/components/ui/stars";
@@ -82,7 +83,7 @@ export function SpecialistCard({
         </div>
 
         <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-soft">
-          Опыт: {s.experienceYears} лет
+          Опыт: {yearsLabel(s.experienceYears)}
           <span aria-hidden="true" className="text-ink-faint">
             ·
           </span>

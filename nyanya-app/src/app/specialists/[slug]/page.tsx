@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, SealCheck } from "@phosphor-icons/react/dist/ssr";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { yearsLabel } from "@/lib/specialists-shared";
 import {
   getSpecialistBySlug,
   getSimilarSpecialists,
@@ -31,7 +32,7 @@ export async function generateMetadata({
   if (!s) return { title: "Анкета не найдена" };
   return {
     title: `${s.name} — ${categories[s.category].label.toLowerCase()}, ${s.district} район`,
-    description: `${categories[s.category].label} в Ташкенте: опыт ${s.experienceYears} лет, индекс доверия ${s.trustScore}, ${formatPrice(s)}.`,
+    description: `${categories[s.category].label} в Ташкенте: опыт ${yearsLabel(s.experienceYears)}, индекс доверия ${s.trustScore}, ${formatPrice(s)}.`,
   };
 }
 
@@ -48,7 +49,7 @@ export default async function SpecialistPage({
   if (s.education) facts.push({ label: "Образование", value: s.education });
   if (s.languages.length > 0)
     facts.push({ label: "Языки", value: s.languages.join(", ") });
-  facts.push({ label: "Опыт работы", value: `${s.experienceYears} лет` });
+  facts.push({ label: "Опыт работы", value: yearsLabel(s.experienceYears) });
   if (s.english !== "Нет")
     facts.push({ label: "Английский язык", value: s.english });
 
@@ -126,7 +127,7 @@ export default async function SpecialistPage({
                   <span aria-hidden="true" className="text-ink-faint">
                     ·
                   </span>
-                  Опыт: {s.experienceYears} лет
+                  Опыт: {yearsLabel(s.experienceYears)}
                 </p>
                 <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-ink-soft">
                   <Stars rating={s.rating} />

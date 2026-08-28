@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle, PencilSimple, Warning } from "@phosphor-icons/react";
 import { adminUpdateProfile } from "@/lib/actions/admin-edit-profile";
+import { yearsLabel } from "@/lib/specialists-shared";
 
 /**
  * Правка анкеты в карточке администратора.
@@ -146,7 +147,7 @@ export function AdminProfileEditor({
           />
           <Row
             label="Опыт"
-            value={initial.experienceYears ? `${initial.experienceYears} лет` : "не указан"}
+            value={initial.experienceYears ? yearsLabel(initial.experienceYears) : "не указан"}
           />
           <Row label="Образование" value={initial.education || "не указано"} />
           <Row

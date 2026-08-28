@@ -44,6 +44,32 @@ export type UiSpecialist = {
 
 export type UiReview = { rating: number; text: string; author: string };
 
+/**
+ * Русское склонение после числа: 1 год, 2 года, 5 лет, 21 год, 111 лет.
+ *
+ * Правило смотрит на две последние цифры, а не на одну: 11–14 всегда берут
+ * форму «лет», хотя оканчиваются на 1, 2, 3 и 4. Без этого получалось
+ * «11 год» и «13 года».
+ */
+export function pluralRu(
+  n: number,
+  one: string,
+  few: string,
+  many: string
+): string {
+  const mod10 = Math.abs(n) % 10;
+  const mod100 = Math.abs(n) % 100;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+}
+
+/** «3 года», «5 лет», «1 год» — для опыта и возраста. */
+export function yearsLabel(n: number): string {
+  return `${n} ${pluralRu(n, "год", "года", "лет")}`;
+}
+
 export function formatPrice(
   s: Pick<UiSpecialist, "priceFrom" | "priceUnit">
 ): string {
