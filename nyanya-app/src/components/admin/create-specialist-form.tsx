@@ -144,7 +144,7 @@ export function CreateSpecialistForm({
           Специалист
         </legend>
 
-        <Field label="Имя и фамилия" id="af-name" className="sm:col-span-2">
+        <Field label="Полное имя (ФИО)" id="af-name" className="sm:col-span-2">
           <input id="af-name" name="fullName" required maxLength={120}
             className={inputClass} placeholder="Как в паспорте" />
         </Field>

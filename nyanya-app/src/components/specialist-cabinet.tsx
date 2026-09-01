@@ -74,7 +74,7 @@ const banners = {
  * успевает почувствовать движение до того, как дойдёт до сбора справок.
  */
 const WIZARD_CHECKS = [
-  { key: "who", label: "Имя и дата рождения" },
+  { key: "who", label: "ФИО и дата рождения" },
   { key: "where", label: "Район и стоимость" },
   { key: "experience", label: "Опыт и навыки" },
   { key: "about", label: "Рассказ о себе" },

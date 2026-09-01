@@ -129,7 +129,7 @@ export function AdminProfileEditor({
         </div>
 
         <dl className="mt-5 grid gap-x-8 gap-y-4 border border-line bg-paper p-6 sm:grid-cols-2">
-          <Row label="Имя и фамилия" value={initial.fullName} />
+          <Row label="Полное имя (ФИО)" value={initial.fullName} />
           <Row
             label="Категория"
             value={categories.find((c) => c.key === initial.category)?.label ?? "—"}
@@ -199,7 +199,7 @@ export function AdminProfileEditor({
       )}
 
       <div className="mt-5 grid gap-5 border border-ink bg-paper p-6 sm:grid-cols-2">
-        <Field label="Имя и фамилия" id="ed-name" className="sm:col-span-2">
+        <Field label="Полное имя (ФИО)" id="ed-name" className="sm:col-span-2">
           <input id="ed-name" value={form.fullName} maxLength={120}
             onChange={(e) => set("fullName", e.target.value)} className={inputClass} />
         </Field>

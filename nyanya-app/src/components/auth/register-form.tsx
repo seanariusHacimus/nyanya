@@ -10,6 +10,7 @@ import {
   registrationState,
 } from "@/lib/actions/complete-profile";
 import { OtpStep } from "@/components/auth/otp-step";
+import { PasswordInput } from "@/components/auth/password-input";
 
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
@@ -271,18 +272,16 @@ export function RegisterForm() {
         <label htmlFor="reg-password" className="text-sm font-semibold text-ink">
           Пароль
         </label>
-        <input
+        <PasswordInput
           id="reg-password"
-          type="password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="new-password"
           required
           minLength={MIN_PASSWORD}
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={inputClass}
-          placeholder="••••••••"
+          describedBy="reg-password-hint"
         />
-        <p className="text-xs text-ink-faint">
+        <p id="reg-password-hint" className="text-xs text-ink-faint">
           Не короче {MIN_PASSWORD} символов.
         </p>
       </div>

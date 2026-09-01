@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { PasswordInput } from "@/components/auth/password-input";
 
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
@@ -85,15 +86,12 @@ export function LoginForm() {
         >
           Пароль
         </label>
-        <input
+        <PasswordInput
           id="login-password"
-          type="password"
-          required
-          autoComplete="current-password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={inputClass}
-          placeholder="••••••••"
+          onChange={setPassword}
+          autoComplete="current-password"
+          required
         />
         <Link
           href="/reset-password"

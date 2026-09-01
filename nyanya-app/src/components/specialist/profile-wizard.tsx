@@ -136,20 +136,20 @@ export function ProfileWizard({
     {
       key: "name",
       title: "Как вас зовут?",
-      hint: "Имя должно совпадать с паспортом — его проверит модератор.",
+      hint: "Полное имя должно совпадать с паспортом — его проверит модератор.",
       ready: profile.fullName.trim().length > 1 && Boolean(profile.birthDate),
       body: (
         <div className="grid gap-5">
           <div className="grid gap-2">
             <label htmlFor="sp-name" className="text-sm font-semibold text-ink">
-              Имя и фамилия
+              Полное имя (ФИО)
             </label>
             <input
               id="sp-name"
               value={profile.fullName}
               onChange={(e) => set("fullName", e.target.value)}
               className={inputClass}
-              placeholder="Как в паспорте"
+              placeholder="Фамилия Имя Отчество"
               autoComplete="name"
             />
           </div>
