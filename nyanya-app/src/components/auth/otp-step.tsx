@@ -11,6 +11,7 @@ export function OtpStep({
   onChangeEmail,
   busy,
   error,
+  lead,
 }: {
   email: string;
   onVerify: (code: string) => void;
@@ -18,6 +19,13 @@ export function OtpStep({
   onChangeEmail: () => void;
   busy: boolean;
   error: string | null;
+  /**
+   * Текст над полем. По умолчанию — «мы отправили код», что верно при
+   * регистрации. При восстановлении пароля утверждать это нельзя: сервер
+   * намеренно отвечает одинаково и на существующий адрес, и на выдуманный,
+   * чтобы по форме нельзя было проверять, есть ли у человека здесь аккаунт.
+   */
+  lead?: React.ReactNode;
 }) {
   const [code, setCode] = useState("");
   const [resendIn, setResendIn] = useState(60);
@@ -37,8 +45,12 @@ export function OtpStep({
       className="space-y-5"
     >
       <p className="text-sm leading-relaxed text-ink-soft">
-        Мы отправили код на{" "}
-        <span className="font-semibold text-ink">{email}</span>
+        {lead ?? (
+          <>
+            Мы отправили код на{" "}
+            <span className="font-semibold text-ink">{email}</span>
+          </>
+        )}
       </p>
 
       <div className="grid gap-2">

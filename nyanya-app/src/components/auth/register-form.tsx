@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MagnifyingGlass, IdentificationBadge } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
-import { completeProfile } from "@/lib/actions/complete-profile";
+import {
+  completeProfile,
+  registrationState,
+} from "@/lib/actions/complete-profile";
 import { OtpStep } from "@/components/auth/otp-step";
 
 const inputClass =
@@ -26,7 +29,10 @@ export function RegisterForm() {
   const params = useSearchParams();
   const next = params.get("next");
 
-  const [step, setStep] = useState<"email" | "otp" | "details">("email");
+  const [step, setStep] = useState<"email" | "otp" | "details" | "existing">(
+    "email"
+  );
+  const [existingRole, setExistingRole] = useState("parent");
   const [role, setRole] = useState<"parent" | "specialist">("parent");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -59,9 +65,20 @@ export function RegisterForm() {
       email,
       otp: code,
     });
-    setBusy(false);
     if (signInError) {
+      setBusy(false);
       setError("Неверный или устаревший код. Попробуйте ещё раз.");
+      return;
+    }
+
+    // Тот же код открывает сессию и уже существующему аккаунту — тогда третий
+    // шаг не нужен и вреден: он переписал бы имя с телефоном (см.
+    // registrationState в lib/actions/complete-profile.ts).
+    const state = await registrationState();
+    setBusy(false);
+    if (state.ok && state.established) {
+      setExistingRole(state.role);
+      setStep("existing");
       return;
     }
     setStep("details");
@@ -90,6 +107,42 @@ export function RegisterForm() {
           : "/account"
     );
   };
+
+  if (step === "existing") {
+    const home =
+      existingRole === "admin"
+        ? "/admin"
+        : existingRole === "specialist"
+          ? "/specialist"
+          : "/account";
+    const target = next && next.startsWith("/") ? next : home;
+
+    return (
+      <div className="space-y-5">
+        <p className="border border-line bg-paper px-4 py-3 text-sm leading-relaxed text-ink-soft">
+          На <span className="font-semibold text-ink">{email}</span> аккаунт уже
+          зарегистрирован — мы вошли в него. Заводить второй не нужно: анкета,
+          избранное и открытые контакты остались на месте.
+        </p>
+
+        <Link
+          href={target}
+          className="label-caps inline-flex min-h-12 w-full items-center justify-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal"
+        >
+          Перейти в кабинет
+        </Link>
+
+        <div className="border-t border-line pt-5 text-center">
+          <Link
+            href="/reset-password"
+            className="text-sm text-ink-soft transition-colors duration-300 hover:text-bronze-text"
+          >
+            Не помню пароль — задать новый
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (step === "otp") {
     return (
@@ -201,6 +254,18 @@ export function RegisterForm() {
           placeholder="Ваше имя"
         />
       </div>
+
+      {/* см. комментарий в reset-password-form.tsx: логин для менеджера паролей */}
+      <input
+        type="email"
+        name="email"
+        value={email}
+        readOnly
+        tabIndex={-1}
+        aria-hidden="true"
+        autoComplete="username"
+        className="sr-only"
+      />
 
       <div className="grid gap-2">
         <label htmlFor="reg-password" className="text-sm font-semibold text-ink">

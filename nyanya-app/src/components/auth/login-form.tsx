@@ -11,8 +11,8 @@ const inputClass =
 /**
  * §9 R1 — вход по почте и паролю.
  *
- * ⛳ Раньше вход был беспарольным (код на почту). Шаг с кодом убран, пока
- * не подтверждён домен отправки — см. комментарий в lib/auth.ts.
+ * Кодом на почту здесь не входят: код нужен только при регистрации и при
+ * восстановлении пароля (`/reset-password`).
  */
 export function LoginForm() {
   const router = useRouter();
@@ -95,6 +95,12 @@ export function LoginForm() {
           className={inputClass}
           placeholder="••••••••"
         />
+        <Link
+          href="/reset-password"
+          className="justify-self-start text-sm text-ink-soft transition-colors duration-300 hover:text-bronze-text"
+        >
+          Забыли пароль?
+        </Link>
       </div>
 
       {error && (

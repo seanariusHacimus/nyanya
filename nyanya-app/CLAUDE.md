@@ -93,8 +93,16 @@ specialist sees in their cabinet.
   domains or read delivery status — confirm delivery from the inbox, not the API.
 - **Signup is email-OTP, login is email + password.** The code proves the address once, at
   registration; afterwards only the password is used. The password is written by `completeProfile`
-  (Better Auth has no public set-password endpoint) and only when none exists yet. There is still
-  no password-recovery flow.
+  (Better Auth has no public set-password endpoint) and only when none exists yet.
+- **Password recovery is `/reset-password`** (added 2026-09-01): address → code from the email →
+  new password → automatic sign-in. It runs on the `emailOTP` plugin's own endpoints, so the code
+  lives under a different key than the sign-in code and the two cannot be swapped. The request
+  endpoint answers identically for a known and an unknown address — the page must never reveal who
+  is registered — and Better Auth rate-limits it to 3 requests per minute per IP. A successful
+  reset revokes that user's other sessions (`revokeSessionsOnPasswordReset`).
+  Entering an **already registered** address in the signup form no longer opens the third step:
+  `signIn.emailOtp` signs such a person in, and the step used to overwrite their name and phone
+  while leaving the forgotten password in place (`registrationState` in `complete-profile.ts`).
 - `nyanya.uz` is connected. `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` point at `https://www.nyanya.uz`
   (the apex still resolves to an old host for some resolvers). `trustedOrigins` in `lib/auth.ts`
   lists apex, www and the Railway domain — Better Auth answers 403 INVALID_ORIGIN for anything

@@ -4,7 +4,7 @@ import { admin, emailOTP } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
 import { user, session, account, verification } from "@/db/auth-schema";
-import { sendOtpEmail } from "@/lib/email";
+import { sendOtpEmail, sendPasswordResetOtpEmail } from "@/lib/email";
 
 /**
  * Код на почту — только при регистрации, вход — по паролю.
@@ -17,6 +17,11 @@ import { sendOtpEmail } from "@/lib/email";
  * Подтверждение адреса при входе по паролю намеренно не требуется
  * (`requireEmailVerification: false`): у аккаунтов, заведённых до этой схемы,
  * почта не подтверждена, и включение проверки закрыло бы им вход.
+ *
+ * Забытый пароль: код на почту → новый пароль (`/reset-password`). Ссылку в
+ * письме не шлём — код короче, вводится с телефона и не ломается почтовыми
+ * клиентами, которые «прокликивают» ссылки ради проверки на вирусы. Коды входа
+ * и восстановления хранятся под разными ключами и не заменяют друг друга.
  *
  * Роли: parent (по умолчанию) · specialist · admin (только вручную/сидом).
  */
@@ -39,11 +44,21 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
-    // подтверждать адрес нечем — письма не доставляются (см. комментарий выше)
+    // у аккаунтов, заведённых до перехода на коды, адрес не подтверждён —
+    // включение проверки закрыло бы им вход (см. комментарий выше)
     requireEmailVerification: false,
     // после регистрации сессия создаётся сразу, отдельного входа не нужно
     autoSignIn: true,
     minPasswordLength: 8,
+    /**
+     * Успешный сброс закрывает все прежние сессии.
+     *
+     * Пароль восстанавливают в том числе тогда, когда в аккаунт кто-то влез.
+     * Если оставить старые сессии живыми, смена пароля не выгонит чужого — он
+     * продолжит сидеть под уже выданной cookie. Владельцу это стоит одного
+     * повторного входа на других устройствах, и оно того стоит.
+     */
+    revokeSessionsOnPasswordReset: true,
   },
   advanced: {
     ipAddress: {
@@ -79,7 +94,13 @@ export const auth = betterAuth({
       // аннулирует предыдущий — запас снижает шанс «устаревшего кода»
       expiresIn: 600,
       allowedAttempts: 5,
-      async sendVerificationOTP({ email, otp }) {
+      async sendVerificationOTP({ email, otp, type }) {
+        // код восстановления может прийти и тому, кто его не запрашивал, —
+        // такое письмо обязано отличаться от кода подтверждения при регистрации
+        if (type === "forget-password") {
+          await sendPasswordResetOtpEmail(email, otp);
+          return;
+        }
         await sendOtpEmail(email, otp);
       },
     }),

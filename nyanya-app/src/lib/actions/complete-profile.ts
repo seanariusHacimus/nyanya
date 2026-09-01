@@ -18,6 +18,45 @@ const schema = z.object({
 });
 
 /**
+ * Заведён ли уже аккаунт, в который открыта текущая сессия.
+ *
+ * `signIn.emailOtp` не различает вход и регистрацию: код, отправленный на уже
+ * известную почту, открывает сессию существующего аккаунта. Форма регистрации
+ * после этого показывала третий шаг и спрашивала имя, телефон и пароль заново —
+ * имя с телефоном она перезаписывала, а пароль оставляла прежним (он ставится
+ * только когда его нет). Человек, пришедший «зарегистрироваться заново» из-за
+ * забытого пароля, терял имя и телефон и всё равно не мог войти. Для
+ * специалиста с опубликованной анкетой это ещё и стёртый номер, по которому с
+ * ним связываются семьи.
+ *
+ * Признак — заданный пароль, а не заполненный профиль: третий шаг регистрации
+ * существует ровно ради пароля, и если он уже есть, спрашивать нечего.
+ */
+export async function registrationState(): Promise<
+  { ok: false } | { ok: true; established: boolean; role: string }
+> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { ok: false };
+
+  const [credential] = await db
+    .select({ password: account.password })
+    .from(account)
+    .where(
+      and(
+        eq(account.userId, session.user.id),
+        eq(account.providerId, "credential")
+      )
+    )
+    .limit(1);
+
+  return {
+    ok: true,
+    established: Boolean(credential?.password),
+    role: session.user.role ?? "parent",
+  };
+}
+
+/**
  * Завершение регистрации после подтверждения почты кодом.
  *
  * К этому моменту `signIn.emailOtp` уже завёл аккаунт и открыл сессию, но
