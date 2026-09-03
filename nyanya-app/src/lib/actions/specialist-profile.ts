@@ -326,7 +326,7 @@ export async function submitForModeration() {
     return { ok: false as const, error: "profile_incomplete" as const };
 
   // загружены все ОБЯЗАТЕЛЬНЫЕ шаги категории; рекомендуемые нужны только
-  // для «Премиум-проверен» и отправку не блокируют
+  // для «Премиум-профиля» и отправку не блокируют
   const uploaded = await db
     .select({ type: documents.type })
     .from(documents)
@@ -335,7 +335,7 @@ export async function submitForModeration() {
    * Для отправки достаточно фотографии — того же минимума, что и для
    * публикации. Справки собирают неделями, и держать человека вне каталога,
    * пока он бегает по диспансерам, значит терять и его, и семьи. Остальные
-   * документы он догрузит потом: с ними анкета поднимется до «Премиум-проверен».
+   * документы он догрузит потом: с ними анкета поднимется до «Премиум-профиля».
    */
   const uploadedSet = new Set(uploaded.map((d) => d.type));
   if (!uploadedSet.has("profile_photo"))

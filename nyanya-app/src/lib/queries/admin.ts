@@ -48,7 +48,7 @@ export type AdminProfileRow = {
   requiredDocuments: number;
   /** Названия обязательных шагов, мешающих публикации. */
   blockingSteps: string;
-  /** Сколько рекомендуемых принято — от них зависит «Премиум-проверен». */
+  /** Сколько рекомендуемых принято — от них зависит «Премиум-профиль». */
   approvedOptional: number;
   optionalDocuments: number;
 };

@@ -1,10 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, MapPin, SealCheck } from "@phosphor-icons/react/dist/ssr";
+import {
+  ArrowLeft,
+  IdentificationCard,
+  MapPin,
+  SealCheck,
+} from "@phosphor-icons/react/dist/ssr";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { yearsLabel } from "@/lib/specialists-shared";
+import { PROFILE_TIER, yearsLabel } from "@/lib/specialists-shared";
 import {
   getSpecialistBySlug,
   getSimilarSpecialists,
@@ -133,9 +138,20 @@ export default async function SpecialistPage({
                   <span className="label-caps inline-flex items-center border border-line bg-paper px-3 py-2 text-ink-soft">
                     {categories[s.category].label}
                   </span>
-                  <span className="label-caps inline-flex items-center gap-1.5 border border-bronze/40 bg-paper px-3 py-2 text-ink">
-                    <SealCheck size={13} className="text-bronze" aria-hidden="true" />
-                    {s.verification === "premium" ? "Премиум-проверен" : "Проверена"}
+                  <span
+                    className="label-caps inline-flex items-center gap-1.5 border border-bronze/40 bg-paper px-3 py-2 text-ink"
+                    title={PROFILE_TIER[s.verification].meaning}
+                  >
+                    {s.verification === "premium" ? (
+                      <SealCheck size={13} className="text-bronze" aria-hidden="true" />
+                    ) : (
+                      <IdentificationCard
+                        size={13}
+                        className="text-bronze"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {PROFILE_TIER[s.verification].label}
                   </span>
                 </p>
                 <h1 className="mt-5 font-display text-4xl leading-[1.08] font-medium tracking-[-0.01em] text-ink sm:text-5xl">

@@ -51,13 +51,10 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   **required or recommended**, and the list is **category-aware** (`stepsForCategory`) — only
   drivers see the licence. **Publication requires only the approved photo** (owner decision,
   2026-08-12): the catalogue shows a face, district, price and the person's own words, and the
-  badge says plainly that documents were not checked. A profile with every step approved,
-  recommended included, becomes «Премиум-проверен».
+  badge names what the person supplied, and claims nothing about documents. A profile with every
+  step approved, recommended included, becomes «Премиум-профиль».
   `deriveVerificationLevel` computes the badge — it is never set by hand.
-  In the catalogue a profile is either «Опубликована» (moderator checked the profile, documents
-  were not verified) or «Премиум-проверен» (an administrator verified the documents). The word
-  «Проверен» is never used for a profile whose documents nobody has seen — owner decision,
-  2026-08-10. Documents were paused 2026-08-10 (photo only) and re-enabled 2026-08-12;
+  Documents were paused 2026-08-10 (photo only) and re-enabled 2026-08-12;
   `ACTIVE_STEP_KEYS` in that file is the single switch — shorten the list to pause again.
 - **An administrator can create a profile and upload documents for a specialist**
   (`src/lib/actions/admin-create-specialist.ts`, `admin-documents.ts`, `/admin/profiles/[id]`).
@@ -72,7 +69,17 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
 The site no longer claims documents are checked before publication — publication needs only the
 approved photo, and the certificates follow. Any new page saying otherwise is a false promise to
 families; the honest line is «модератор проверяет анкету и фотографию до публикации», with the
-document check earning «Премиум-проверен» afterwards.
+document check earning «Премиум-профиль» afterwards.
+
+**Badge names are neutral** (owner decision, 2026-09-03): a published profile is «Стандартный
+профиль», one with every document approved is «Премиум-профиль». The old «Проверена» /
+«Премиум-проверен» asserted a check that had not happened — supplying documents is the
+specialist's own choice, and nobody had seen a standard profile's. Only premium may promise
+verification, and only premium carries the seal-with-a-tick icon; the standard badge uses a plain
+ID-card mark, because the seal reads as "verified" on its own. **These words live once**, in
+`PROFILE_TIER` (`lib/specialists-shared.ts`), and `VERIFICATION_LABEL`/`VERIFICATION_MEANING`
+derive from it. They used to be retyped in the card, the profile page and the admin panel, and
+duly drifted — the catalogue said «Проверена» while the admin said «Проверен модератором».
 
 **The trust index is gone from the interface** (owner decision, 2026-09-03). It was displayed on
 cards, profiles, the cabinet and three marketing pages, and it was never computed — every profile

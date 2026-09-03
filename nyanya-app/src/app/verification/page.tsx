@@ -3,7 +3,7 @@ import {
   FileArrowUp,
   UserFocus,
   SealCheck,
-  ShieldCheck,
+  IdentificationCard,
   Star,
 } from "@phosphor-icons/react/dist/ssr";
 import { PageHero } from "@/components/ui/page-hero";
@@ -112,10 +112,10 @@ export default function VerificationPage() {
                   его возобновим.
                 </p>
                 <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                  Значок «Премиум-проверен» получают только анкеты, документы
-                  которых проверил администратор. Остальные отмечены как
-                  «Опубликована»: модератор проверил саму анкету, документы не
-                  проверялись.
+                  «Премиум-профиль» получают только анкеты, документы которых
+                  проверил администратор. Остальные отмечены как «Стандартный
+                  профиль»: анкета заполнена и фотография принята, документы
+                  специалист не предоставлял.
                 </p>
               </div>
             ) : (
@@ -158,8 +158,8 @@ export default function VerificationPage() {
                   ))}
                 </ul>
                 <p className="mt-6 text-sm leading-relaxed text-ink-soft">
-                  Не обязательны, но именно они дают статус
-                  «Премиум-проверен».
+                  Не обязательны — предоставить их специалист решает сам. С
+                  ними анкета становится «Премиум-профилем».
                 </p>
               </div>
             </div>
@@ -171,23 +171,27 @@ export default function VerificationPage() {
       <section className="mx-auto max-w-[1400px] px-5 py-20 sm:px-8 lg:py-28">
         <Reveal className="grid gap-10 lg:grid-cols-[1fr_2fr] lg:gap-20">
           <h2 className="max-w-[12ch] font-display text-3xl leading-[1.12] font-medium text-ink sm:text-4xl">
-            Уровни проверки
+            Два вида профиля
           </h2>
           <div className="grid gap-10 sm:grid-cols-2 sm:gap-0">
             <div className="sm:pr-8 lg:pr-10">
-              <ShieldCheck size={36} weight="thin" className="text-bronze" />
-              <h3 className="mt-6 text-base font-semibold text-ink">Проверен</h3>
+              <IdentificationCard size={36} weight="thin" className="text-bronze" />
+              <h3 className="mt-6 text-base font-semibold text-ink">
+                Стандартный профиль
+              </h3>
               <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                Модератор принял все обязательные документы.
+                Анкета заполнена, фотография принята модератором. Документы
+                специалист не предоставлял.
               </p>
             </div>
             <div className="sm:border-l sm:border-line sm:px-8 lg:px-10">
               <Star size={36} weight="thin" className="text-bronze" />
               <h3 className="mt-6 text-base font-semibold text-ink">
-                Премиум-проверен
+                Премиум-профиль
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                Приняты все документы — и обязательные, и рекомендуемые.
+                Специалист предоставил полный пакет документов, и модератор их
+                принял.
               </p>
             </div>
           </div>

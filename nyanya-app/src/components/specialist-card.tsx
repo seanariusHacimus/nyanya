@@ -1,9 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, SealCheck } from "@phosphor-icons/react/dist/ssr";
+import {
+  IdentificationCard,
+  MapPin,
+  SealCheck,
+} from "@phosphor-icons/react/dist/ssr";
 import {
   categories,
   formatPrice,
+  PROFILE_TIER,
   type UiSpecialist,
   yearsLabel,
 } from "@/lib/specialists-shared";
@@ -51,9 +56,17 @@ export function SpecialistCard({
         ) : (
           <Monogram name={s.name} />
         )}
+        {/*
+          Печать с галочкой — только у премиума: сама по себе она читается как
+          «проверено», а у стандартного профиля документов никто не видел.
+        */}
         <span className="label-caps absolute top-4 left-4 inline-flex items-center gap-1.5 bg-cream/95 px-3 py-2 text-ink">
-          <SealCheck size={13} className="text-bronze" aria-hidden="true" />
-          {s.verification === "premium" ? "Премиум-проверен" : "Проверена"}
+          {s.verification === "premium" ? (
+            <SealCheck size={13} className="text-bronze" aria-hidden="true" />
+          ) : (
+            <IdentificationCard size={13} className="text-bronze" aria-hidden="true" />
+          )}
+          {PROFILE_TIER[s.verification].label}
         </span>
       </div>
 

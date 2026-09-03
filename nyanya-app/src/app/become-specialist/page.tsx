@@ -38,8 +38,8 @@ const benefits = [
   },
   {
     icon: SealCheck,
-    title: "Статус «Проверен»",
-    text: "Проверка документов выделяет вас среди объявлений и оправдывает достойную цену.",
+    title: "Премиум-профиль",
+    text: "Предоставите документы — анкета получит премиум-статус. Он выделяет вас среди объявлений и оправдывает достойную цену.",
   },
   {
     icon: PhoneCall,
@@ -271,7 +271,7 @@ export default async function BecomeSpecialistPage() {
                 <SpecialistCard specialist={example} />
               </div>
               <p className="mt-6 text-center text-sm text-ink-soft">
-                Проверенная анкета попадает в каталог с отметкой о проверке.
+                Заполненная анкета попадает в каталог со своим статусом.
               </p>
             </div>
           </Reveal>

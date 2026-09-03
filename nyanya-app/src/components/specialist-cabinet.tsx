@@ -145,7 +145,7 @@ export function SpecialistCabinet({
     [applicableSteps]
   );
   // на проверку пускают обязательные документы; рекомендуемые нужны только
-  // для «Премиум-проверен», поэтому в прогресс отправки не входят
+  // для «Премиум-профиля», поэтому в прогресс отправки не входят
   const uploadedRequired = useMemo(
     () => requiredSteps.filter((s) => steps[s.key]?.status !== "empty").length,
     [requiredSteps, steps]
@@ -153,7 +153,7 @@ export function SpecialistCabinet({
   const requiredReady = uploadedRequired === requiredSteps.length;
   /**
    * Отправить анкету можно с одной фотографией — тот же минимум, что и у
-   * публикации. Остальные документы поднимают её до «Премиум-проверен».
+   * публикации. Остальные документы поднимают её до «Премиум-профиля».
    */
   const photoReady = steps["profile_photo"]?.status !== "empty";
 

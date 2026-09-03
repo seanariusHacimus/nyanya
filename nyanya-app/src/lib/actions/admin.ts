@@ -159,8 +159,8 @@ export async function moderateProfile(input: unknown): Promise<Result> {
         status: "active",
         slug,
         moderationNote: null,
-        // уровень выводится из документов: обязательные → «Проверен»,
-        // все вместе с рекомендуемыми → «Премиум-проверен»
+        // уровень выводится из документов: фотография → «Стандартный
+        // профиль», полный комплект → «Премиум-профиль»
         verificationLevel: deriveVerificationLevel(summary),
         reviewedAt: now,
         publishedAt: profile.publishedAt ?? now,
@@ -229,7 +229,7 @@ export async function moderateProfile(input: unknown): Promise<Result> {
 
 /*
  * Ручного переключателя премиума больше нет. Уровень целиком выводится из
- * документов: «Проверен» — приняты обязательные, «Премиум-проверен» — приняты
+ * документов: «Стандартный профиль» — принята фотография, «Премиум-профиль» — приняты
  * все, включая рекомендуемые. Выдавать премиум «сверху» значило бы утверждать
  * то, что документами не подтверждено.
  */
@@ -288,7 +288,7 @@ export async function reviewDocument(input: unknown): Promise<Result> {
 
   // Уровень верификации пересчитывается после каждого решения: отклонённый
   // документ снимает значок, а опубликованную анкету убирает из каталога —
-  // иначе семья продолжала бы видеть «Проверен» по отклонённому паспорту.
+  // иначе семья продолжала бы видеть «Премиум-профиль» по отклонённому паспорту.
   const summary = await documentSummaryFor(doc.profileId, doc.profileCategory);
   const nextLevel = deriveVerificationLevel(summary);
   /**

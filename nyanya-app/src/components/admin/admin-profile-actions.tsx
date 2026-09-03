@@ -132,12 +132,12 @@ export function AdminProfileActions({
           </span>
         ) : !premiumReady ? (
           <span className="text-sm text-ink-soft">
-            Публиковать можно. До «Премиум-проверен» не хватает документов:{" "}
+            Публиковать можно. До «Премиум-профиля» не хватает документов:{" "}
             {blocking}
           </span>
         ) : (
           <span className="text-sm text-bronze-text">
-            Все документы приняты — анкета получит «Премиум-проверен».
+            Все документы приняты — анкета получит «Премиум-профиль».
           </span>
         )}
       </div>
