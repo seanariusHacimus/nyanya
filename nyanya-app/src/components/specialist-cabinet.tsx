@@ -12,9 +12,7 @@ import {
   EyeSlash,
   PhoneCall,
   Star,
-  SignOut,
 } from "@phosphor-icons/react";
-import { authClient } from "@/lib/auth-client";
 import {
   NotificationHeading,
   NotificationList,
@@ -23,6 +21,8 @@ import type { CabinetData, CabinetProfile } from "@/lib/queries/specialist-cabin
 import { setAvailability } from "@/lib/actions/specialist-profile";
 import {
   ProfileWizard,
+  PROFILE_SCREEN_COUNT,
+  firstIncompleteScreen,
   type WizardScope,
 } from "@/components/specialist/profile-wizard";
 import type { StepState } from "@/components/specialist/verification-step-card";
@@ -140,7 +140,9 @@ export function SpecialistCabinet({
   const checkDone = computeStepDone(profile, photoReady);
   const doneCount = WIZARD_CHECKS.filter((c) => checkDone[c.key]).length;
   const allDone = doneCount === WIZARD_CHECKS.length;
-  const progressPercent = Math.round((doneCount / WIZARD_CHECKS.length) * 100);
+  // номер экрана, с которого мастер продолжит: подпись на кнопке говорит,
+  // сколько осталось, вместо списка галочек
+  const resumeStep = firstIncompleteScreen(profile, steps) + 1;
 
   if (wizard) {
     return (
@@ -157,53 +159,71 @@ export function SpecialistCabinet({
     );
   }
 
-  return (
-    <div className="mx-auto max-w-[900px] px-5 pt-14 pb-24 sm:px-8 lg:pt-20">
-      {/* шапка */}
-      <div className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <p className="label-caps text-bronze-text">Кабинет · Специалист</p>
-          <h1 className="mt-3 font-display text-4xl leading-[1.08] font-medium text-ink sm:text-5xl">
-            {name}
-          </h1>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            void authClient.signOut();
-            window.location.href = "/";
-          }}
-          className="label-caps flex min-h-11 items-center gap-2 text-ink-soft transition-colors duration-300 hover:text-ink"
-        >
-          <SignOut size={16} aria-hidden="true" />
-          Выйти
-        </button>
-      </div>
+  const primaryLabel =
+    data.status === "rejected"
+      ? "Исправить и отправить"
+      : data.status === "draft"
+        ? allDone
+          ? "Отправить на проверку"
+          : doneCount === 0
+            ? "Заполнить анкету"
+            : `Продолжить анкету · шаг ${resumeStep} из ${PROFILE_SCREEN_COUNT}`
+        : "Изменить анкету";
 
-      {/* статус */}
-      <div className={`mt-10 flex items-start gap-4 border p-6 ${banner.box}`}>
-        <BannerIcon size={26} weight="thin" className="shrink-0 text-bronze" />
-        <div>
-          <p className="text-base font-semibold text-ink">{banner.title}</p>
-          <p className="mt-1 text-sm leading-relaxed text-ink-soft">
-            {banner.text}
-          </p>
-          {data.moderationNote && data.status === "rejected" && (
-            <p className="mt-3 border-l-2 border-[#a5462f] bg-cream px-4 py-3 text-sm leading-relaxed text-ink">
-              <span className="font-semibold">Комментарий модератора:</span>{" "}
-              {data.moderationNote}
+  /**
+   * Кабинет собирается по статусу, а не одним списком секций.
+   *
+   * Правило одно: на первом экране телефона — статус и одно следующее
+   * действие. Черновику нечего показывать, кроме кнопки «Продолжить»;
+   * опубликованной анкете — переключатель показа и две цифры; возвращённой —
+   * комментарий модератора раньше всего остального. Пустые секции не
+   * рисуются: пустая «лента уведомлений» на телефоне — это ещё один экран
+   * прокрутки ради фразы «пока ничего нет».
+   */
+  return (
+    <div className="mx-auto max-w-[900px] px-5 pt-10 pb-24 sm:px-8 lg:pt-16">
+      {/* шапка: имя одной строкой. «Выйти» есть в шапке сайта, дублировать незачем */}
+      <p className="label-caps text-bronze-text">Кабинет · Специалист</p>
+      <h1 className="mt-2 font-display text-3xl leading-[1.08] font-medium text-ink sm:text-5xl">
+        {name}
+      </h1>
+
+      {/* статус и главное действие — один блок */}
+      <section className={`mt-8 border p-6 ${banner.box}`}>
+        <div className="flex items-start gap-4">
+          <BannerIcon size={26} weight="thin" className="mt-0.5 shrink-0 text-bronze" />
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-semibold text-ink">{banner.title}</p>
+            {data.status === "rejected" && data.moderationNote && (
+              <p className="mt-3 border-l-2 border-[#a5462f] bg-cream px-4 py-3 text-sm leading-relaxed text-ink">
+                <span className="font-semibold">Комментарий модератора:</span>{" "}
+                {data.moderationNote}
+              </p>
+            )}
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+              {banner.text}
             </p>
-          )}
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => setWizard("profile")}
+            className="label-caps inline-flex min-h-12 w-full items-center justify-center bg-ink px-6 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px sm:w-auto sm:px-8"
+          >
+            {primaryLabel}
+          </button>
           {data.status === "active" && data.slug && (
             <Link
               href={`/specialists/${data.slug}`}
-              className="label-caps mt-3 inline-block border-b border-ink/30 pb-0.5 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
+              className="label-caps inline-flex min-h-12 w-full items-center justify-center border border-ink px-6 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream sm:w-auto"
             >
-              Открыть анкету в каталоге
+              Открыть в каталоге
             </Link>
           )}
         </div>
-      </div>
+      </section>
 
       {/*
         Переключатель показа. Только для опубликованной анкеты: черновик и
@@ -211,8 +231,8 @@ export function SpecialistCabinet({
         обещал бы действие, которого не происходит.
       */}
       {data.status === "active" && (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border border-line bg-paper p-6">
-          <div>
+        <section className="mt-4 flex flex-wrap items-center justify-between gap-4 border border-line bg-paper p-6">
+          <div className="min-w-0">
             <p className="text-base font-semibold text-ink">
               {data.available ? "Открыты для предложений" : "Показ приостановлен"}
             </p>
@@ -233,7 +253,7 @@ export function SpecialistCabinet({
                 if (result.ok) router.refresh();
               })
             }
-            className="label-caps inline-flex min-h-12 shrink-0 items-center gap-2 border border-ink px-6 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream disabled:opacity-60"
+            className="label-caps inline-flex min-h-12 w-full shrink-0 items-center justify-center gap-2 border border-ink px-6 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream disabled:opacity-60 sm:w-auto"
           >
             {data.available ? (
               <>
@@ -247,121 +267,59 @@ export function SpecialistCabinet({
               </>
             )}
           </button>
-        </div>
+        </section>
       )}
 
       {/* показатели опубликованной анкеты */}
       {data.status === "active" && (
-        <dl className="mt-8 grid gap-4 sm:grid-cols-2">
-          <div className="border border-line bg-paper p-6">
+        <dl className="mt-4 grid grid-cols-2 gap-4">
+          <div className="border border-line bg-paper p-5">
             <dt className="label-caps flex items-center gap-2 text-ink-faint">
-              <PhoneCall size={15} className="text-bronze" /> Открытий контактов
+              <PhoneCall size={15} className="text-bronze" /> Контактов
             </dt>
-            <dd className="mt-3 font-display text-4xl font-medium text-ink">
+            <dd className="mt-2 font-display text-3xl font-medium text-ink sm:text-4xl">
               {data.unlockCount}
             </dd>
           </div>
-          <div className="border border-line bg-paper p-6">
+          <div className="border border-line bg-paper p-5">
             <dt className="label-caps flex items-center gap-2 text-ink-faint">
-              <Star size={15} className="text-bronze" /> Отзывы
+              <Star size={15} className="text-bronze" /> Отзывов
             </dt>
-            <dd className="mt-3 font-display text-4xl font-medium text-ink">
+            <dd className="mt-2 font-display text-3xl font-medium text-ink sm:text-4xl">
               {data.reviewCount}
             </dd>
           </div>
         </dl>
       )}
 
-      {/* анкета — заполняется в отдельном полноэкранном мастере */}
-      <section className="mt-10 border border-line bg-paper p-6 sm:p-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className="font-display text-2xl font-medium text-ink">
-              Анкета
-            </h2>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-soft">
-              {allDone
-                ? "Всё заполнено. Можно отправлять на проверку."
-                : `Заполнено ${doneCount} из ${WIZARD_CHECKS.length}. Заполняется по одному вопросу за раз — прокручивать ничего не нужно.`}
-            </p>
-          </div>
-          <p className="font-display text-3xl font-medium text-bronze-text">
-            {doneCount}/{WIZARD_CHECKS.length}
+      {/*
+        Премиум — разговор после отправки анкеты, не до. Пока это кнопка;
+        плашка с объяснением выгод появится в следующей фазе.
+      */}
+      {data.status !== "draft" && (
+        <section className="mt-4 border border-line bg-paper p-6">
+          <p className="text-base font-semibold text-ink">Премиум-профиль</p>
+          <p className="mt-1 max-w-xl text-sm leading-relaxed text-ink-soft">
+            Предоставьте паспорт и справки — модератор проверит их, и анкета
+            получит отметку «Премиум-профиль».
           </p>
-        </div>
-
-        <div
-          role="progressbar"
-          aria-valuenow={progressPercent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label="Прогресс заполнения анкеты"
-          className="mt-5 h-1 w-full bg-line"
-        >
-          <div
-            className="h-full bg-bronze transition-all duration-500"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-
-        <ul className="mt-6 grid gap-2.5 sm:grid-cols-2">
-          {WIZARD_CHECKS.map((check) => {
-            const done = checkDone[check.key];
-            return (
-              <li key={check.key} className="flex items-center gap-2.5 text-sm">
-                {done ? (
-                  <CheckCircle size={16} weight="fill" className="shrink-0 text-bronze" />
-                ) : (
-                  <Circle size={16} className="shrink-0 text-ink-faint" />
-                )}
-                <span className={done ? "text-ink" : "text-ink-soft"}>
-                  {check.label}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-
-        <div className="mt-7 flex flex-wrap gap-3">
           <button
             type="button"
-            onClick={() => setWizard("profile")}
-            className="label-caps inline-flex min-h-12 items-center justify-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px"
+            onClick={() => setWizard("documents")}
+            className="label-caps mt-5 inline-flex min-h-12 w-full items-center justify-center border border-ink px-6 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream sm:w-auto"
           >
-            {/*
-              Черновик: подпись говорит, что осталось. Заполненный черновик
-              ещё не отправлен — и кнопка так и называется, иначе человек
-              думал бы, что дело сделано.
-            */}
-            {data.status === "draft" || data.status === "rejected"
-              ? allDone
-                ? "Отправить на проверку"
-                : doneCount === 0
-                  ? "Заполнить анкету"
-                  : "Продолжить анкету"
-              : "Изменить анкету"}
+            Документы для премиума
           </button>
-          {/* паспорт и справки — разговор после отправки анкеты, не до */}
-          {data.status !== "draft" && (
-            <button
-              type="button"
-              onClick={() => setWizard("documents")}
-              className="label-caps inline-flex min-h-12 items-center justify-center border border-ink px-8 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream"
-            >
-              Документы для премиума
-            </button>
-          )}
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Ф8 — лента уведомлений: решения модератора приходят сюда */}
-      <section id="notifications" className="mt-16 scroll-mt-24">
-        <NotificationHeading />
-        <NotificationList
-          notifications={data.notifications}
-          emptyText="Уведомлений пока нет. Здесь появятся решения модератора по анкете и документам."
-        />
-      </section>
+      {data.notifications.length > 0 && (
+        <section id="notifications" className="mt-14 scroll-mt-24">
+          <NotificationHeading />
+          <NotificationList notifications={data.notifications} />
+        </section>
+      )}
     </div>
   );
 }

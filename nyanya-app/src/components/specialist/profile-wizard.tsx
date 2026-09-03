@@ -99,7 +99,9 @@ function photoReady(steps: Record<string, StepState>): boolean {
  * Человек, закрывший вкладку на фотографии, открывает фотографию, а не
  * листает заново то, что уже отвечал.
  */
-function firstIncompleteScreen(
+export const PROFILE_SCREEN_COUNT = 7;
+
+export function firstIncompleteScreen(
   p: CabinetProfile,
   steps: Record<string, StepState>
 ): number {
