@@ -79,7 +79,7 @@ const WIZARD_CHECKS = [
   { key: "where", label: "Район и стоимость" },
   { key: "experience", label: "Опыт и навыки" },
   { key: "about", label: "Рассказ о себе" },
-  { key: "documents", label: "Обязательные документы" },
+  { key: "documents", label: "Фотография" },
 ] as const;
 
 type WizardKey = (typeof WIZARD_CHECKS)[number]["key"];
@@ -397,9 +397,12 @@ export function SpecialistCabinet({
             onClick={() => setWizard("documents")}
             className="label-caps inline-flex min-h-12 items-center justify-center border border-ink px-8 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream"
           >
-            {requiredReady
-              ? `Документы (${uploadedRequired} из ${requiredSteps.length})`
-              : `Загрузить документы (${uploadedRequired} из ${requiredSteps.length})`}
+            {/* «0 из 5» читалось как «нужно пять справок»; нужна одна фотография */}
+            {!photoReady
+              ? "Загрузить фотографию"
+              : requiredReady
+                ? `Документы для премиума (${uploadedRequired} из ${requiredSteps.length})`
+                : "Документы для премиума"}
           </button>
         </div>
       </section>
@@ -420,15 +423,19 @@ export function SpecialistCabinet({
               Анкета заполнена
             </span>
           </li>
+          {/*
+            Галочка обязана смотреть туда же, куда и кнопка отправки, — на
+            фотографию. Раньше она считала все пять документов, и с одним фото
+            человек видел активную кнопку и пустую галочку над ней.
+          */}
           <li className="flex items-center gap-2.5">
-            {requiredReady ? (
+            {photoReady ? (
               <CheckCircle size={16} weight="fill" className="text-bronze" />
             ) : (
               <Circle size={16} className="text-ink-faint" />
             )}
-            <span className={requiredReady ? "text-ink" : "text-ink-soft"}>
-              Загружены обязательные документы ({uploadedRequired} из{" "}
-              {requiredSteps.length})
+            <span className={photoReady ? "text-ink" : "text-ink-soft"}>
+              Фотография загружена
             </span>
           </li>
         </ul>

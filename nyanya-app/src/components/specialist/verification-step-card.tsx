@@ -202,7 +202,12 @@ export function VerificationStepCard({
         <input
           ref={inputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
+          accept={
+            // фотография — только изображение: PDF в каталоге не показать
+            step.key === "profile_photo"
+              ? "image/jpeg,image/png,image/webp,image/heic"
+              : "image/jpeg,image/png,image/webp,image/heic,application/pdf"
+          }
           className="sr-only"
           onChange={(e) => {
             const file = e.target.files?.[0];

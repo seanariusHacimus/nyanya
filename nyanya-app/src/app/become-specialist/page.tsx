@@ -152,7 +152,7 @@ export default async function BecomeSpecialistPage() {
               связываются с вами напрямую.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-5">
-              <ButtonLink href="/register">Разместить анкету</ButtonLink>
+              <ButtonLink href="/register?role=specialist">Разместить анкету</ButtonLink>
               <Link
                 href="/verification"
                 className="label-caps border-b border-ink/30 pb-1 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
@@ -311,7 +311,7 @@ export default async function BecomeSpecialistPage() {
             Готовы начать?
           </h2>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-5">
-            <ButtonLink href="/register">Разместить анкету</ButtonLink>
+            <ButtonLink href="/register?role=specialist">Разместить анкету</ButtonLink>
             <Link
               href="/contacts"
               className="label-caps border-b border-ink/30 pb-1 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"

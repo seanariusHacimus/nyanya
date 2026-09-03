@@ -34,7 +34,11 @@ export function RegisterForm() {
     "email"
   );
   const [existingRole, setExistingRole] = useState("parent");
-  const [role, setRole] = useState<"parent" | "specialist">("parent");
+  // «Разместить анкету» присылает ?role=specialist — человек, пришедший
+  // размещать анкету, не должен замечать и переключать «Я родитель»
+  const [role, setRole] = useState<"parent" | "specialist">(
+    params.get("role") === "specialist" ? "specialist" : "parent"
+  );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
