@@ -127,6 +127,9 @@ export async function getActiveSpecialists(): Promise<UiSpecialist[]> {
     .leftJoin(districts, eq(districts.id, specialistProfiles.districtId))
     .where(listedInCatalog)
     .orderBy(
+      // премиум выше стандартного — обещание с плашки в кабинете; перечисление
+      // enum упорядочено так, что premium_verified старше остальных
+      desc(specialistProfiles.verificationLevel),
       desc(specialistProfiles.ratingAvg),
       desc(specialistProfiles.reviewCount),
       desc(specialistProfiles.publishedAt)
@@ -191,6 +194,9 @@ export async function getSimilarSpecialists(
       )
     )
     .orderBy(
+      // премиум выше стандартного — обещание с плашки в кабинете; перечисление
+      // enum упорядочено так, что premium_verified старше остальных
+      desc(specialistProfiles.verificationLevel),
       desc(specialistProfiles.ratingAvg),
       desc(specialistProfiles.reviewCount),
       desc(specialistProfiles.publishedAt)
@@ -214,6 +220,9 @@ export async function getSimilarSpecialists(
         )
       )
       .orderBy(
+      // премиум выше стандартного — обещание с плашки в кабинете; перечисление
+      // enum упорядочено так, что premium_verified старше остальных
+      desc(specialistProfiles.verificationLevel),
       desc(specialistProfiles.ratingAvg),
       desc(specialistProfiles.reviewCount),
       desc(specialistProfiles.publishedAt)

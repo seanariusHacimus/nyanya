@@ -109,6 +109,17 @@ emails match the profile; `submitForModeration` no longer requires `description`
 the documents wizard (`scope: "documents"`) excludes the photo and exists for «Премиум-профиль».
 `/register?role=specialist` preselects the role and replaces the role cards with a one-line notice.
 
+## Premium — promises that the code keeps
+
+`PREMIUM_BENEFITS` (`lib/specialists-shared.ts`) is the only place the premium pitch is worded;
+the cabinet card, `/specialist/premium` and the emails render it. **Every entry must be true in
+code**: the catalogue orders by `verification_level` before rating (all three `orderBy` sites in
+`queries/specialists.ts` and the client default sort in `catalog-view.tsx`), the «Только
+премиум-профили» toggle exists, and the seal badge is premium-only. Do not add a benefit here
+without implementing it — that is exactly how the old «documents checked before publication» lie
+came about. The card shows after submission and only while `tier !== "premium_verified"`;
+`/specialist/premium` lists the category's documents (never the photo) with upload cards.
+
 ## Specialist availability
 
 A published specialist can pause their own listing from the cabinet — the switch writes

@@ -26,6 +26,7 @@ import {
   type WizardScope,
 } from "@/components/specialist/profile-wizard";
 import type { StepState } from "@/components/specialist/verification-step-card";
+import { PremiumCard } from "@/components/specialist/premium-card";
 
 const banners = {
   draft: {
@@ -292,25 +293,9 @@ export function SpecialistCabinet({
         </dl>
       )}
 
-      {/*
-        Премиум — разговор после отправки анкеты, не до. Пока это кнопка;
-        плашка с объяснением выгод появится в следующей фазе.
-      */}
-      {data.status !== "draft" && (
-        <section className="mt-4 border border-line bg-paper p-6">
-          <p className="text-base font-semibold text-ink">Премиум-профиль</p>
-          <p className="mt-1 max-w-xl text-sm leading-relaxed text-ink-soft">
-            Предоставьте паспорт и справки — модератор проверит их, и анкета
-            получит отметку «Премиум-профиль».
-          </p>
-          <button
-            type="button"
-            onClick={() => setWizard("documents")}
-            className="label-caps mt-5 inline-flex min-h-12 w-full items-center justify-center border border-ink px-6 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream sm:w-auto"
-          >
-            Документы для премиума
-          </button>
-        </section>
+      {/* премиум — разговор после отправки анкеты, не до; и только пока его нет */}
+      {data.status !== "draft" && data.tier !== "premium_verified" && (
+        <PremiumCard />
       )}
 
       {/* Ф8 — лента уведомлений: решения модератора приходят сюда */}

@@ -34,6 +34,8 @@ export type CabinetData = {
   ratingAvg: number;
   /** false — специалист сам убрал анкету из каталога («сейчас не ищу работу») */
   available: boolean;
+  /** Уровень профиля — от него зависит, показывать ли плашку премиума. */
+  tier: "unverified" | "verified" | "premium_verified";
   profile: CabinetProfile;
   steps: Record<string, StepState>;
   districts: { id: number; name: string }[];
@@ -90,6 +92,7 @@ export async function getCabinetData(
       reviewCount: 0,
       ratingAvg: 0,
       available: true,
+      tier: "unverified",
       profile: { ...emptyProfile, fullName: userName },
       steps,
       districts: districtRows,
@@ -126,6 +129,7 @@ export async function getCabinetData(
     reviewCount: profileRow.reviewCount,
     ratingAvg: Number(profileRow.ratingAvg),
     available: !profileRow.employed,
+    tier: profileRow.verificationLevel,
     profile: {
       fullName: profileRow.fullName === "Без имени" ? "" : profileRow.fullName,
       category: profileRow.category,

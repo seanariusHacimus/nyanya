@@ -43,7 +43,7 @@ const languages = ["Любой", "Русский", "Узбекский", "Анг
  * оценке — те, у кого отзывов больше.
  */
 const sorts = {
-  rating: "По отзывам",
+  rating: "Премиум и оценки",
   priceAsc: "Сначала дешевле",
   priceDesc: "Сначала дороже",
   experience: "По опыту",
@@ -52,6 +52,7 @@ const sorts = {
 type SortKey = keyof typeof sorts;
 
 type Toggles = {
+  premium: boolean;
   english: boolean;
   car: boolean;
   liveIn: boolean;
@@ -60,6 +61,7 @@ type Toggles = {
 };
 
 const toggleDefs: { key: keyof Toggles; label: string }[] = [
+  { key: "premium", label: "Только премиум-профили" },
   { key: "english", label: "Знание английского" },
   { key: "car", label: "Наличие автомобиля" },
   { key: "liveIn", label: "С проживанием" },
@@ -95,6 +97,7 @@ export function CatalogView({
   const [maxPrice, setMaxPrice] = useState<string>("");
   const [minExp, setMinExp] = useState<string>("");
   const [toggles, setToggles] = useState<Toggles>({
+    premium: false,
     english: false,
     car: false,
     liveIn: false,
@@ -124,6 +127,7 @@ export function CatalogView({
       if (maxPrice && !Number.isNaN(price) && s.priceFrom > price) return false;
       const exp = Number(minExp);
       if (minExp && !Number.isNaN(exp) && s.experienceYears < exp) return false;
+      if (toggles.premium && s.verification !== "premium") return false;
       if (toggles.english && s.english === "Нет") return false;
       if (toggles.car && !s.attributes.includes("Свой автомобиль")) return false;
       if (toggles.liveIn && !s.attributes.includes("С проживанием")) return false;
@@ -149,8 +153,13 @@ export function CatalogView({
         list = [...list].sort((a, b) => b.experienceYears - a.experienceYears);
         break;
       default:
+        // премиум идёт первым — это обещано на плашке в кабинете (PREMIUM_BENEFITS);
+        // внутри уровня — оценка семей, затем число отзывов
         list = [...list].sort(
-          (a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount
+          (a, b) =>
+            Number(b.verification === "premium") - Number(a.verification === "premium") ||
+            b.rating - a.rating ||
+            b.reviewCount - a.reviewCount
         );
     }
     return list;
@@ -162,7 +171,14 @@ export function CatalogView({
     setLanguage("Любой");
     setMaxPrice("");
     setMinExp("");
-    setToggles({ english: false, car: false, liveIn: false, night: false, newborn: false });
+    setToggles({
+      premium: false,
+      english: false,
+      car: false,
+      liveIn: false,
+      night: false,
+      newborn: false,
+    });
     setShown(PAGE_SIZE);
   };
 
