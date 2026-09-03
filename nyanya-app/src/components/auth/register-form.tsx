@@ -239,9 +239,16 @@ export function RegisterForm() {
         </div>
       </div>
 
+      {/*
+        Специалиста просим паспортное имя, семью — обычное.
+        Имя специалиста уходит прямо в анкету и сверяется модератором с
+        документами: «Маша» в паспорте не найдётся, и анкета вернётся на
+        доработку. Семье паспортное имя ни к чему — она никаких документов не
+        подаёт, и лишнее требование только отпугивает на регистрации.
+      */}
       <div className="grid gap-2">
         <label htmlFor="reg-name" className="text-sm font-semibold text-ink">
-          Имя
+          {role === "specialist" ? "Имя и фамилия как в паспорте" : "Имя и фамилия"}
         </label>
         <input
           id="reg-name"
@@ -251,9 +258,18 @@ export function RegisterForm() {
           autoComplete="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          aria-describedby={role === "specialist" ? "reg-name-hint" : undefined}
           className={inputClass}
-          placeholder="Ваше имя"
+          placeholder={
+            role === "specialist" ? "Фамилия Имя Отчество" : "Имя и фамилия"
+          }
         />
+        {role === "specialist" && (
+          <p id="reg-name-hint" className="text-xs text-ink-faint">
+            Модератор сверит его с документами — укажите так, как написано в
+            паспорте.
+          </p>
+        )}
       </div>
 
       {/* см. комментарий в reset-password-form.tsx: логин для менеджера паролей */}

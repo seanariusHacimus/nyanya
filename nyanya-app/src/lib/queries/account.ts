@@ -61,6 +61,7 @@ function toUi(row: ProfileRow, districtName: string | null): UiSpecialist {
     // «проверенной» значит обещать семье то, чего не было.
     verification:
       row.verificationLevel === "premium_verified" ? "premium" : "published",
+    available: !row.employed,
     languages: row.languages ?? [],
     english: englishLabels[row.englishLevel] ?? "Нет",
     education: row.education ?? "",

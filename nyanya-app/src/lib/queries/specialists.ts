@@ -92,6 +92,7 @@ function toUi(row: Row): UiSpecialist {
     // «проверенной» значит обещать семье то, чего не было.
     verification:
       row.verificationLevel === "premium_verified" ? "premium" : "published",
+    available: !row.employed,
     languages: row.languages ?? [],
     english: englishLabels[row.englishLevel] ?? "Нет",
     education: row.education ?? "",
@@ -106,12 +107,25 @@ const activeWithSlug = and(
   isNotNull(specialistProfiles.slug)
 );
 
+/**
+ * Что показывать в списках.
+ *
+ * Кроме опубликованных отсеиваем тех, кто сам отметил «сейчас не ищу работу»:
+ * показывать семье человека, который заведомо не ответит, — впустую потратить
+ * её время и подорвать доверие к каталогу.
+ *
+ * Отдельная колонка `employed`, а не статус `hidden`: скрытие статусом —
+ * инструмент модератора, и специалист не должен уметь отменять его решение,
+ * переключая тумблер у себя в кабинете.
+ */
+const listedInCatalog = and(activeWithSlug, eq(specialistProfiles.employed, false));
+
 export async function getActiveSpecialists(): Promise<UiSpecialist[]> {
   const rows = await db
     .select({ profile: specialistProfiles, districtName: districts.nameRu })
     .from(specialistProfiles)
     .leftJoin(districts, eq(districts.id, specialistProfiles.districtId))
-    .where(activeWithSlug)
+    .where(listedInCatalog)
     .orderBy(
       desc(specialistProfiles.ratingAvg),
       desc(specialistProfiles.reviewCount),
@@ -171,7 +185,7 @@ export async function getSimilarSpecialists(
     .leftJoin(districts, eq(districts.id, specialistProfiles.districtId))
     .where(
       and(
-        activeWithSlug,
+        listedInCatalog,
         eq(specialistProfiles.category, category),
         ne(specialistProfiles.slug, slug)
       )
@@ -194,7 +208,7 @@ export async function getSimilarSpecialists(
       .leftJoin(districts, eq(districts.id, specialistProfiles.districtId))
       .where(
         and(
-          activeWithSlug,
+          listedInCatalog,
           ne(specialistProfiles.category, category),
           ne(specialistProfiles.slug, slug)
         )

@@ -8,6 +8,7 @@ import {
   HourglassMedium,
   CheckCircle,
   WarningCircle,
+  Eye,
   EyeSlash,
   PhoneCall,
   Star,
@@ -23,6 +24,7 @@ import { stepsForCategory } from "@/content/verification-steps";
 import type { CabinetData, CabinetProfile } from "@/lib/queries/specialist-cabinet";
 import {
   saveSpecialistProfile,
+  setAvailability,
   submitForModeration,
 } from "@/lib/actions/specialist-profile";
 import {
@@ -127,6 +129,7 @@ export function SpecialistCabinet({
   const [wizard, setWizard] = useState<WizardScope | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitPending, startSubmit] = useTransition();
+  const [availabilityPending, startAvailability] = useTransition();
 
   const locked = data.status === "pending_review";
   const banner = banners[data.status];
@@ -259,6 +262,51 @@ export function SpecialistCabinet({
           )}
         </div>
       </div>
+
+      {/*
+        Переключатель показа. Только для опубликованной анкеты: черновик и
+        анкета на проверке в каталоге и так не показываются, и тумблер там
+        обещал бы действие, которого не происходит.
+      */}
+      {data.status === "active" && (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border border-line bg-paper p-6">
+          <div>
+            <p className="text-base font-semibold text-ink">
+              {data.available ? "Открыты для предложений" : "Показ приостановлен"}
+            </p>
+            <p className="mt-1 max-w-xl text-sm leading-relaxed text-ink-soft">
+              {data.available
+                ? "Анкета в каталоге — семьи находят её и могут открыть ваши контакты."
+                : "Анкета убрана из каталога, новые семьи её не найдут. Всё заполненное сохранено — вернуть показ можно в любой момент."}
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={availabilityPending}
+            onClick={() =>
+              startAvailability(async () => {
+                const result = await setAvailability({
+                  available: !data.available,
+                });
+                if (result.ok) router.refresh();
+              })
+            }
+            className="label-caps inline-flex min-h-12 shrink-0 items-center gap-2 border border-ink px-6 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream disabled:opacity-60"
+          >
+            {data.available ? (
+              <>
+                <EyeSlash size={16} aria-hidden="true" />
+                Приостановить показ
+              </>
+            ) : (
+              <>
+                <Eye size={16} aria-hidden="true" />
+                Вернуть в каталог
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* показатели опубликованной анкеты */}
       {data.status === "active" && (

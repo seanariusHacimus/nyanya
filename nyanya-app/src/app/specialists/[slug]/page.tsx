@@ -77,6 +77,30 @@ export default async function SpecialistPage({
           Каталог
         </Link>
 
+        {/*
+          Анкета остаётся открытой по прямой ссылке, даже когда специалист убрал
+          её из каталога: ссылка могла быть сохранена или переслана знакомым, и
+          глухая ошибка вместо страницы оставила бы семью в недоумении. Но
+          звонить сейчас бессмысленно, и сказать об этом надо до того, как
+          человек наберёт номер.
+        */}
+        {!s.available && (
+          <p className="mt-6 border border-line bg-cream-deep px-5 py-4 text-sm leading-relaxed text-ink-soft">
+            <span className="font-semibold text-ink">
+              Специалист сейчас не принимает обращения.
+            </span>{" "}
+            Анкета временно убрана из каталога — возможно, человек уже нашёл
+            работу. Загляните позже или{" "}
+            <a
+              href="/catalog"
+              className="border-b border-ink/30 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
+            >
+              подберите другого специалиста
+            </a>
+            .
+          </p>
+        )}
+
         <div className="mt-6 grid gap-12 pb-20 lg:grid-cols-[1fr_380px] lg:gap-16 lg:pb-28">
           <div>
             {/* P2 — герой профиля */}

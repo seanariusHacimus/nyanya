@@ -32,6 +32,8 @@ export type CabinetData = {
   unlockCount: number;
   reviewCount: number;
   ratingAvg: number;
+  /** false — специалист сам убрал анкету из каталога («сейчас не ищу работу») */
+  available: boolean;
   profile: CabinetProfile;
   steps: Record<string, StepState>;
   districts: { id: number; name: string }[];
@@ -87,6 +89,7 @@ export async function getCabinetData(
       unlockCount: 0,
       reviewCount: 0,
       ratingAvg: 0,
+      available: true,
       profile: { ...emptyProfile, fullName: userName },
       steps,
       districts: districtRows,
@@ -122,6 +125,7 @@ export async function getCabinetData(
     unlockCount: profileRow.unlockCount,
     reviewCount: profileRow.reviewCount,
     ratingAvg: Number(profileRow.ratingAvg),
+    available: !profileRow.employed,
     profile: {
       fullName: profileRow.fullName === "Без имени" ? "" : profileRow.fullName,
       category: profileRow.category,

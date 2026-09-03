@@ -13,7 +13,10 @@ import {
   user,
 } from "@/db/schema";
 import { uniqueSlug } from "@/lib/slug";
-import { sendDocumentsApprovedEmail } from "@/lib/email";
+import {
+  sendDocumentsApprovedEmail,
+  sendProfilePublishedEmail,
+} from "@/lib/email";
 import { stepByKey } from "@/content/verification-steps";
 import type { CategoryKey } from "@/lib/specialists-shared";
 import {
@@ -105,8 +108,13 @@ export async function moderateProfile(input: unknown): Promise<Result> {
       category: specialistProfiles.category,
       verificationLevel: specialistProfiles.verificationLevel,
       publishedAt: specialistProfiles.publishedAt,
+      // адрес владельца — чтобы сообщить о публикации письмом, а не только
+      // уведомлением в кабинете, куда он до ответа модератора не заходит
+      ownerEmail: user.email,
+      ownerName: user.name,
     })
     .from(specialistProfiles)
+    .leftJoin(user, eq(user.id, specialistProfiles.userId))
     .where(eq(specialistProfiles.id, profileId))
     .limit(1);
 
@@ -166,6 +174,14 @@ export async function moderateProfile(input: unknown): Promise<Result> {
       title: "Анкета опубликована",
       body: "Ваша анкета прошла модерацию и видна в каталоге.",
     });
+
+    if (profile.ownerEmail) {
+      await sendProfilePublishedEmail(
+        profile.ownerEmail,
+        profile.ownerName ?? "",
+        slug
+      );
+    }
 
     revalidateCatalog(slug);
     return done();

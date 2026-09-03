@@ -17,6 +17,7 @@ import {
   stepByKey,
 } from "@/content/verification-steps";
 import { detectMime, matchesDeclaredMime } from "@/lib/file-type";
+import { sendProfileSubmittedEmail } from "@/lib/email";
 
 /* ------------------------- вспомогательное ------------------------- */
 
@@ -262,6 +263,48 @@ export async function deleteVerificationDocument(input: unknown) {
 
 /* ------------------- отправка на модерацию (§8.9) ------------------ */
 
+/**
+ * «Сейчас не ищу работу» — специалист сам убирает анкету из каталога.
+ *
+ * Пишем в отдельную колонку `employed`, а НЕ в статус анкеты. Статус `hidden`
+ * — инструмент модератора; если бы тумблер в кабинете писал туда же, специалист
+ * мог бы одним нажатием отменить решение модератора и вернуть себя в каталог.
+ *
+ * Анкета при этом не пропадает: по прямой ссылке она открывается и честно
+ * сообщает, что человек сейчас не принимает обращения. У семьи ссылка может
+ * быть сохранена или отправлена знакомым, и глухая ошибка вместо страницы
+ * оставила бы её в недоумении.
+ *
+ * Переключать имеет смысл только опубликованную анкету — черновик и анкета на
+ * проверке в каталоге и так не показываются.
+ */
+export async function setAvailability(input: unknown) {
+  const guard = await requireSpecialist();
+  if ("error" in guard) return { ok: false as const, error: guard.error };
+
+  const parsed = z.object({ available: z.boolean() }).safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "invalid" as const };
+
+  const profile = await ensureProfile(
+    guard.session.user.id,
+    guard.session.user.name
+  );
+
+  if (profile.status !== "active")
+    return { ok: false as const, error: "not_published" as const };
+
+  await db
+    .update(specialistProfiles)
+    .set({ employed: !parsed.data.available, updatedAt: new Date() })
+    .where(eq(specialistProfiles.id, profile.id));
+
+  revalidatePath("/specialist");
+  revalidatePath("/catalog");
+  if (profile.slug) revalidatePath(`/specialists/${profile.slug}`);
+
+  return { ok: true as const, available: parsed.data.available };
+}
+
 export async function submitForModeration() {
   const guard = await requireSpecialist();
   if ("error" in guard) return { ok: false as const, error: guard.error };
@@ -311,6 +354,13 @@ export async function submitForModeration() {
       updatedAt: new Date(),
     })
     .where(eq(specialistProfiles.id, profile.id));
+
+  // письмо дублирует уведомление в кабинете: человек, отправив анкету,
+  // закрывает сайт и уходит ждать — в кабинет он до ответа не вернётся
+  await sendProfileSubmittedEmail(
+    guard.session.user.email,
+    guard.session.user.name
+  );
 
   await db.insert(notifications).values({
     userId: guard.session.user.id,

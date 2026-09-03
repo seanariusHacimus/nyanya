@@ -84,6 +84,15 @@ The home page's `trustFeatures` block is rendered by **two** pages — the home 
 each with its own icon map keyed by `feature.icon`. Renaming a key means changing both maps; the
 lookup is deliberately un-cast so a mismatch fails the build instead of the browser.
 
+## Specialist availability
+
+A published specialist can pause their own listing from the cabinet — the switch writes
+`specialist_profiles.employed`, **not** the profile status. Status `hidden` belongs to the
+moderator; if the cabinet wrote there, a specialist could undo a moderator's decision with one
+click. Paused profiles drop out of the catalogue, the similar-profiles strip and the home-page
+reviews, but stay reachable by direct link with a notice — families keep and forward those links,
+and a dead page would just confuse them.
+
 ## Roles and access
 
 `parent` (default) · `specialist` · `admin`. Role is chosen at signup; `admin` is set manually.
