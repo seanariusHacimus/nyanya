@@ -153,6 +153,12 @@ specialist sees in their cabinet.
 - **Email works** (since 2026-08-04): `nyanya.uz` is verified in Resend and `EMAIL_FROM` is set to
   `NYANYA.UZ <noreply@nyanya.uz>`. The production Resend key is send-only, so it cannot list
   domains or read delivery status — confirm delivery from the inbox, not the API.
+  Locally, without `RESEND_API_KEY`, `send()` only logs the subject; set `EMAIL_DUMP_DIR` to a
+  directory and every mocked email is also written there as an `.html` file you can open in a
+  browser — that is how the templates are checked before they reach a real inbox. Three
+  specialist emails exist: welcome (rewritten 2026-09-03 for the one-track onboarding, with the
+  premium block), «принята на модерации», and «опубликована» (premium block only for a standard
+  profile). The premium wording in all of them comes from `PREMIUM_BENEFITS`.
 - **Signup is email-OTP, login is email + password.** The code proves the address once, at
   registration; afterwards only the password is used. The password is written by `completeProfile`
   (Better Auth has no public set-password endpoint) and only when none exists yet.

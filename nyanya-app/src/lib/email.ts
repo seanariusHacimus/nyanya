@@ -1,4 +1,7 @@
+import fs from "node:fs";
+import path from "node:path";
 import { Resend } from "resend";
+import { PREMIUM_BENEFITS } from "@/lib/specialists-shared";
 
 /**
  * Письма сервиса.
@@ -116,6 +119,14 @@ async function send(
 
   if (!apiKey) {
     console.info(`[email:mock] «${subject}» → ${to}`);
+    // без ключа письмо можно сохранить в файл и открыть в браузере —
+    // иначе вёрстку не проверить, пока не дойдёт до настоящей отправки
+    const dumpDir = process.env.EMAIL_DUMP_DIR;
+    if (dumpDir) {
+      const safe = subject.replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 60);
+      fs.mkdirSync(dumpDir, { recursive: true });
+      fs.writeFileSync(path.join(dumpDir, `${Date.now()}-${safe}.html`), html);
+    }
     return;
   }
 
@@ -205,6 +216,24 @@ export async function sendPasswordResetOtpEmail(
   );
 }
 
+/**
+ * Блок про премиум для писем специалисту. Слова те же, что на плашке в
+ * кабинете и на странице документов: PREMIUM_BENEFITS — единственный источник.
+ */
+function premiumBlocks(): Block[] {
+  return [
+    {
+      kind: "text",
+      text: "<b>Премиум-профиль.</b> После отправки анкеты предоставьте паспорт и справки — модератор проверит их, и анкета получит то, чего нет у стандартной:",
+    },
+    {
+      kind: "list",
+      items: PREMIUM_BENEFITS.map((b) => `<b>${b.title}</b> — ${b.text}`),
+    },
+    { kind: "button", label: "Документы для премиума", href: `${APP_URL}/specialist/premium` },
+  ];
+}
+
 /** Приветствие после успешной регистрации. Текст зависит от роли. */
 export async function sendWelcomeEmail(
   to: string,
@@ -227,18 +256,19 @@ export async function sendWelcomeEmail(
     { kind: "note", text: "Открытые контакты сохраняются в личном кабинете — возвращаться к поиску не придётся." },
   ];
 
+  /**
+   * Специалисту — про то, что осталось на самом деле: пять экранов и
+   * фотография. Прежний текст перечислял паспорт и справки как обязательный
+   * шаг, хотя для публикации они не нужны, и человек уходил их собирать.
+   */
   const forSpecialist: Block[] = [
-    { kind: "text", text: "Аккаунт создан. Чтобы анкета появилась в каталоге, заполните её и пройдите проверку документов." },
     {
-      kind: "list",
-      items: [
-        "Заполните анкету: опыт, образование, район и стоимость",
-        "Загрузите документы: паспорт, справку об отсутствии ВИЧ/СПИД, справки из диспансеров и об отсутствии судимости",
-        "Отправьте на проверку: обычно занимает 1–2 рабочих дня",
-      ],
+      kind: "text",
+      text: "Аккаунт создан. Осталась анкета: пять экранов и фотография, около пяти минут. Отправите на проверку — модератор посмотрит её за 1–2 рабочих дня, и анкета появится в каталоге.",
     },
-    { kind: "button", label: "Открыть кабинет", href: `${APP_URL}/specialist` },
-    { kind: "note", text: "Документы видят только вы и модератор. В каталоге показывается лишь ваша фотография." },
+    { kind: "button", label: "Продолжить анкету", href: `${APP_URL}/specialist?anketa=1` },
+    { kind: "note", text: "Всё, что вы заполнили, сохраняется на каждом шаге — вернуться можно в любой момент." },
+    ...premiumBlocks(),
   ];
 
   await sendQuietly("регистрация", () =>
@@ -250,8 +280,12 @@ export async function sendWelcomeEmail(
         greeting,
         role === "specialist"
           ? [
-              "Аккаунт создан. Заполните анкету и пройдите проверку документов.",
-              `Кабинет: ${APP_URL}/specialist`,
+              "Аккаунт создан. Осталась анкета: пять экранов и фотография, около пяти минут.",
+              `Продолжить анкету: ${APP_URL}/specialist?anketa=1`,
+              "",
+              "Премиум-профиль: после отправки анкеты предоставьте паспорт и справки.",
+              ...PREMIUM_BENEFITS.map((b) => `— ${b.title}: ${b.text}`),
+              `Документы для премиума: ${APP_URL}/specialist/premium`,
             ]
           : [
               "Аккаунт создан. Каталог проверенных специалистов уже доступен.",
@@ -303,15 +337,23 @@ export async function sendProfileSubmittedEmail(
   );
 }
 
-/** Анкета прошла модерацию и появилась в каталоге. */
+/**
+ * Анкета прошла модерацию и появилась в каталоге.
+ *
+ * Стандартному профилю письмо заодно предлагает премиум: момент публикации —
+ * лучший для этого разговора, человек только что получил результат.
+ */
 export async function sendProfilePublishedEmail(
   to: string,
   name: string,
-  slug: string | null
+  slug: string | null,
+  tier: "standard" | "premium"
 ): Promise<void> {
   const greeting = name
     ? `${name}, ваша анкета опубликована`
     : "Ваша анкета опубликована";
+
+  const profileHref = slug ? `${APP_URL}/specialists/${slug}` : `${APP_URL}/specialist`;
 
   await sendQuietly("публикация анкеты", () =>
     send(
@@ -330,15 +372,20 @@ export async function sendProfilePublishedEmail(
             "Если работа уже найдена, показ анкеты можно приостановить в кабинете",
           ],
         },
-        slug
-          ? { kind: "button" as const, label: "Смотреть анкету", href: `${APP_URL}/specialists/${slug}` }
-          : { kind: "button" as const, label: "Открыть кабинет", href: `${APP_URL}/specialist` },
+        { kind: "button", label: slug ? "Смотреть анкету" : "Открыть кабинет", href: profileHref },
+        ...(tier === "standard" ? premiumBlocks() : []),
       ]),
       plain(greeting, [
         "Ваша анкета опубликована на сайте и видна семьям в каталоге.",
-        slug
-          ? `Анкета: ${APP_URL}/specialists/${slug}`
-          : `Кабинет: ${APP_URL}/specialist`,
+        `Анкета: ${profileHref}`,
+        ...(tier === "standard"
+          ? [
+              "",
+              "Премиум-профиль: предоставьте паспорт и справки.",
+              ...PREMIUM_BENEFITS.map((b) => `— ${b.title}: ${b.text}`),
+              `Документы для премиума: ${APP_URL}/specialist/premium`,
+            ]
+          : []),
       ])
     )
   );

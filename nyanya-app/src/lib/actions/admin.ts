@@ -137,6 +137,10 @@ export async function moderateProfile(input: unknown): Promise<Result> {
       return fail("photo_required", "Фотография");
     }
 
+    // уровень выводится из документов: фотография → «Стандартный профиль»,
+    // полный комплект → «Премиум-профиль»; он же решает, звать ли в премиум письмом
+    const level = deriveVerificationLevel(summary);
+
     // адрес каталога появляется только при первой публикации
     let slug = profile.slug;
     if (!slug) {
@@ -161,7 +165,7 @@ export async function moderateProfile(input: unknown): Promise<Result> {
         moderationNote: null,
         // уровень выводится из документов: фотография → «Стандартный
         // профиль», полный комплект → «Премиум-профиль»
-        verificationLevel: deriveVerificationLevel(summary),
+        verificationLevel: level,
         reviewedAt: now,
         publishedAt: profile.publishedAt ?? now,
         updatedAt: now,
@@ -179,7 +183,8 @@ export async function moderateProfile(input: unknown): Promise<Result> {
       await sendProfilePublishedEmail(
         profile.ownerEmail,
         profile.ownerName ?? "",
-        slug
+        slug,
+        level === "premium_verified" ? "premium" : "standard"
       );
     }
 
