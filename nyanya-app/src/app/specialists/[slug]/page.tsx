@@ -16,7 +16,6 @@ import { getFavoriteSlugs } from "@/lib/queries/account";
 import { getReviewAccess } from "@/lib/queries/reviews";
 import { ReviewForm } from "@/components/profile/review-form";
 import { SpecialistCard } from "@/components/specialist-card";
-import { TrustScore } from "@/components/ui/trust-score";
 import { Stars } from "@/components/ui/stars";
 import { ShareButton } from "@/components/share-button";
 import { UnlockPanel } from "@/components/profile/unlock-panel";
@@ -34,7 +33,7 @@ export async function generateMetadata({
   if (!s) return { title: "Анкета не найдена" };
   return {
     title: `${s.name} — ${categories[s.category].label.toLowerCase()}, ${s.district} район`,
-    description: `${categories[s.category].label} в Ташкенте: опыт ${yearsLabel(s.experienceYears)}, индекс доверия ${s.trustScore}, ${formatPrice(s)}.`,
+    description: `${categories[s.category].label} в Ташкенте: опыт ${yearsLabel(s.experienceYears)}, ${s.district} район, ${formatPrice(s)}.`,
   };
 }
 
@@ -104,11 +103,6 @@ export default async function SpecialistPage({
                     </div>
                   )}
                 </div>
-                <TrustScore
-                  score={s.trustScore}
-                  size="lg"
-                  className="absolute -right-5 -bottom-5 shadow-[0_10px_30px_rgba(33,31,26,0.12)]"
-                />
               </div>
               <div>
                 <p className="flex flex-wrap gap-2">
@@ -250,7 +244,6 @@ export default async function SpecialistPage({
               name: s.name,
               age: s.age,
               categoryLabel: categories[s.category].label,
-              trustScore: s.trustScore,
               priceLabel: formatPrice(s),
               photoUrl: s.photoUrl,
             }}

@@ -9,7 +9,6 @@ import {
   CheckCircle,
   WarningCircle,
   EyeSlash,
-  Gauge,
   PhoneCall,
   Star,
   SignOut,
@@ -263,15 +262,7 @@ export function SpecialistCabinet({
 
       {/* показатели опубликованной анкеты */}
       {data.status === "active" && (
-        <dl className="mt-8 grid gap-4 sm:grid-cols-3">
-          <div className="border border-line bg-paper p-6">
-            <dt className="label-caps flex items-center gap-2 text-ink-faint">
-              <Gauge size={15} className="text-bronze" /> Индекс доверия
-            </dt>
-            <dd className="mt-3 font-display text-4xl font-medium text-ink">
-              {data.trustScore}
-            </dd>
-          </div>
+        <dl className="mt-8 grid gap-4 sm:grid-cols-2">
           <div className="border border-line bg-paper p-6">
             <dt className="label-caps flex items-center gap-2 text-ink-faint">
               <PhoneCall size={15} className="text-bronze" /> Открытий контактов

@@ -36,8 +36,14 @@ const PAGE_SIZE = 9; // D9: «Показать ещё»
 
 const languages = ["Любой", "Русский", "Узбекский", "Английский"] as const;
 
+/**
+ * Прежняя сортировка «по доверию» опиралась на индекс, который никогда не
+ * вычислялся: у всех стоял ноль, и порядок выходил случайным. Теперь по
+ * умолчанию наверх поднимаются те, у кого выше оценка семей, а при равной
+ * оценке — те, у кого отзывов больше.
+ */
 const sorts = {
-  trust: "По доверию",
+  rating: "По отзывам",
   priceAsc: "Сначала дешевле",
   priceDesc: "Сначала дороже",
   experience: "По опыту",
@@ -95,7 +101,7 @@ export function CatalogView({
     night: false,
     newborn: false,
   });
-  const [sort, setSort] = useState<SortKey>("trust");
+  const [sort, setSort] = useState<SortKey>("rating");
   const [shown, setShown] = useState(PAGE_SIZE);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -143,7 +149,9 @@ export function CatalogView({
         list = [...list].sort((a, b) => b.experienceYears - a.experienceYears);
         break;
       default:
-        list = [...list].sort((a, b) => b.trustScore - a.trustScore);
+        list = [...list].sort(
+          (a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount
+        );
     }
     return list;
   }, [specialists, category, district, language, maxPrice, minExp, toggles, sort]);

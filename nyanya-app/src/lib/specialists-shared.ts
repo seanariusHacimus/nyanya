@@ -39,7 +39,6 @@ export type UiSpecialist = {
   reviewCount: number;
   priceFrom: number;
   priceUnit: PriceUnitLabel;
-  trustScore: number;
   /**
    * Что сайт обещает семье:
    *   published — анкету проверил модератор, документы не проверялись;

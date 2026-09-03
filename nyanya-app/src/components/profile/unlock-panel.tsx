@@ -15,14 +15,12 @@ import { unlockContacts } from "@/lib/actions/unlock-contacts";
 import { toggleFavoriteAction } from "@/lib/actions/favorites";
 import type { SpecialistContacts } from "@/lib/specialists-shared";
 import { easeOutQuart } from "@/lib/motion";
-import { TrustScore } from "@/components/ui/trust-score";
 
 type PanelSpecialist = {
   slug: string;
   name: string;
   age: number | null;
   categoryLabel: string;
-  trustScore: number;
   priceLabel: string;
   photoUrl: string | null;
 };
@@ -261,7 +259,6 @@ export function UnlockPanel({
                   </p>
                   <p className="mt-0.5 text-sm text-ink-soft">{s.categoryLabel}</p>
                 </div>
-                <TrustScore score={s.trustScore} size="sm" />
               </div>
 
               <div className="mt-6 grid gap-3">

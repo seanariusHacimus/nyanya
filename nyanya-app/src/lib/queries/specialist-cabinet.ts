@@ -29,7 +29,6 @@ export type CabinetData = {
   status: "draft" | "pending_review" | "active" | "hidden" | "rejected";
   moderationNote: string | null;
   slug: string | null;
-  trustScore: number;
   unlockCount: number;
   reviewCount: number;
   ratingAvg: number;
@@ -85,7 +84,6 @@ export async function getCabinetData(
       status: "draft",
       moderationNote: null,
       slug: null,
-      trustScore: 0,
       unlockCount: 0,
       reviewCount: 0,
       ratingAvg: 0,
@@ -121,7 +119,6 @@ export async function getCabinetData(
     status: profileRow.status,
     moderationNote: profileRow.moderationNote,
     slug: profileRow.slug,
-    trustScore: profileRow.trustScore,
     unlockCount: profileRow.unlockCount,
     reviewCount: profileRow.reviewCount,
     ratingAvg: Number(profileRow.ratingAvg),

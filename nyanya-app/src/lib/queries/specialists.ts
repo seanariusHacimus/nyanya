@@ -87,7 +87,6 @@ function toUi(row: Row): UiSpecialist {
     // «месяц» раньше проваливался в «час»: тройку значений разбирала
     // двоичная проверка, и анкета с месячной оплатой показывала «сум/час»
     priceUnit: PRICE_UNIT_LABEL[row.priceUnit],
-    trustScore: row.trustScore,
     // «Премиум» = документы проверил администратор. Всё остальное —
     // опубликованная анкета без проверки документов; называть её
     // «проверенной» значит обещать семье то, чего не было.
@@ -113,7 +112,11 @@ export async function getActiveSpecialists(): Promise<UiSpecialist[]> {
     .from(specialistProfiles)
     .leftJoin(districts, eq(districts.id, specialistProfiles.districtId))
     .where(activeWithSlug)
-    .orderBy(desc(specialistProfiles.trustScore));
+    .orderBy(
+      desc(specialistProfiles.ratingAvg),
+      desc(specialistProfiles.reviewCount),
+      desc(specialistProfiles.publishedAt)
+    );
   return rows.map((r) => toUi({ ...r.profile, districtName: r.districtName }));
 }
 
@@ -173,7 +176,11 @@ export async function getSimilarSpecialists(
         ne(specialistProfiles.slug, slug)
       )
     )
-    .orderBy(desc(specialistProfiles.trustScore))
+    .orderBy(
+      desc(specialistProfiles.ratingAvg),
+      desc(specialistProfiles.reviewCount),
+      desc(specialistProfiles.publishedAt)
+    )
     .limit(count);
 
   const result = same.map((r) =>
@@ -192,7 +199,11 @@ export async function getSimilarSpecialists(
           ne(specialistProfiles.slug, slug)
         )
       )
-      .orderBy(desc(specialistProfiles.trustScore))
+      .orderBy(
+      desc(specialistProfiles.ratingAvg),
+      desc(specialistProfiles.reviewCount),
+      desc(specialistProfiles.publishedAt)
+    )
       .limit(count - result.length);
     result.push(
       ...extra.map((r) => toUi({ ...r.profile, districtName: r.districtName }))

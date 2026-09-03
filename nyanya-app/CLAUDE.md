@@ -67,6 +67,23 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
 - **DB**: `src/db/schema.ts`; auth tables in `src/db/auth-schema.ts` (Better Auth column keys are
   camelCase so the Drizzle adapter resolves them). Local = Postgres on 5434, prod = Railway.
 
+## Copy that must stay true
+
+The site no longer claims documents are checked before publication — publication needs only the
+approved photo, and the certificates follow. Any new page saying otherwise is a false promise to
+families; the honest line is «модератор проверяет анкету и фотографию до публикации», with the
+document check earning «Премиум-проверен» afterwards.
+
+**The trust index is gone from the interface** (owner decision, 2026-09-03). It was displayed on
+cards, profiles, the cabinet and three marketing pages, and it was never computed — every profile
+showed 0. `specialist_profiles.trust_score` still exists in the database, unread; nothing writes
+to it. What ranks the catalogue now is the families' rating, then the review count, then recency.
+Do not reintroduce the index without a formula that actually runs.
+
+The home page's `trustFeatures` block is rendered by **two** pages — the home page and `/about` —
+each with its own icon map keyed by `feature.icon`. Renaming a key means changing both maps; the
+lookup is deliberately un-cast so a mismatch fails the build instead of the browser.
+
 ## Roles and access
 
 `parent` (default) · `specialist` · `admin`. Role is chosen at signup; `admin` is set manually.

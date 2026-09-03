@@ -1,10 +1,14 @@
-import { ShieldCheck, Gauge, ChatsCircle } from "@phosphor-icons/react/dist/ssr";
+import {
+  IdentificationCard,
+  Star,
+  ChatsCircle,
+} from "@phosphor-icons/react/dist/ssr";
 import { trustFeatures } from "@/content/home";
 import { Reveal } from "@/components/reveal";
 
 const icons = {
-  shield: ShieldCheck,
-  gauge: Gauge,
+  profile: IdentificationCard,
+  star: Star,
   chat: ChatsCircle,
 } as const;
 
@@ -20,7 +24,7 @@ export function TrustFeatures() {
 
         <div className="grid gap-10 md:grid-cols-3 md:gap-0">
           {trustFeatures.features.map((feature, i) => {
-            const Icon = icons[feature.icon as keyof typeof icons];
+            const Icon = icons[feature.icon];
             return (
               <Reveal
                 key={feature.title}

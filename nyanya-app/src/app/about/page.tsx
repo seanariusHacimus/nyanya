@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { ShieldCheck, Gauge, ChatsCircle } from "@phosphor-icons/react/dist/ssr";
+import {
+  IdentificationCard,
+  Star,
+  ChatsCircle,
+} from "@phosphor-icons/react/dist/ssr";
 import { trustFeatures } from "@/content/home";
 import { districts } from "@/content/specialists";
 import { getActiveSpecialists } from "@/lib/queries/specialists";
@@ -15,9 +19,11 @@ export const metadata = {
     "nyanya.uz — премиальный сервис подбора проверенных специалистов для семьи в Ташкенте: няни, сиделки, помощники по хозяйству и водители.",
 };
 
+// ключи те же, что в trustFeatures (src/content/home.ts) — эта страница
+// показывает те же плитки
 const icons = {
-  shield: ShieldCheck,
-  gauge: Gauge,
+  profile: IdentificationCard,
+  star: Star,
   chat: ChatsCircle,
 } as const;
 
@@ -48,8 +54,9 @@ export default async function AboutPage() {
         <Reveal>
           <p className="max-w-3xl font-display text-2xl leading-snug font-medium text-ink sm:text-3xl">
             Мы создали nyanya.uz, потому что поиск человека, которому вы доверите
-            дом и близких, не должен происходить среди объявлений. Мы проверяем
-            специалистов до публикации — вы выбираете спокойно.
+            дом и близких, не должен происходить среди объявлений. Каждую анкету
+            перед публикацией смотрит модератор, а тех, кто прошёл проверку
+            документов, мы отмечаем отдельно — вы выбираете спокойно.
           </p>
         </Reveal>
       </section>
@@ -62,7 +69,7 @@ export default async function AboutPage() {
           </h2>
           <div className="grid gap-10 md:grid-cols-3 md:gap-0">
             {trustFeatures.features.map((feature, i) => {
-              const Icon = icons[feature.icon as keyof typeof icons];
+              const Icon = icons[feature.icon];
               return (
                 <div
                   key={feature.title}

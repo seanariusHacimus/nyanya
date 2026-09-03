@@ -40,7 +40,6 @@ export type AdminProfileRow = {
   category: CategoryKey;
   status: ProfileStatus;
   verificationLevel: VerificationLevel;
-  trustScore: number;
   slug: string | null;
   moderationNote: string | null;
   banned: boolean;
@@ -131,7 +130,6 @@ export async function getAdminData(): Promise<AdminData> {
         category: specialistProfiles.category,
         status: specialistProfiles.status,
         verificationLevel: specialistProfiles.verificationLevel,
-        trustScore: specialistProfiles.trustScore,
         slug: specialistProfiles.slug,
         moderationNote: specialistProfiles.moderationNote,
         banned: user.banned,

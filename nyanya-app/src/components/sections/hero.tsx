@@ -24,24 +24,26 @@ export function Hero() {
     <section className="mx-auto max-w-[1400px] px-5 sm:px-8">
       <div className="grid items-center gap-12 pt-10 pb-16 lg:grid-cols-2 lg:gap-10 lg:pt-20 lg:pb-28">
         <div className="max-w-xl">
-          <motion.p
+          {/*
+            Отдельный крупный заголовок убран по решению владельца, и на первом
+            экране осталась одна эта строка. Мелким шрифтом она не держала
+            экран: слева оставалась почти пустая колонка против большой
+            фотографии, а следующий блок кричал крупной подачей. Поэтому строка
+            набрана крупно и стала <h1> — текст тот же, ничего не дописано, а
+            страница снова начинается с заголовка первого уровня, как и нужно
+            поиску и экранным дикторам.
+          */}
+          <motion.h1
             {...item(0)}
-            className="max-w-md text-base leading-relaxed text-ink-soft"
+            className="max-w-lg font-display text-3xl leading-[1.16] font-medium tracking-[-0.01em] text-ink sm:text-4xl xl:text-[2.75rem]"
           >
             {hero.eyebrow}
-          </motion.p>
-          {/* короткая бронзовая черта между позиционированием и заголовком */}
+          </motion.h1>
           <motion.span
             {...item(0.06)}
             aria-hidden="true"
             className="mt-8 block h-px w-24 bg-bronze"
           />
-          <motion.h1
-            {...item(0.12)}
-            className="mt-8 font-display text-[3.25rem] leading-[1.04] font-medium tracking-[-0.01em] text-ink sm:text-6xl xl:text-[4.5rem]"
-          >
-            {hero.title}
-          </motion.h1>
           <motion.div {...item(0.2)} className="mt-10">
             <ButtonLink href={hero.primary.href} className="gap-4">
               {hero.primary.label}

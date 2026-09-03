@@ -12,13 +12,12 @@ import {
   verificationSteps,
 } from "@/content/verification-steps";
 import { ButtonLink } from "@/components/ui/button-link";
-import { TrustScore } from "@/components/ui/trust-score";
 import { Reveal } from "@/components/reveal";
 
 export const metadata = {
   title: "Проверка специалистов",
   description:
-    "Каждая анкета на nyanya.uz проходит проверку модератором до публикации: паспорт, медицинские справки, дипломы и рекомендации.",
+    "Модератор проверяет анкету и фотографию до публикации, а паспорт, медицинские справки и дипломы — по мере того, как специалист их загружает.",
 };
 
 // §14 V2 — этапы проверки
@@ -36,7 +35,7 @@ const stages = [
   {
     icon: SealCheck,
     title: "Публикация со статусом",
-    text: "Анкета получает бейдж и индекс доверия.",
+    text: "Анкета появляется в каталоге с отметкой о проверке.",
   },
 ];
 
@@ -189,25 +188,6 @@ export default function VerificationPage() {
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-ink-soft">
                 Приняты все документы — и обязательные, и рекомендуемые.
-              </p>
-            </div>
-          </div>
-        </Reveal>
-      </section>
-
-      {/* V5 — индекс доверия (единая формулировка с §6.5) */}
-      <section className="mx-auto max-w-[1400px] px-5 sm:px-8">
-        <Reveal>
-          <div className="grid items-center gap-10 rounded-[2px] bg-cream-deep px-8 py-14 sm:px-12 lg:grid-cols-[auto_1fr] lg:gap-16 lg:px-14">
-            <TrustScore score={84} size="lg" className="mx-auto lg:mx-0" />
-            <div>
-              <h2 className="max-w-md font-display text-3xl leading-[1.12] font-medium text-ink sm:text-4xl">
-                Индекс доверия
-              </h2>
-              <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink-soft">
-                Каждый специалист получает индекс от 0 до 100. На него влияют:
-                проверка документов, обращения семей, срок работы на платформе,
-                отзывы и оценки. Индекс пересчитывается автоматически.
               </p>
             </div>
           </div>

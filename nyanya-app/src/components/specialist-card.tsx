@@ -7,7 +7,6 @@ import {
   type UiSpecialist,
   yearsLabel,
 } from "@/lib/specialists-shared";
-import { TrustScore } from "@/components/ui/trust-score";
 import { Stars } from "@/components/ui/stars";
 import { FavoriteHeart } from "@/components/favorite-heart";
 
@@ -79,7 +78,6 @@ export function SpecialistCard({
               {s.district} район
             </p>
           </div>
-          <TrustScore score={s.trustScore} size="sm" className="shrink-0" />
         </div>
 
         <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-soft">
