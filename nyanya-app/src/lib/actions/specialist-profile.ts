@@ -52,7 +52,7 @@ async function ensureProfile(userId: string, fallbackName: string) {
 /* --------------------------- анкета (§8) --------------------------- */
 
 const profileSchema = z.object({
-  fullName: z.string().trim().min(2).max(120),
+  fullName: z.string().trim().max(120),
   category: z.enum(["nanny", "caregiver", "tutor", "driver"]),
   birthDate: z.string().trim().max(20).optional().or(z.literal("")),
   districtId: z.coerce.number().int().positive().optional().nullable(),
@@ -85,7 +85,7 @@ export async function saveSpecialistProfile(input: unknown) {
   await db
     .update(specialistProfiles)
     .set({
-      fullName: d.fullName,
+      fullName: d.fullName || "Без имени",
       category: d.category,
       birthDate: d.birthDate || null,
       districtId: d.districtId ?? null,
@@ -103,6 +103,15 @@ export async function saveSpecialistProfile(input: unknown) {
       updatedAt: new Date(),
     })
     .where(eq(specialistProfiles.id, profile.id));
+
+  // Имя специалист называет только в анкете; шапка кабинета и письма берут
+  // его из user — без этой записи они показывали бы пустоту или старое имя.
+  if (d.fullName && d.fullName !== guard.session.user.name) {
+    await db
+      .update(user)
+      .set({ name: d.fullName, updatedAt: new Date() })
+      .where(eq(user.id, guard.session.user.id));
+  }
 
   revalidatePath("/specialist");
   return { ok: true as const };
@@ -315,12 +324,13 @@ export async function submitForModeration() {
   );
 
   // обязательные поля анкеты
+  // «Рассказ о себе» отправку не блокирует (решение владельца, 2026-09-03):
+  // это самый вероятный шаг, на котором человек бросал регистрацию
   const missingFields =
     !profile.fullName ||
     profile.fullName === "Без имени" ||
     !profile.birthDate ||
     !profile.districtId ||
-    !profile.description ||
     profile.priceAmount <= 0;
   if (missingFields)
     return { ok: false as const, error: "profile_incomplete" as const };

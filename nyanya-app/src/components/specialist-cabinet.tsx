@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,27 +13,19 @@ import {
   PhoneCall,
   Star,
   SignOut,
-  PaperPlaneTilt,
 } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
 import {
   NotificationHeading,
   NotificationList,
 } from "@/components/notification-list";
-import { stepsForCategory } from "@/content/verification-steps";
 import type { CabinetData, CabinetProfile } from "@/lib/queries/specialist-cabinet";
-import {
-  saveSpecialistProfile,
-  setAvailability,
-  submitForModeration,
-} from "@/lib/actions/specialist-profile";
+import { setAvailability } from "@/lib/actions/specialist-profile";
 import {
   ProfileWizard,
   type WizardScope,
 } from "@/components/specialist/profile-wizard";
 import type { StepState } from "@/components/specialist/verification-step-card";
-import { ButtonLink } from "@/components/ui/button-link";
-import { useToast } from "@/components/ui/toast";
 
 const banners = {
   draft: {
@@ -112,45 +104,32 @@ function computeStepDone(
 export function SpecialistCabinet({
   name,
   data,
+  startWizard = false,
 }: {
   name: string;
   data: CabinetData;
+  /** Открыть анкету сразу — так приходят с регистрации, кабинету пока нечего показать. */
+  startWizard?: boolean;
 }) {
   const router = useRouter();
-  const toast = useToast();
   const [profile, setProfile] = useState<CabinetProfile>(data.profile);
   // состояние шагов держим локально: загрузка обновляет его мгновенно,
   // сервер остаётся источником правды при следующей загрузке страницы
   const [steps, setSteps] = useState<Record<string, StepState>>(data.steps);
   /**
-   * Какой поток открыт. Анкета и документы разведены намеренно: вместе они
-   * давали «шаг 1 из 17», а собирают их в разные дни.
+   * Какой поток открыт. Анкета (с фотографией и отправкой внутри) и документы
+   * для премиума разведены намеренно: вместе они давали «шаг 1 из 17», а
+   * собирают их в разные дни.
    */
-  const [wizard, setWizard] = useState<WizardScope | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitPending, startSubmit] = useTransition();
+  const [wizard, setWizard] = useState<WizardScope | null>(
+    startWizard ? "profile" : null
+  );
   const [availabilityPending, startAvailability] = useTransition();
 
   const locked = data.status === "pending_review";
   const banner = banners[data.status];
   const BannerIcon = banner.icon;
 
-  // перечень зависит от категории: водителю добавляется удостоверение
-  const applicableSteps = useMemo(
-    () => stepsForCategory(profile.category),
-    [profile.category]
-  );
-  const requiredSteps = useMemo(
-    () => applicableSteps.filter((s) => s.required),
-    [applicableSteps]
-  );
-  // на проверку пускают обязательные документы; рекомендуемые нужны только
-  // для «Премиум-профиля», поэтому в прогресс отправки не входят
-  const uploadedRequired = useMemo(
-    () => requiredSteps.filter((s) => steps[s.key]?.status !== "empty").length,
-    [requiredSteps, steps]
-  );
-  const requiredReady = uploadedRequired === requiredSteps.length;
   /**
    * Отправить анкету можно с одной фотографией — тот же минимум, что и у
    * публикации. Остальные документы поднимают её до «Премиум-профиля».
@@ -161,44 +140,7 @@ export function SpecialistCabinet({
   const checkDone = computeStepDone(profile, photoReady);
   const doneCount = WIZARD_CHECKS.filter((c) => checkDone[c.key]).length;
   const allDone = doneCount === WIZARD_CHECKS.length;
-  // «анкета» без документов — по ней подписана первая кнопка
-  const profileFilled = WIZARD_CHECKS.filter((c) => c.key !== "documents").every(
-    (c) => checkDone[c.key]
-  );
   const progressPercent = Math.round((doneCount / WIZARD_CHECKS.length) * 100);
-
-  const profileReady =
-    profile.fullName.trim().length > 1 &&
-    Boolean(profile.birthDate) &&
-    Boolean(profile.districtId) &&
-    profile.description.trim().length > 0 &&
-    profile.priceAmount > 0;
-  const canSubmit = !locked && profileReady && photoReady;
-
-  const submit = () =>
-    startSubmit(async () => {
-      setSubmitError(null);
-      // сохраняем актуальную анкету и только потом отправляем
-      const savedResult = await saveSpecialistProfile(profile);
-      if (!savedResult.ok) {
-        setSubmitError("Проверьте поля анкеты — что-то заполнено неверно.");
-        return;
-      }
-      const result = await submitForModeration();
-      if (result.ok) {
-        toast.success("Анкета отправлена на проверку");
-        router.refresh(); // статус-баннер переключается на «На проверке»
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      } else {
-        setSubmitError(
-          result.error === "profile_incomplete"
-            ? "Заполните обязательные поля анкеты: имя, дата рождения, район, стоимость и рассказ о себе."
-            : result.error === "documents_missing"
-              ? "Загрузите фотографию — без неё анкету нельзя отправить на проверку."
-              : "Не удалось отправить анкету. Попробуйте ещё раз."
-        );
-      }
-    });
 
   if (wizard) {
     return (
@@ -386,93 +328,30 @@ export function SpecialistCabinet({
             onClick={() => setWizard("profile")}
             className="label-caps inline-flex min-h-12 items-center justify-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px"
           >
-            {profileFilled
-              ? "Изменить анкету"
-              : doneCount === 0
-                ? "Заполнить анкету"
-                : "Продолжить анкету"}
+            {/*
+              Черновик: подпись говорит, что осталось. Заполненный черновик
+              ещё не отправлен — и кнопка так и называется, иначе человек
+              думал бы, что дело сделано.
+            */}
+            {data.status === "draft" || data.status === "rejected"
+              ? allDone
+                ? "Отправить на проверку"
+                : doneCount === 0
+                  ? "Заполнить анкету"
+                  : "Продолжить анкету"
+              : "Изменить анкету"}
           </button>
-          <button
-            type="button"
-            onClick={() => setWizard("documents")}
-            className="label-caps inline-flex min-h-12 items-center justify-center border border-ink px-8 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream"
-          >
-            {/* «0 из 5» читалось как «нужно пять справок»; нужна одна фотография */}
-            {!photoReady
-              ? "Загрузить фотографию"
-              : requiredReady
-                ? `Документы для премиума (${uploadedRequired} из ${requiredSteps.length})`
-                : "Документы для премиума"}
-          </button>
+          {/* паспорт и справки — разговор после отправки анкеты, не до */}
+          {data.status !== "draft" && (
+            <button
+              type="button"
+              onClick={() => setWizard("documents")}
+              className="label-caps inline-flex min-h-12 items-center justify-center border border-ink px-8 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream"
+            >
+              Документы для премиума
+            </button>
+          )}
         </div>
-      </section>
-
-      {/* отправка на модерацию */}
-      <section className="mt-16 border-t border-line pt-10">
-        <h2 className="font-display text-2xl font-medium text-ink">
-          Отправить на проверку
-        </h2>
-        <ul className="mt-5 space-y-2 text-sm">
-          <li className="flex items-center gap-2.5">
-            {profileReady ? (
-              <CheckCircle size={16} weight="fill" className="text-bronze" />
-            ) : (
-              <Circle size={16} className="text-ink-faint" />
-            )}
-            <span className={profileReady ? "text-ink" : "text-ink-soft"}>
-              Анкета заполнена
-            </span>
-          </li>
-          {/*
-            Галочка обязана смотреть туда же, куда и кнопка отправки, — на
-            фотографию. Раньше она считала все пять документов, и с одним фото
-            человек видел активную кнопку и пустую галочку над ней.
-          */}
-          <li className="flex items-center gap-2.5">
-            {photoReady ? (
-              <CheckCircle size={16} weight="fill" className="text-bronze" />
-            ) : (
-              <Circle size={16} className="text-ink-faint" />
-            )}
-            <span className={photoReady ? "text-ink" : "text-ink-soft"}>
-              Фотография загружена
-            </span>
-          </li>
-        </ul>
-
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!canSubmit || submitPending}
-          className="label-caps mt-7 inline-flex min-h-12 items-center justify-center gap-2 bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px disabled:opacity-50"
-        >
-          <PaperPlaneTilt size={16} aria-hidden="true" />
-          {submitPending
-            ? "Отправляем…"
-            : locked
-              ? "Анкета на проверке"
-              : "Отправить на проверку"}
-        </button>
-
-        {submitError && (
-          <p role="alert" className="mt-4 text-sm text-[#a5462f]">
-            {submitError}
-          </p>
-        )}
-
-        <p className="mt-5 text-xs leading-relaxed text-ink-soft">
-          После отправки модератор проверит документы и анкету — обычно 1–2
-          рабочих дня. Результат придёт в уведомления, а анкета появится в
-          каталоге автоматически.
-        </p>
-
-        {data.status === "draft" && (
-          <div className="mt-8">
-            <ButtonLink href="/become-specialist" variant="outline-light">
-              Как проходит проверка
-            </ButtonLink>
-          </div>
-        )}
       </section>
 
       {/* Ф8 — лента уведомлений: решения модератора приходят сюда */}

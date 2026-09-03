@@ -91,6 +91,24 @@ The home page's `trustFeatures` block is rendered by **two** pages — the home 
 each with its own icon map keyed by `feature.icon`. Renaming a key means changing both maps; the
 lookup is deliberately un-cast so a mismatch fails the build instead of the browser.
 
+## Specialist onboarding — one track
+
+A specialist registers in three screens (email → code → password and phone; **no name — the
+profile asks for the passport name itself**) and lands straight in the profile wizard
+(`/specialist?anketa=1`). The wizard is one track of seven screens: category, ФИО + birth date,
+**photo**, district + price, experience/about (optional), languages/skills (optional), and a final
+«Проверьте и отправьте» screen that shows the card as a family will see it and calls
+`submitForModeration`. There is no submit button in the cabinet any more — submission lives at
+the end of the wizard, so there is exactly one place to do it. Reopening the wizard resumes at the
+first incomplete required screen (`firstIncompleteScreen` in `profile-wizard.tsx`).
+
+Consequences to keep in mind: `saveSpecialistProfile` accepts an **empty name** (the first screen
+saves before the name is known) and writes the name back to `user.name` so the cabinet header and
+emails match the profile; `submitForModeration` no longer requires `description` (owner decision,
+2026-09-03) but still rejects «Без имени». Passport and certificates are not part of onboarding —
+the documents wizard (`scope: "documents"`) excludes the photo and exists for «Премиум-профиль».
+`/register?role=specialist` preselects the role and replaces the role cards with a one-line notice.
+
 ## Specialist availability
 
 A published specialist can pause their own listing from the cabinet — the switch writes

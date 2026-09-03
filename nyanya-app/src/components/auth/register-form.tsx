@@ -36,8 +36,11 @@ export function RegisterForm() {
   const [existingRole, setExistingRole] = useState("parent");
   // «Разместить анкету» присылает ?role=specialist — человек, пришедший
   // размещать анкету, не должен замечать и переключать «Я родитель»
+  // роль пришла со входа («Разместить анкету») — карточки выбора не нужны,
+  // достаточно строки с возможностью передумать
+  const roleFromLink = params.get("role") === "specialist";
   const [role, setRole] = useState<"parent" | "specialist">(
-    params.get("role") === "specialist" ? "specialist" : "parent"
+    roleFromLink ? "specialist" : "parent"
   );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -98,7 +101,13 @@ export function RegisterForm() {
 
     setBusy(true);
     setError(null);
-    const result = await completeProfile({ name, phone, role, password });
+    const result = await completeProfile({
+      // имя специалиста спросит анкета — здесь его нет
+      name: role === "specialist" ? "" : name,
+      phone,
+      role,
+      password,
+    });
     if (!result.ok) {
       setBusy(false);
       setError("Не удалось сохранить данные. Проверьте поля и попробуйте ещё раз.");
@@ -106,7 +115,8 @@ export function RegisterForm() {
     }
     router.push(
       result.role === "specialist"
-        ? "/specialist"
+        // не кабинет, а сразу первый экран анкеты: кабинету пока нечего показать
+        ? "/specialist?anketa=1"
         : next && next.startsWith("/")
           ? next
           : "/account"
@@ -200,6 +210,21 @@ export function RegisterForm() {
           <p className="border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
             Почта подтверждена: <span className="font-semibold text-ink">{email}</span>
           </p>
+      {roleFromLink && role === "specialist" ? (
+        <p className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
+          <span>
+            Регистрируетесь как{" "}
+            <span className="font-semibold text-ink">специалист</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setRole("parent")}
+            className="border-b border-ink/30 pb-0.5 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
+          >
+            Я семья, а не специалист
+          </button>
+        </p>
+      ) : (
       <div className="grid gap-2">
         <span className="text-sm font-semibold text-ink">Кто вы?</span>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -242,6 +267,7 @@ export function RegisterForm() {
           ))}
         </div>
       </div>
+      )}
 
       {/*
         Специалиста просим паспортное имя, семью — обычное.
@@ -250,31 +276,24 @@ export function RegisterForm() {
         доработку. Семье паспортное имя ни к чему — она никаких документов не
         подаёт, и лишнее требование только отпугивает на регистрации.
       */}
-      <div className="grid gap-2">
-        <label htmlFor="reg-name" className="text-sm font-semibold text-ink">
-          {role === "specialist" ? "Имя и фамилия как в паспорте" : "Имя и фамилия"}
-        </label>
-        <input
-          id="reg-name"
-          type="text"
-          required
-          maxLength={100}
-          autoComplete="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          aria-describedby={role === "specialist" ? "reg-name-hint" : undefined}
-          className={inputClass}
-          placeholder={
-            role === "specialist" ? "Фамилия Имя Отчество" : "Имя и фамилия"
-          }
-        />
-        {role === "specialist" && (
-          <p id="reg-name-hint" className="text-xs text-ink-faint">
-            Модератор сверит его с документами — укажите так, как написано в
-            паспорте.
-          </p>
-        )}
-      </div>
+      {role === "parent" && (
+        <div className="grid gap-2">
+          <label htmlFor="reg-name" className="text-sm font-semibold text-ink">
+            Имя и фамилия
+          </label>
+          <input
+            id="reg-name"
+            type="text"
+            required
+            maxLength={100}
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={inputClass}
+            placeholder="Имя и фамилия"
+          />
+        </div>
+      )}
 
       {/* см. комментарий в reset-password-form.tsx: логин для менеджера паролей */}
       <input

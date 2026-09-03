@@ -10,12 +10,23 @@ import { db } from "@/db";
 import { user, account } from "@/db/auth-schema";
 import { sendWelcomeEmail } from "@/lib/email";
 
-const schema = z.object({
-  name: z.string().trim().min(1).max(100),
-  phone: z.string().trim().min(7).max(20),
-  role: z.enum(["parent", "specialist"]), // admin — только сидом, из формы недоступен
-  password: z.string().min(8).max(200),
-});
+const schema = z
+  .object({
+    /**
+     * Семья называет имя здесь. Специалист — нет: его паспортное имя
+     * спрашивает второй экран анкеты, и спрашивать дважды за минуту значило
+     * заставлять человека думать, что первый ответ не сохранился.
+     */
+    name: z.string().trim().max(100).optional().default(""),
+    phone: z.string().trim().min(7).max(20),
+    role: z.enum(["parent", "specialist"]), // admin — только сидом, из формы недоступен
+    password: z.string().min(8).max(200),
+  })
+  .superRefine((value, ctx) => {
+    if (value.role === "parent" && value.name.length === 0) {
+      ctx.addIssue({ code: "custom", path: ["name"], message: "name_required" });
+    }
+  });
 
 /**
  * Заведён ли уже аккаунт, в который открыта текущая сессия.
@@ -90,7 +101,8 @@ export async function completeProfile(input: unknown) {
   await db
     .update(user)
     .set({
-      name: parsed.data.name,
+      // пустое имя специалиста не должно затирать уже известное
+      ...(parsed.data.name ? { name: parsed.data.name } : {}),
       phone: parsed.data.phone,
       // повышение до специалиста — только при первичном заполнении профиля
       ...(isFreshAccount ? { role: parsed.data.role } : {}),

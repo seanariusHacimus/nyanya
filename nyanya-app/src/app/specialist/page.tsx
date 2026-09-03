@@ -14,7 +14,11 @@ export const metadata = {
   description: "Анкета, верификация документов и статус проверки.",
 };
 
-export default async function SpecialistPage() {
+export default async function SpecialistPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ anketa?: string }>;
+}) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login?next=/specialist");
 
@@ -47,10 +51,16 @@ export default async function SpecialistPage() {
   const data = await getCabinetData(session.user.id, session.user.name);
   // лента показана — значок в шапке гаснет
   await markNotificationsRead(session.user.id);
+  // сразу после регистрации кабинету нечего показать — открываем анкету
+  const { anketa } = await searchParams;
 
   return (
     <main className="flex-1">
-      <SpecialistCabinet name={session.user.name || "Специалист"} data={data} />
+      <SpecialistCabinet
+        name={session.user.name || "Специалист"}
+        data={data}
+        startWizard={anketa !== undefined}
+      />
     </main>
   );
 }
