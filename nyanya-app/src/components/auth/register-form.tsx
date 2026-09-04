@@ -3,7 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MagnifyingGlass, IdentificationBadge } from "@phosphor-icons/react";
+import {
+  MagnifyingGlass,
+  IdentificationBadge,
+  CheckCircle,
+} from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
 import {
   completeProfile,
@@ -30,9 +34,9 @@ export function RegisterForm() {
   const params = useSearchParams();
   const next = params.get("next");
 
-  const [step, setStep] = useState<"email" | "otp" | "details" | "existing">(
-    "email"
-  );
+  const [step, setStep] = useState<
+    "email" | "otp" | "details" | "existing" | "done"
+  >("email");
   const [existingRole, setExistingRole] = useState("parent");
   // «Разместить анкету» присылает ?role=specialist — человек, пришедший
   // размещать анкету, не должен замечать и переключать «Я родитель»
@@ -113,15 +117,55 @@ export function RegisterForm() {
       setError("Не удалось сохранить данные. Проверьте поля и попробуйте ещё раз.");
       return;
     }
-    router.push(
-      result.role === "specialist"
-        // не кабинет, а сразу первый экран анкеты: кабинету пока нечего показать
-        ? "/specialist?anketa=1"
-        : next && next.startsWith("/")
-          ? next
-          : "/account"
-    );
+    // Не редирект, а поздравление: человек только что прошёл три экрана и
+    // заслужил услышать, что всё получилось, — и увидеть ровно один
+    // следующий шаг, а не оказаться в мастере без объяснений.
+    setBusy(false);
+    setStep("done");
   };
+
+  /** Куда ведёт единственная кнопка на экране поздравления. */
+  const doneTarget =
+    role === "specialist"
+      // не кабинет, а сразу первый экран анкеты: кабинету пока нечего показать
+      ? "/specialist?anketa=1"
+      : next && next.startsWith("/")
+        ? next
+        : "/catalog";
+
+  if (step === "done") {
+    return (
+      <div className="space-y-5 text-center">
+        <CheckCircle
+          size={52}
+          weight="thin"
+          className="mx-auto text-bronze"
+          aria-hidden="true"
+        />
+        <div>
+          <p className="font-display text-2xl font-medium text-ink">
+            Поздравляем, аккаунт создан
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+            {role === "specialist"
+              ? "Осталась анкета: семь коротких экранов и фотография — около пяти минут. Всё, что заполните, сохраняется на каждом шаге."
+              : "Каталог открыт: подбирайте по категории, району и стоимости, сохраняйте в избранное и открывайте контакты — бесплатно."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => router.push(doneTarget)}
+          className="label-caps inline-flex min-h-12 w-full items-center justify-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px"
+        >
+          {role === "specialist" ? "Заполнить анкету" : "Перейти в каталог"}
+        </button>
+        <p className="text-xs text-ink-faint">
+          Письмо с подтверждением уже отправлено на{" "}
+          <span className="text-ink">{email}</span>
+        </p>
+      </div>
+    );
+  }
 
   if (step === "existing") {
     const home =
