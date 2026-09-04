@@ -468,7 +468,7 @@ export function ProfileWizard({
           </div>
           <fieldset className="grid gap-3">
             <legend className="mb-1 text-sm font-semibold text-ink">
-              Что ещё вы можете предложить
+              Отметьте подходящее
             </legend>
             {(
               [
@@ -496,6 +496,29 @@ export function ProfileWizard({
               </label>
             ))}
           </fieldset>
+          {/*
+            Свободное поле сверх меток: у людей есть то, чего в списке нет —
+            планшет для занятий, готовка по диете, помощь с уроками. Метки
+            фильтруют каталог, текст — убеждает семью. Читает модератор.
+          */}
+          <div className="grid gap-2">
+            <label htmlFor="sp-extra" className="text-sm font-semibold text-ink">
+              Что ещё вы можете предложить?
+            </label>
+            <textarea
+              id="sp-extra"
+              rows={3}
+              maxLength={500}
+              value={profile.extraOffer}
+              onChange={(e) => set("extraOffer", e.target.value)}
+              className="border border-line bg-paper px-4 py-3 text-base text-ink placeholder:text-ink-faint focus:border-ink"
+              placeholder="Например: планшет для развивающих занятий, готовка по диете, помощь с уроками"
+            />
+            <p className="text-xs text-ink-faint">
+              Своими словами, до 500 знаков. Модератор прочитает это перед
+              публикацией.
+            </p>
+          </div>
         </div>
       ),
     },

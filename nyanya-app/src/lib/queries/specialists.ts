@@ -97,6 +97,7 @@ function toUi(row: Row): UiSpecialist {
     english: englishLabels[row.englishLevel] ?? "Нет",
     education: row.education ?? "",
     attributes,
+    extraOffer: row.extraOffer ?? "",
     about: (row.description ?? "").split("\n\n").filter(Boolean),
     photoUrl: row.photoKey,
   };

@@ -225,6 +225,14 @@ export default async function SpecialistPage({
                   ))}
                 </ul>
               )}
+              {s.extraOffer && (
+                <div className="mt-8 border-l border-bronze/40 pl-5">
+                  <p className="label-caps text-ink-faint">Ещё предлагает</p>
+                  <p className="mt-1.5 text-base leading-relaxed text-ink">
+                    {s.extraOffer}
+                  </p>
+                </div>
+              )}
             </section>
 
             {/* P6 — отзывы: показ и форма для той семьи, что открывала контакты */}

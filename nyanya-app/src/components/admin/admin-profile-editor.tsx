@@ -44,6 +44,7 @@ export type EditableProfile = {
   experienceYears: number;
   education: string;
   description: string;
+  extraOffer: string;
   englishLevel: "none" | "basic" | "fluent";
   languages: string[];
   hasCar: boolean;
@@ -181,6 +182,12 @@ export function AdminProfileEditor({
               {initial.description || "не заполнено"}
             </dd>
           </div>
+          <div className="sm:col-span-2">
+            <dt className="label-caps text-ink-faint">Ещё предлагает</dt>
+            <dd className="mt-2 text-sm leading-relaxed text-ink">
+              {initial.extraOffer || "не заполнено"}
+            </dd>
+          </div>
         </dl>
       </section>
     );
@@ -308,6 +315,11 @@ export function AdminProfileEditor({
         <Field label="О себе" id="ed-about" className="sm:col-span-2">
           <textarea id="ed-about" rows={5} value={form.description} maxLength={4000}
             onChange={(e) => set("description", e.target.value)}
+            className="w-full border border-line bg-paper px-3 py-3 text-base text-ink focus:border-ink" />
+        </Field>
+        <Field label="Ещё предлагает" id="ed-extra" className="sm:col-span-2">
+          <textarea id="ed-extra" rows={3} value={form.extraOffer} maxLength={500}
+            onChange={(e) => set("extraOffer", e.target.value)}
             className="w-full border border-line bg-paper px-3 py-3 text-base text-ink focus:border-ink" />
         </Field>
       </div>

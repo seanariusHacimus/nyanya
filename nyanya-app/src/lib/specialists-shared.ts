@@ -103,6 +103,8 @@ export type UiSpecialist = {
   english: "Нет" | "Базовый" | "Свободный";
   education: string;
   attributes: string[];
+  /** свободный текст «что ещё предлагает» — пустая строка, если не заполнен */
+  extraOffer: string;
   about: string[];
   photoUrl: string | null;
 };

@@ -18,6 +18,8 @@ export type CabinetProfile = {
   priceAmount: number;
   priceUnit: "hour" | "day" | "month";
   description: string;
+  /** свободный текст «что ещё вы можете предложить» */
+  extraOffer: string;
   hasCar: boolean;
   liveIn: boolean;
   nightAvailable: boolean;
@@ -54,6 +56,7 @@ const emptyProfile: CabinetProfile = {
   priceAmount: 0,
   priceUnit: "hour",
   description: "",
+  extraOffer: "",
   hasCar: false,
   liveIn: false,
   nightAvailable: false,
@@ -142,6 +145,7 @@ export async function getCabinetData(
       priceAmount: profileRow.priceAmount,
       priceUnit: profileRow.priceUnit,
       description: profileRow.description ?? "",
+      extraOffer: profileRow.extraOffer ?? "",
       hasCar: profileRow.hasCar,
       liveIn: profileRow.liveIn,
       nightAvailable: profileRow.nightAvailable,

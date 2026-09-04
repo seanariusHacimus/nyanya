@@ -155,6 +155,12 @@ export const specialistProfiles = pgTable(
     description: text("description"),
     descriptionUz: text("description_uz"),
     descriptionEn: text("description_en"),
+    /**
+     * «Что ещё вы можете предложить» — свободным текстом, сверх фиксированных
+     * меток (автомобиль, проживание, ночные смены, новорождённые). Проходит
+     * модерацию вместе с анкетой; семье показывается в блоке навыков.
+     */
+    extraOffer: text("extra_offer"),
     videoIntroKey: text("video_intro_key"),
     hasCar: boolean("has_car").notNull().default(false),
     liveIn: boolean("live_in").notNull().default(false),

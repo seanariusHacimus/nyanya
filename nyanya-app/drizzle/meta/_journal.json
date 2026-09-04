@@ -50,6 +50,13 @@
       "when": 1787124956119,
       "tag": "0006_tashkent-districts",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788504200508,
+      "tag": "0007_extra-offer",
+      "breakpoints": true
     }
   ]
 }
