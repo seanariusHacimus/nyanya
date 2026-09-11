@@ -29,9 +29,9 @@ export default function ContactsPage() {
           <div className="mt-6">
             <ContactForm />
           </div>
-          {/* CT4 — реквизиты (⛳ заглушка до реальных данных юрлица) */}
+          {/* CT4 — реквизиты (⛳ юрлицо ещё не зарегистрировано, 2026-09-11) */}
           <p className="mt-10 border-t border-line pt-6 text-xs leading-relaxed text-ink-faint">
-            ООО «NYANYA», г. Ташкент, Узбекистан.
+            nyanya.uz, г. Ташкент, Узбекистан.
           </p>
         </Reveal>
       </section>

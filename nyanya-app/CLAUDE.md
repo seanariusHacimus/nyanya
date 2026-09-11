@@ -71,6 +71,16 @@ approved photo, and the certificates follow. Any new page saying otherwise is a 
 families; the honest line is «модератор проверяет анкету и фотографию до публикации», with the
 document check earning «Премиум-профиль» afterwards.
 
+**Documents are voluntary, and the copy says so everywhere** (owner decision, 2026-09-11, second
+batch of edits). The public pages no longer describe a «проверка специалистов»: `/verification`
+is titled «Как разместить анкету на nyanya.uz» (заполнение → модерация → публикация) and lists the
+documents a specialist *may* add — including «Сертификаты и дипломы» and «Рекомендательные
+письма», which have no upload slot yet; the nav and footer link reads «Как разместить анкету».
+Nothing may call a document «обязательно», and nothing may say text edits go to re-moderation —
+`saveSpecialistProfile` saves a live profile in place; only replacing a document sends it back to
+`pending_review`. The legal entity ООО «NYANYA» does not exist yet, so terms, privacy and contacts
+name «администрация сайта nyanya.uz» until the owner registers one.
+
 **Badge names are neutral** (owner decision, 2026-09-03): a published profile is «Стандартный
 профиль», one with every document approved is «Премиум-профиль». The old «Проверена» /
 «Премиум-проверен» asserted a check that had not happened — supplying documents is the

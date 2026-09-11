@@ -29,7 +29,7 @@ export const nav = {
     items: [
       { label: "О сервисе", href: "/about" },
       { label: "Как это работает", href: "/how-it-works" },
-      { label: "Проверка специалистов", href: "/verification" },
+      { label: "Как разместить анкету", href: "/verification" },
       { label: "Вопросы и ответы", href: "/faq" },
       { label: "Блог", href: "/blog" },
       { label: "Контакты", href: "/contacts" },
@@ -86,7 +86,7 @@ export const services = {
     },
     {
       title: "Водители",
-      description: "Надёжные водители для вашей семьи",
+      description: "Опытные водители для личных и семейных поездок",
       href: "/catalog?category=driver",
       image: {
         src: driverPhoto,
@@ -200,7 +200,7 @@ export const footer = {
       links: [
         { label: "О сервисе", href: "/about" },
         { label: "Как это работает", href: "/how-it-works" },
-        { label: "Проверка специалистов", href: "/verification" },
+        { label: "Как разместить анкету", href: "/verification" },
         { label: "Контакты", href: "/contacts" },
       ],
     },

@@ -26,7 +26,7 @@ export const dynamic = "force-dynamic"; // пример анкеты читае�
 export const metadata = {
   title: "Специалистам",
   description:
-    "Разместите анкету на nyanya.uz — премиальной платформе проверенных специалистов Ташкента. Размещение бесплатно, семьи связываются с вами напрямую.",
+    "Разместите анкету на nyanya.uz — премиальной платформе домашнего персонала Ташкента. Размещение бесплатно, семьи связываются с вами напрямую.",
 };
 
 // §7.3 — что вы получаете
@@ -67,8 +67,8 @@ const steps = [
   },
   {
     icon: ShieldCheck,
-    title: "Пройдите проверку",
-    text: "Загрузите документы — модератор проверит анкету обычно за 1–2 рабочих дня.",
+    title: "Отправьте на проверку",
+    text: "Модератор посмотрит анкету обычно за 1–2 рабочих дня. Документы — по желанию, для премиум-профиля.",
   },
   {
     icon: Bell,
@@ -78,30 +78,32 @@ const steps = [
 ];
 
 /**
- * §7.5 — какие документы нужны. Перечень одинаковый для всех категорий;
+ * §7.5 — какие документы можно добавить. Загрузка добровольна (решение
+ * владельца, 2026-09-11): публикации нужна только фотография, а полный
+ * комплект даёт «Премиум-профиль». Перечень одинаковый для всех категорий;
  * водителям добавляется удостоверение. Полный список с формулировками —
- * в content/verification-steps.ts и на странице «Проверка специалистов».
+ * в content/verification-steps.ts и на странице «Как разместить анкету».
  */
 const documents = [
   {
     icon: IdentificationCard,
     title: "Паспорт или ID-карта",
-    text: "Обязательно, для всех категорий.",
+    text: "По желанию — подтверждает личность для семей.",
   },
   {
     icon: FirstAid,
     title: "Медицинские справки",
-    text: "Сертификат об отсутствии ВИЧ/СПИД — обязательно. ЗППП, туберкулёз и общее состояние здоровья — рекомендуются.",
+    text: "Сертификат об отсутствии ВИЧ/СПИД; ЗППП, туберкулёз и общее состояние здоровья.",
   },
   {
     icon: GraduationCap,
     title: "Справка из психоневрологического и наркологического диспансеров",
-    text: "Обязательно, для всех категорий.",
+    text: "По желанию, для всех категорий.",
   },
   {
     icon: EnvelopeSimple,
     title: "Справка об отсутствии судимости",
-    text: "Обязательно. Водителям дополнительно — водительское удостоверение.",
+    text: "По желанию. Водителям дополнительно — водительское удостоверение.",
   },
 ];
 
@@ -112,8 +114,8 @@ const faq = [
     a: "Бесплатно. Мы не берём процент с вашей работы и не берём плату с семей за ваши контакты.",
   },
   {
-    q: "Как долго идёт проверка?",
-    a: "Обычно 1–2 рабочих дня после загрузки всех документов.",
+    q: "Как долго идёт модерация?",
+    a: "Обычно 1–2 рабочих дня после отправки анкеты.",
   },
   {
     q: "Кто видит мои контакты?",
@@ -147,8 +149,8 @@ export default async function BecomeSpecialistPage() {
               Работайте с семьями, которые вам доверяют
             </h1>
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-ink-soft">
-              Разместите анкету на nyanya.uz — премиальной платформе проверенных
-              специалистов Ташкента. Семьи открывают ваши контакты и
+              Разместите анкету на nyanya.uz — премиальной платформе домашнего
+              персонала Ташкента. Семьи открывают ваши контакты и
               связываются с вами напрямую.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-5">
@@ -157,7 +159,7 @@ export default async function BecomeSpecialistPage() {
                 href="/verification"
                 className="label-caps border-b border-ink/30 pb-1 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
               >
-                Как проходит проверка
+                Как размещается анкета
               </Link>
             </div>
           </div>
@@ -234,8 +236,12 @@ export default async function BecomeSpecialistPage() {
       <section className="mx-auto grid max-w-[1400px] gap-14 px-5 sm:px-8 lg:grid-cols-2 lg:gap-20">
         <Reveal>
           <h2 className="max-w-md font-display text-3xl leading-[1.12] font-medium text-ink sm:text-4xl">
-            Какие документы нужны
+            Какие документы можно добавить
           </h2>
+          <p className="mt-4 max-w-md text-base leading-relaxed text-ink-soft">
+            Для публикации достаточно анкеты и фотографии. Документы — по
+            желанию: полный комплект даёт статус «Премиум-профиль».
+          </p>
           <ul className="mt-10 space-y-7">
             {documents.map((doc) => (
               <li key={doc.title} className="flex gap-5">
@@ -257,7 +263,7 @@ export default async function BecomeSpecialistPage() {
             href="/verification"
             className="label-caps mt-10 inline-block border-b border-ink/30 pb-1 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
           >
-            Подробнее о проверке
+            Подробнее о размещении
           </Link>
         </Reveal>
 

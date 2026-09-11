@@ -7,59 +7,51 @@ import {
   Star,
 } from "@phosphor-icons/react/dist/ssr";
 import { PageHero } from "@/components/ui/page-hero";
-import {
-  DOCUMENTS_PAUSED,
-  verificationSteps,
-} from "@/content/verification-steps";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Reveal } from "@/components/reveal";
 
 export const metadata = {
-  title: "Проверка специалистов",
+  title: "Как разместить анкету",
   description:
-    "Модератор проверяет анкету и фотографию до публикации, а паспорт, медицинские справки и дипломы — по мере того, как специалист их загружает.",
+    "Три шага: заполнить анкету, пройти модерацию, опубликоваться. Документы специалист добавляет по желанию.",
 };
 
-// §14 V2 — этапы проверки
+// §14 V2 — как разместить анкету (тексты владельца, 2026-09-11)
 const stages = [
   {
     icon: FileArrowUp,
-    title: "Анкета и документы",
-    text: "Специалист загружает паспорт, справки и сертификаты.",
+    title: "Заполнение анкеты",
+    text: "Специалист указывает информацию о себе, опыт работы, район проживания и желаемую оплату.",
   },
   {
     icon: UserFocus,
-    title: "Проверка модератором",
-    text: "Документы и данные анкеты сверяются вручную.",
+    title: "Модерация анкеты",
+    text: "Анкета проверяется на соответствие правилам платформы.",
   },
   {
     icon: SealCheck,
-    title: "Публикация со статусом",
-    text: "Анкета появляется в каталоге с отметкой о проверке.",
+    title: "Публикация анкеты",
+    text: "После модерации анкета становится доступна работодателям на сайте.",
   },
 ];
 
 /**
- * §14 V3 — перечень документов. Один и тот же для всех категорий; отличается
- * только водительское удостоверение. Названия берём из общего источника
- * (content/verification-steps.ts), чтобы список на сайте не разошёлся с тем,
- * что специалист реально загружает в кабинете.
+ * §14 V3 — дополнительные документы. Список задан владельцем как обещание
+ * семье о том, что может быть в анкете; загрузка всего этого добровольна.
  */
-const requiredDocs = verificationSteps.filter(
-  (s) => s.required && !s.categories && s.key !== "profile_photo"
-);
-const driverDocs = verificationSteps.filter(
-  (s) => s.categories?.includes("driver")
-);
-const optionalDocs = verificationSteps.filter((s) => !s.required);
+const extraDocuments = [
+  "Паспорт или ID-карту",
+  "Медицинские справки",
+  "Сертификаты и дипломы",
+  "Рекомендательные письма",
+  "Справку об отсутствии судимости",
+  "Водительское удостоверение (для водителей)",
+];
 
 export default function VerificationPage() {
   return (
     <main className="flex-1">
-      <PageHero
-        title="Как мы проверяем специалистов"
-        subtitle="Каждая анкета проходит проверку модератором до публикации."
-      />
+      <PageHero title="Как разместить анкету на nyanya.uz" />
 
       {/* V2 — этапы (таймлайн) */}
       <section className="mx-auto max-w-[1400px] px-5 py-16 sm:px-8 lg:py-24">
@@ -88,81 +80,33 @@ export default function VerificationPage() {
             </li>
           ))}
         </ol>
-        <Reveal>
-          <p className="mt-10 text-sm text-ink-soft">
-            Изменения в анкете проходят повторную проверку.
-          </p>
-        </Reveal>
       </section>
 
-      {/* V3 — документы по категориям */}
+      {/* V3 — дополнительные документы */}
       <section className="mx-auto max-w-[1400px] px-5 sm:px-8">
         <Reveal>
           <div className="rounded-[2px] bg-cream-deep px-8 py-14 sm:px-12 lg:px-14">
             <h2 className="max-w-md font-display text-3xl leading-[1.12] font-medium text-ink sm:text-4xl">
-              Какие документы проверяются
+              Дополнительные документы специалиста
             </h2>
-            {DOCUMENTS_PAUSED ? (
-              <div className="mt-6 max-w-xl border-l-2 border-bronze bg-cream px-6 py-5">
-                <p className="text-base leading-relaxed text-ink">
-                  <span className="font-semibold">Сейчас мы запрашиваем только
-                  фотографию.</span>{" "}
-                  Сбор остальных документов временно приостановлен — перечень
-                  ниже показан для понимания, что будет проверяться, когда мы
-                  его возобновим.
-                </p>
-                <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                  «Премиум-профиль» получают только анкеты, документы которых
-                  проверил администратор. Остальные отмечены как «Стандартный
-                  профиль»: анкета заполнена и фотография принята, документы
-                  специалист не предоставлял.
-                </p>
-              </div>
-            ) : (
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-ink-soft">
-                Перечень одинаковый для всех категорий. Отличие одно: водителям
-                дополнительно нужно водительское удостоверение.
-              </p>
-            )}
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-ink-soft">
+              Специалист может по своему желанию загрузить дополнительные
+              документы и рекомендации для повышения доверия работодателей.
+            </p>
 
-            <div
-              className={`mt-10 grid gap-10 lg:grid-cols-2 ${
-                DOCUMENTS_PAUSED ? "opacity-55" : ""
-              }`}
-            >
-              <div>
-                <p className="label-caps text-bronze-text">Обязательные</p>
-                <ul className="mt-5 space-y-4">
-                  {requiredDocs.map((doc) => (
-                    <li key={doc.key} className="border-l border-bronze/40 pl-6">
-                      <p className="text-base font-semibold text-ink">{doc.title}</p>
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-6 border-l border-bronze/40 pl-6 text-sm leading-relaxed text-ink-soft">
-                  Для водителей дополнительно:{" "}
-                  <span className="font-semibold text-ink">
-                    {driverDocs.map((d) => d.title).join(", ").toLowerCase()}
-                  </span>
-                  .
-                </p>
-              </div>
+            <p className="label-caps mt-10 text-bronze-text">Можно добавить</p>
+            <ul className="mt-5 grid gap-4 sm:grid-cols-2">
+              {extraDocuments.map((doc) => (
+                <li key={doc} className="border-l border-bronze/40 pl-6">
+                  <p className="text-base text-ink">{doc}</p>
+                </li>
+              ))}
+            </ul>
 
-              <div>
-                <p className="label-caps text-bronze-text">Рекомендуемые</p>
-                <ul className="mt-5 space-y-4">
-                  {optionalDocs.map((doc) => (
-                    <li key={doc.key} className="border-l border-line pl-6">
-                      <p className="text-base text-ink">{doc.title}</p>
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-6 text-sm leading-relaxed text-ink-soft">
-                  Не обязательны — предоставить их специалист решает сам. С
-                  ними анкета становится «Премиум-профилем».
-                </p>
-              </div>
-            </div>
+            <p className="mt-10 max-w-xl text-sm leading-relaxed text-ink-soft">
+              Загрузка документов является добровольной. Специалисты, добавившие
+              дополнительные документы, могут получить статус «Премиум-профиль».
+            </p>
           </div>
         </Reveal>
       </section>
@@ -202,8 +146,9 @@ export default function VerificationPage() {
       <section className="mx-auto max-w-[1400px] px-5 py-20 sm:px-8 lg:py-28">
         <Reveal>
           <p className="mx-auto max-w-2xl text-center text-lg leading-relaxed text-ink-soft">
-            Мы проверяем документы и личность. Решение о найме принимаете вы:
-            познакомьтесь лично, проведите собеседование, обсудите условия.
+            Мы проверяем документы и данные специалиста. Окончательное решение
+            о сотрудничестве принимаете вы после личного общения, собеседования
+            и обсуждения условий работы.
           </p>
         </Reveal>
       </section>

@@ -217,7 +217,7 @@ export function AccountView({
         <div className="mt-16 flex flex-col items-center gap-5 border-t border-line pt-12 text-center sm:flex-row sm:justify-between sm:text-left">
           <p className="flex items-center gap-3 font-display text-2xl font-medium text-ink">
             <MagnifyingGlass size={22} className="text-bronze" aria-hidden="true" />
-            Начните с каталога проверенных специалистов
+            Начните с каталога специалистов
           </p>
           <ButtonLink href="/catalog">Подобрать специалиста</ButtonLink>
         </div>
