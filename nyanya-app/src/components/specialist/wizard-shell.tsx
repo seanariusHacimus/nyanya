@@ -140,6 +140,7 @@ export function WizardShell({
           {onBack ? (
             <button
               type="button"
+              aria-label="Назад"
               onClick={onBack}
               disabled={busy}
               className="label-caps flex min-h-12 shrink-0 items-center gap-2 px-2 text-ink-soft transition-colors duration-300 hover:text-ink disabled:opacity-50"

@@ -47,6 +47,7 @@ function toUi(row: ProfileRow, districtName: string | null): UiSpecialist {
     slug: row.slug ?? row.id,
     name: row.fullName,
     age: age(row.birthDate),
+    gender: row.gender,
     category: row.category as CategoryKey,
     district: districtName ?? "Ташкент",
     experienceYears: row.experienceYears,

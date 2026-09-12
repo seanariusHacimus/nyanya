@@ -15,12 +15,14 @@ import {
   categories,
   PRICE_UNIT_LABEL,
   yearsLabel,
+  GENDER_OPTIONS,
 } from "@/lib/specialists-shared";
 import {
   VerificationStepCard,
   type StepState,
 } from "@/components/specialist/verification-step-card";
 import { WizardShell } from "@/components/specialist/wizard-shell";
+import { SpecialistAvatar } from "@/components/specialist-avatar";
 
 /**
  * Заполнение анкеты: один вопрос — один экран.
@@ -82,7 +84,9 @@ const SCREEN = {
 } as const;
 
 function nameReady(p: CabinetProfile): boolean {
-  return p.fullName.trim().length > 1 && Boolean(p.birthDate);
+  return (
+    p.fullName.trim().length > 1 && Boolean(p.gender) && Boolean(p.birthDate)
+  );
 }
 function placeReady(p: CabinetProfile): boolean {
   return Boolean(p.districtId) && p.priceAmount > 0;
@@ -170,7 +174,7 @@ export function ProfileWizard({
   const hasPhoto = photoReady(steps);
 
   const missing: { label: string; screen: number }[] = [];
-  if (!nameReady(profile)) missing.push({ label: "ФИО и дата рождения", screen: SCREEN.name });
+  if (!nameReady(profile)) missing.push({ label: "ФИО, пол и дата рождения", screen: SCREEN.name });
   if (!hasPhoto) missing.push({ label: "Фотография", screen: SCREEN.photo });
   if (!placeReady(profile)) missing.push({ label: "Район и стоимость", screen: SCREEN.place });
 
@@ -237,6 +241,34 @@ export function ProfileWizard({
               autoFocus
             />
           </div>
+          <fieldset className="grid gap-2">
+            <legend className="mb-1 text-sm font-semibold text-ink">Пол</legend>
+            <div className="grid grid-cols-2 gap-3">
+              {GENDER_OPTIONS.map((option) => {
+                const active = profile.gender === option.key;
+                return (
+                  <label
+                    key={option.key}
+                    className={`flex min-h-12 cursor-pointer items-center justify-center border px-2 text-center text-sm transition-colors duration-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-bronze has-[:focus-visible]:outline-offset-2 ${
+                      active
+                        ? "border-ink bg-cream-deep text-ink"
+                        : "border-line bg-paper text-ink-soft hover:border-bronze/50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="gender"
+                      value={option.key}
+                      checked={active}
+                      onChange={() => set("gender", option.key)}
+                      className="sr-only"
+                    />
+                    {option.label}
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
           <div className="grid gap-2">
             <label htmlFor="sp-birth" className="text-sm font-semibold text-ink">
               Дата рождения
@@ -328,7 +360,7 @@ export function ProfileWizard({
                 return (
                   <label
                     key={option.key}
-                    className={`flex min-h-12 cursor-pointer items-center justify-center border px-2 text-center text-sm transition-colors duration-300 ${
+                    className={`flex min-h-12 cursor-pointer items-center justify-center border px-2 text-center text-sm transition-colors duration-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-bronze has-[:focus-visible]:outline-offset-2 ${
                       active
                         ? "border-ink bg-cream-deep text-ink"
                         : "border-line bg-paper text-ink-soft hover:border-bronze/50"
@@ -424,7 +456,7 @@ export function ProfileWizard({
                 return (
                   <label
                     key={lang}
-                    className={`flex min-h-12 cursor-pointer items-center justify-center border px-2 text-center text-sm transition-colors duration-300 ${
+                    className={`flex min-h-12 cursor-pointer items-center justify-center border px-2 text-center text-sm transition-colors duration-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-bronze has-[:focus-visible]:outline-offset-2 ${
                       active
                         ? "border-ink bg-cream-deep text-ink"
                         : "border-line bg-paper text-ink-soft hover:border-bronze/50"
@@ -554,9 +586,7 @@ export function ProfileWizard({
                     className="object-cover object-top"
                   />
                 ) : (
-                  <span className="flex size-full items-center justify-center text-xs text-ink-faint">
-                    нет фото
-                  </span>
+                  <SpecialistAvatar gender={profile.gender} name={profile.fullName} />
                 )}
               </div>
               <div className="min-w-0">
@@ -708,7 +738,7 @@ export function ProfileWizard({
             result.error === "documents_missing"
               ? "Загрузите фотографию — без неё анкету нельзя отправить."
               : result.error === "profile_incomplete"
-                ? "Заполните имя, дату рождения, район и стоимость."
+                ? "Заполните имя, пол, дату рождения, район и стоимость."
                 : "Не удалось отправить анкету. Попробуйте ещё раз."
           );
           return;

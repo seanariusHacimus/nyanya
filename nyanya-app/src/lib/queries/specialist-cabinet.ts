@@ -5,9 +5,12 @@ import { verificationSteps } from "@/content/verification-steps";
 import { getNotifications, type UiNotification } from "@/lib/queries/notifications";
 import { getDistrictOptions } from "@/lib/queries/districts";
 import type { StepState } from "@/components/specialist/verification-step-card";
+import type { Gender } from "@/lib/specialists-shared";
 
 export type CabinetProfile = {
   fullName: string;
+  /** null — ещё не выбран; экран «Как вас зовут?» без него не пропускает */
+  gender: Gender | null;
   category: "nanny" | "caregiver" | "tutor" | "driver";
   birthDate: string;
   districtId: number | null;
@@ -46,6 +49,7 @@ export type CabinetData = {
 
 const emptyProfile: CabinetProfile = {
   fullName: "",
+  gender: null,
   category: "nanny",
   birthDate: "",
   districtId: null,
@@ -135,6 +139,7 @@ export async function getCabinetData(
     tier: profileRow.verificationLevel,
     profile: {
       fullName: profileRow.fullName === "Без имени" ? "" : profileRow.fullName,
+      gender: profileRow.gender,
       category: profileRow.category,
       birthDate: profileRow.birthDate ?? "",
       districtId: profileRow.districtId,

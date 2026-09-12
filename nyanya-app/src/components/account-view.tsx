@@ -13,6 +13,7 @@ import {
 import { authClient } from "@/lib/auth-client";
 import type { AccountData } from "@/lib/queries/account";
 import { SpecialistCard } from "@/components/specialist-card";
+import { SpecialistAvatar } from "@/components/specialist-avatar";
 import { ButtonLink } from "@/components/ui/button-link";
 
 function formatDate(iso: string) {
@@ -140,12 +141,8 @@ export function AccountView({
                       className="h-[60px] w-12 rounded-[2px] object-cover object-top"
                     />
                   ) : (
-                    <span className="flex h-[60px] w-12 items-center justify-center rounded-[2px] bg-cream-deep font-display text-base text-bronze-text">
-                      {specialist.name
-                        .split(" ")
-                        .slice(0, 2)
-                        .map((w) => w[0])
-                        .join("")}
+                    <span className="relative block h-[60px] w-12 shrink-0 overflow-hidden rounded-[2px] bg-cream-deep">
+                      <SpecialistAvatar gender={specialist.gender} name={specialist.name} />
                     </span>
                   )}
                   <span className="min-w-0">

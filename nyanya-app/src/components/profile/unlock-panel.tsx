@@ -13,13 +13,15 @@ import {
 } from "@phosphor-icons/react";
 import { unlockContacts } from "@/lib/actions/unlock-contacts";
 import { toggleFavoriteAction } from "@/lib/actions/favorites";
-import type { SpecialistContacts } from "@/lib/specialists-shared";
+import type { Gender, SpecialistContacts } from "@/lib/specialists-shared";
+import { SpecialistAvatar } from "@/components/specialist-avatar";
 import { easeOutQuart } from "@/lib/motion";
 
 type PanelSpecialist = {
   slug: string;
   name: string;
   age: number | null;
+  gender: Gender | null;
   categoryLabel: string;
   priceLabel: string;
   photoUrl: string | null;
@@ -244,12 +246,8 @@ export function UnlockPanel({
                     className="h-[70px] w-14 rounded-[2px] object-cover object-top"
                   />
                 ) : (
-                  <span className="flex h-[70px] w-14 items-center justify-center rounded-[2px] bg-cream-deep font-display text-lg text-bronze-text">
-                    {s.name
-                      .split(" ")
-                      .slice(0, 2)
-                      .map((w) => w[0])
-                      .join("")}
+                  <span className="relative block h-[70px] w-14 shrink-0 overflow-hidden rounded-[2px] bg-cream-deep">
+                    <SpecialistAvatar gender={s.gender} name={s.name} />
                   </span>
                 )}
                 <div className="min-w-0 flex-1">

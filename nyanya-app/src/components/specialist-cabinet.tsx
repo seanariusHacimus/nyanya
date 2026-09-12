@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -27,6 +28,7 @@ import {
 } from "@/components/specialist/profile-wizard";
 import type { StepState } from "@/components/specialist/verification-step-card";
 import { PremiumCard } from "@/components/specialist/premium-card";
+import { SpecialistAvatar } from "@/components/specialist-avatar";
 
 const banners = {
   draft: {
@@ -68,7 +70,7 @@ const banners = {
  * успевает почувствовать движение до того, как дойдёт до сбора справок.
  */
 const WIZARD_CHECKS = [
-  { key: "who", label: "ФИО и дата рождения" },
+  { key: "who", label: "ФИО, пол и дата рождения" },
   { key: "where", label: "Район и стоимость" },
   { key: "experience", label: "Опыт и навыки" },
   { key: "about", label: "Рассказ о себе" },
@@ -86,7 +88,10 @@ function computeStepDone(
   documentsReady: boolean
 ): Record<WizardKey, boolean> {
   return {
-    who: profile.fullName.trim().length > 1 && Boolean(profile.birthDate),
+    who:
+      profile.fullName.trim().length > 1 &&
+      Boolean(profile.gender) &&
+      Boolean(profile.birthDate),
     where: Boolean(profile.districtId) && profile.priceAmount > 0,
     // шаг необязательный: пройден, если человек рассказал о себе хоть что-то
     experience:
@@ -136,6 +141,7 @@ export function SpecialistCabinet({
    * публикации. Остальные документы поднимают её до «Премиум-профиля».
    */
   const photoReady = steps["profile_photo"]?.status !== "empty";
+  const photoKey = photoReady ? (steps["profile_photo"]?.fileKey ?? null) : null;
 
   // сводка для карточки обзора: те же признаки, что и внутри мастера
   const checkDone = computeStepDone(profile, photoReady);
@@ -183,11 +189,27 @@ export function SpecialistCabinet({
    */
   return (
     <div className="mx-auto max-w-[900px] px-5 pt-10 pb-24 sm:px-8 lg:pt-16">
-      {/* шапка: имя одной строкой. «Выйти» есть в шапке сайта, дублировать незачем */}
+      {/* шапка: фото (или аватар по полу) и имя. «Выйти» есть в шапке сайта, дублировать незачем */}
       <p className="label-caps text-bronze-text">Кабинет · Специалист</p>
-      <h1 className="mt-2 font-display text-3xl leading-[1.08] font-medium text-ink sm:text-5xl">
-        {name}
-      </h1>
+      <div className="mt-3 flex items-center gap-4 sm:gap-5">
+        <div className="relative size-14 shrink-0 overflow-hidden rounded-[2px] bg-cream-deep sm:size-[72px]">
+          {photoKey ? (
+            <Image
+              src={`/api/documents/${photoKey}`}
+              alt=""
+              fill
+              unoptimized
+              sizes="72px"
+              className="object-cover object-top"
+            />
+          ) : (
+            <SpecialistAvatar gender={profile.gender} name={name} />
+          )}
+        </div>
+        <h1 className="font-display text-3xl leading-[1.08] font-medium text-ink sm:text-5xl">
+          {name}
+        </h1>
+      </div>
 
       {/* статус и главное действие — один блок */}
       <section className={`mt-8 border p-6 ${banner.box}`}>

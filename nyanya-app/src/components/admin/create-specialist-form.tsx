@@ -112,6 +112,7 @@ export function CreateSpecialistForm({
           password: String(form.get("password") ?? ""),
           category: String(form.get("category") ?? "nanny"),
           birthDate: String(form.get("birthDate") ?? ""),
+          gender: String(form.get("gender") ?? ""),
           districtId: Number(form.get("districtId") ?? 0),
           priceAmount: Number(form.get("priceAmount") ?? 0),
           priceUnit: String(form.get("priceUnit") ?? "hour"),
@@ -188,6 +189,14 @@ export function CreateSpecialistForm({
 
         <Field label="Дата рождения" id="af-birth" hint="Семьям показывается только возраст.">
           <input id="af-birth" name="birthDate" type="date" required className={inputClass} />
+        </Field>
+
+        <Field label="Пол" id="af-gender">
+          <select id="af-gender" name="gender" required className={selectClass} defaultValue="">
+            <option value="" disabled>Выберите…</option>
+            <option value="female">Женщина</option>
+            <option value="male">Мужчина</option>
+          </select>
         </Field>
 
         <Field label="Район" id="af-district">

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle, PencilSimple, Warning } from "@phosphor-icons/react";
 import { adminUpdateProfile } from "@/lib/actions/admin-edit-profile";
-import { yearsLabel } from "@/lib/specialists-shared";
+import { GENDER_LABEL, yearsLabel } from "@/lib/specialists-shared";
 
 /**
  * Правка анкеты в карточке администратора.
@@ -38,6 +38,7 @@ export type EditableProfile = {
   fullName: string;
   category: "nanny" | "caregiver" | "tutor" | "driver";
   birthDate: string;
+  gender: "female" | "male" | null;
   districtId: number | null;
   priceAmount: number;
   priceUnit: "hour" | "day" | "month";
@@ -137,6 +138,7 @@ export function AdminProfileEditor({
           />
           <Row label="Телефон" value={initial.phone || "не указан"} />
           <Row label="Дата рождения" value={initial.birthDate || "не указана"} />
+          <Row label="Пол" value={initial.gender ? GENDER_LABEL[initial.gender] : "не указан"} />
           <Row label="Район" value={districtName ?? "не выбран"} />
           <Row
             label="Стоимость"
@@ -229,6 +231,15 @@ export function AdminProfileEditor({
         <Field label="Дата рождения" id="ed-birth">
           <input id="ed-birth" type="date" value={form.birthDate}
             onChange={(e) => set("birthDate", e.target.value)} className={inputClass} />
+        </Field>
+
+        <Field label="Пол" id="ed-gender" hint="Без него семья видит аватар-заглушку с инициалами.">
+          <select id="ed-gender" value={form.gender ?? ""} className={selectClass}
+            onChange={(e) => set("gender", (e.target.value || null) as EditableProfile["gender"])}>
+            <option value="">Не указан</option>
+            <option value="female">Женщина</option>
+            <option value="male">Мужчина</option>
+          </select>
         </Field>
 
         <Field label="Район" id="ed-district">

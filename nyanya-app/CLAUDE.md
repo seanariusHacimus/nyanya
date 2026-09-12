@@ -119,6 +119,26 @@ emails match the profile; `submitForModeration` no longer requires `description`
 the documents wizard (`scope: "documents"`) excludes the photo and exists for «Премиум-профиль».
 `/register?role=specialist` preselects the role and replaces the role cards with a one-line notice.
 
+## Gender and the placeholder avatar
+
+`specialist_profiles.gender` (`female` | `male`, nullable; migration 0008, owner decision
+2026-09-11) is asked on the wizard's «Как вас зовут?» screen as a two-chip choice and is
+**required** for submission — `nameReady`, the cabinet's `computeStepDone.who` and the server
+gate in `submitForModeration` all check it, so keep the three in step. `saveSpecialistProfile`
+writes it only when a value is present: a tab holding the pre-gender form must not null out a
+value the database already has. Admins edit it in the profile editor and choose it when creating
+a specialist; the admin notification about a new submission conjugates «отправила/отправил» from
+it. Profiles created before the column exist with `gender = null`; the owner fills those in by
+hand (`scripts/set-gender.mjs --map` — a person decides from the photo and the name, the script
+only applies the map, refuses a mismatched name and never overwrites a value).
+
+`SpecialistAvatar` (`components/specialist-avatar.tsx`) is the single no-photo fallback —
+catalogue card, profile hero, unlock panel, family's contact list, wizard preview and cabinet
+header all use it. It draws a stylised bust by gender in the theme tokens (inline SVG, `slice`
+scaling, so one drawing fits 4:5, 3:4 and square) and falls back to the initials monogram when
+gender is null. It is deliberately not photo-like: a placeholder must not pass for a real photo.
+Do not add per-site fallbacks again — that is how the initials markup was copied four times.
+
 ## Premium — promises that the code keeps
 
 `PREMIUM_BENEFITS` (`lib/specialists-shared.ts`) is the only place the premium pitch is worded;

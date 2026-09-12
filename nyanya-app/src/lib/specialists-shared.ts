@@ -79,10 +79,26 @@ export const PREMIUM_BENEFITS = [
 ] as const;
 
 
+/**
+ * Пол специалиста. Нужен семье при выборе и аватарке-заглушке, когда
+ * фотографии нет: безликий кружок с инициалами семье ничего не говорил.
+ * null — анкета создана до появления поля и ещё не дозаполнена.
+ */
+export type Gender = "female" | "male";
+export const GENDER_LABEL: Record<Gender, string> = {
+  female: "Женщина",
+  male: "Мужчина",
+};
+export const GENDER_OPTIONS = [
+  { key: "female", label: "Женщина" },
+  { key: "male", label: "Мужчина" },
+] as const;
+
 export type UiSpecialist = {
   slug: string;
   name: string;
   age: number | null;
+  gender: Gender | null;
   category: CategoryKey;
   district: string;
   experienceYears: number;

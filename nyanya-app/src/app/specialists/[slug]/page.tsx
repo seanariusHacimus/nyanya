@@ -24,6 +24,7 @@ import { SpecialistCard } from "@/components/specialist-card";
 import { Stars } from "@/components/ui/stars";
 import { ShareButton } from "@/components/share-button";
 import { UnlockPanel } from "@/components/profile/unlock-panel";
+import { SpecialistAvatar } from "@/components/specialist-avatar";
 import { Reveal } from "@/components/reveal";
 
 export const dynamic = "force-dynamic"; // анкета читается из PostgreSQL
@@ -121,15 +122,7 @@ export default async function SpecialistPage({
                       className="object-cover object-top"
                     />
                   ) : (
-                    <div className="flex size-full items-center justify-center">
-                      <span className="flex size-24 items-center justify-center rounded-full border border-bronze/50 font-display text-3xl font-medium text-bronze-text">
-                        {s.name
-                          .split(" ")
-                          .slice(0, 2)
-                          .map((w) => w[0])
-                          .join("")}
-                      </span>
-                    </div>
+                    <SpecialistAvatar gender={s.gender} name={s.name} />
                   )}
                 </div>
               </div>
@@ -291,6 +284,7 @@ export default async function SpecialistPage({
               slug: s.slug,
               name: s.name,
               age: s.age,
+              gender: s.gender,
               categoryLabel: categories[s.category].label,
               priceLabel: formatPrice(s),
               photoUrl: s.photoUrl,

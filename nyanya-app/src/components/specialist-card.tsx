@@ -14,22 +14,7 @@ import {
 } from "@/lib/specialists-shared";
 import { Stars } from "@/components/ui/stars";
 import { FavoriteHeart } from "@/components/favorite-heart";
-
-/** Монограмма — премиальный fallback для анкет без фото (§4.5). */
-function Monogram({ name }: { name: string }) {
-  const initials = name
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("");
-  return (
-    <div className="absolute inset-0 flex items-center justify-center bg-cream-deep">
-      <span className="flex size-24 items-center justify-center rounded-full border border-bronze/50 font-display text-3xl font-medium text-bronze-text">
-        {initials}
-      </span>
-    </div>
-  );
-}
+import { SpecialistAvatar } from "@/components/specialist-avatar";
 
 /** Карточка специалиста — §4.5. Данные приходят из PostgreSQL. */
 export function SpecialistCard({
@@ -54,7 +39,7 @@ export function SpecialistCard({
             className="object-cover object-top transition-transform duration-700 ease-out-quart group-hover:scale-[1.03]"
           />
         ) : (
-          <Monogram name={s.name} />
+          <SpecialistAvatar gender={s.gender} name={s.name} />
         )}
         {/*
           Печать с галочкой — только у премиума: сама по себе она читается как

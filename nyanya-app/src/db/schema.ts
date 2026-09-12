@@ -38,6 +38,12 @@ export const profileStatusEnum = pgEnum("profile_status", [
   "hidden",
   "rejected",
 ]);
+/**
+ * Пол специалиста (решение владельца, 2026-09-11). Нужен семьям для выбора
+ * и аватарке-заглушке, когда фотографии нет. Колонка nullable: анкеты,
+ * созданные до появления поля, дозаполняет администратор.
+ */
+export const genderEnum = pgEnum("gender", ["female", "male"]);
 export const verificationLevelEnum = pgEnum("verification_level", [
   "unverified",
   "verified",
@@ -141,6 +147,7 @@ export const specialistProfiles = pgTable(
     category: categoryEnum("category").notNull(),
     fullName: text("full_name").notNull(),
     fullNameLatin: text("full_name_latin"),
+    gender: genderEnum("gender"),
     photoKey: text("photo_key"),
     birthDate: date("birth_date"),
     cityId: integer("city_id").references(() => cities.id),

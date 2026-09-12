@@ -55,6 +55,7 @@ const profileSchema = z.object({
   fullName: z.string().trim().max(120),
   category: z.enum(["nanny", "caregiver", "tutor", "driver"]),
   birthDate: z.string().trim().max(20).optional().or(z.literal("")),
+  gender: z.enum(["female", "male"]).nullable().optional(),
   districtId: z.coerce.number().int().positive().optional().nullable(),
   experienceYears: z.coerce.number().int().min(0).max(60),
   education: z.string().trim().max(300).optional().or(z.literal("")),
@@ -89,6 +90,9 @@ export async function saveSpecialistProfile(input: unknown) {
       fullName: d.fullName || "Без имени",
       category: d.category,
       birthDate: d.birthDate || null,
+      // пол пишем только когда он выбран: вкладка со старой версией формы
+      // не должна стирать значение, которое уже стоит в базе
+      ...(d.gender ? { gender: d.gender } : {}),
       districtId: d.districtId ?? null,
       experienceYears: d.experienceYears,
       education: d.education || null,
@@ -331,6 +335,7 @@ export async function submitForModeration() {
   const missingFields =
     !profile.fullName ||
     profile.fullName === "Без имени" ||
+    !profile.gender ||
     !profile.birthDate ||
     !profile.districtId ||
     profile.priceAmount <= 0;
@@ -392,7 +397,7 @@ export async function submitForModeration() {
         userId: a.id,
         type: "system" as const,
         title: "Новая анкета на модерации",
-        body: `${profile.fullName} отправил(а) анкету и документы на проверку.`,
+        body: `${profile.fullName} ${profile.gender === "female" ? "отправила" : "отправил"} анкету на проверку.`,
       }))
     );
   }
