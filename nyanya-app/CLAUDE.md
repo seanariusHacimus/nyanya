@@ -134,10 +134,17 @@ only applies the map, refuses a mismatched name and never overwrites a value).
 
 `SpecialistAvatar` (`components/specialist-avatar.tsx`) is the single no-photo fallback —
 catalogue card, profile hero, unlock panel, family's contact list, wizard preview and cabinet
-header all use it. It draws a stylised bust by gender in the theme tokens (inline SVG, `slice`
-scaling, so one drawing fits 4:5, 3:4 and square) and falls back to the initials monogram when
-gender is null. It is deliberately not photo-like: a placeholder must not pass for a real photo.
-Do not add per-site fallbacks again — that is how the initials markup was copied four times.
+header all use it. By gender it shows `public/images/avatar-female.webp` / `avatar-male.webp`
+— stylised gouache busts generated on Higgsfield (`gpt_image_2`, 2k/high, 2026-09-12; the other
+candidate pairs are not in the repo) and deliberately not photo-like, so a placeholder cannot
+pass for a real photo. The files are 960×1200 WebP q88 produced by
+`scripts/optimize-avatar.mjs` (top-anchored cover resize + light sharpen; it writes the encoded
+buffer directly — piping it through sharp again re-encodes at q80 and blurs it) and are served
+`unoptimized`, because the Next image optimizer would re-encode them at quality 75. Rendering
+uses `fill` + `object-cover object-top`, so one file fits 4:5, 3:4 and square containers. With
+gender null the component falls back to the initials monogram (inline SVG). Do not add per-site
+fallbacks again — that is how the initials markup was copied four times. Gender is not shown to
+families as text (owner decision, 2026-09-12): it only drives the avatar and is visible to admins.
 
 ## Premium — promises that the code keeps
 
