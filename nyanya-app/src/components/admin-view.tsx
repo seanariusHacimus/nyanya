@@ -229,7 +229,7 @@ export function AdminView({
                     <p className="mt-1 text-xs text-ink-faint">
                       {
                         {
-                          draft: "Черновик — заполните документы и опубликуйте",
+                          draft: "Черновик — проверьте анкету и опубликуйте",
                           pending_review: "Специалист отправил на проверку",
                           rejected: "Отклонена — специалист исправляет",
                           hidden: "Снята с публикации",
@@ -240,7 +240,9 @@ export function AdminView({
                   </div>
                   <div className="flex items-center gap-5">
                     <span className="label-caps text-ink-faint">
-                      документов: {p.approvedDocuments}/{p.requiredDocuments}
+                      {p.photoPending
+                        ? "фото ждёт проверки"
+                        : `до премиума: ${p.approvedDocuments}/${p.requiredDocuments}`}
                     </span>
                     <Link
                       href={`/admin/profiles/${p.id}`}
@@ -573,7 +575,8 @@ function ProfileRow({
   onModerate: (action: "publish" | "hide" | "reject", note?: string) => void;
 }) {
   const status = STATUS_LABEL[profile.status];
-  // публикация и премиум возможны только при полном комплекте принятых документов
+  // полный комплект принятых документов нужен только для премиума; публиковать
+  // можно и без фото (семья увидит аватар), но не с непроверенным снимком
   const docsReady = profile.approvedDocuments === profile.requiredDocuments;
 
   return (
@@ -613,6 +616,11 @@ function ProfileRow({
         <span className="mt-1 block text-xs text-ink-faint">
           доп. {profile.approvedOptional}/{profile.optionalDocuments}
         </span>
+        {profile.photoPending && (
+          <span className="mt-1 block text-xs text-[#a5462f]">
+            фото ждёт проверки
+          </span>
+        )}
         {!docsReady && profile.blockingSteps && (
           <span className="mt-1 block max-w-56 text-xs text-ink-faint">
             {profile.blockingSteps}
@@ -645,11 +653,11 @@ function ProfileRow({
             ) : (
               <button
                 type="button"
-                disabled={busy || !docsReady}
+                disabled={busy || profile.photoPending}
                 title={
-                  docsReady
-                    ? undefined
-                    : `Не приняты документы: ${profile.blockingSteps}`
+                  profile.photoPending
+                    ? "Сначала примите или отклоните фотографию"
+                    : undefined
                 }
                 onClick={() => onModerate("publish")}
                 className={actionButton}

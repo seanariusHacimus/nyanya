@@ -49,10 +49,19 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
 - **Verification steps have a single source of truth**: `src/content/verification-steps.ts`, used
   by the specialist form, the server actions, the admin queue and the public pages. Steps are
   **required or recommended**, and the list is **category-aware** (`stepsForCategory`) — only
-  drivers see the licence. **Publication requires only the approved photo** (owner decision,
-  2026-08-12): the catalogue shows a face, district, price and the person's own words, and the
-  badge names what the person supplied, and claims nothing about documents. A profile with every
-  step approved, recommended included, becomes «Премиум-профиль».
+  drivers see the licence. **Publication requires no document at all** (owner decision
+  2026-09-13; from 2026-08-12 until then it required the approved photo): an admin can publish
+  a profile without a photo and the catalogue shows the gendered `SpecialistAvatar`. The only
+  publish gate is `summary.photoPending` — an uploaded photo nobody has reviewed must never
+  reach families. **`specialist_profiles.photo_key` holds an approved photo and nothing else**:
+  uploading writes the file to `documents` only, `reviewDocument` fills the column on approve
+  and clears it on reject, both delete paths clear it, and `moderateProfile` clears it while
+  publishing whenever the photo is not approved (rows whose photo was rejected before
+  2026-09-13 still carry a stale pointer, so that clear is what repairs them). Losing the photo
+  no longer flips a profile to `hidden`. A rejected photo counts as no photo for the wizard and
+  the cabinet checklist, so the specialist is sent back to the photo screen. The catalogue shows
+  a face (or the avatar), district, price and the person's own words. A profile with every step
+  approved, recommended included, becomes «Премиум-профиль».
   `deriveVerificationLevel` computes the badge — it is never set by hand.
   Documents were paused 2026-08-10 (photo only) and re-enabled 2026-08-12;
   `ACTIVE_STEP_KEYS` in that file is the single switch — shorten the list to pause again.
@@ -86,7 +95,10 @@ name «администрация сайта nyanya.uz» until the owner registe
 «Премиум-проверен» asserted a check that had not happened — supplying documents is the
 specialist's own choice, and nobody had seen a standard profile's. Only premium may promise
 verification, and only premium carries the seal-with-a-tick icon; the standard badge uses a plain
-ID-card mark, because the seal reads as "verified" on its own. **These words live once**, in
+ID-card mark, because the seal reads as "verified" on its own. **An active profile without an
+approved photo carries no badge at all** (`UiSpecialist.verification` is null, 2026-09-13):
+«Стандартный профиль» asserts a photo the moderator accepted, and a profile published with the
+placeholder avatar has none. **These words live once**, in
 `PROFILE_TIER` (`lib/specialists-shared.ts`), and `VERIFICATION_LABEL`/`VERIFICATION_MEANING`
 derive from it. They used to be retyped in the card, the profile page and the admin panel, and
 duly drifted — the catalogue said «Проверена» while the admin said «Проверен модератором».

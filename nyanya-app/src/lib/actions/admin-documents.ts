@@ -213,8 +213,9 @@ export async function adminDeleteDocument(input: {
   await removeDocument(row.fileKey);
 
   /**
-   * После удаления уровень пересчитывается, а анкета без фотографии уходит из
-   * каталога: фотография — единственное, без чего публиковать нельзя.
+   * После удаления уровень пересчитывается. Анкета без фотографии остаётся
+   * в каталоге с аватаром по полу (фото необязательно с 2026-09-13) —
+   * убирается только сам снимок.
    */
   const level = await levelFor(input.profileId, profile.category);
   const losesPhoto = step.key === "profile_photo";
@@ -223,9 +224,6 @@ export async function adminDeleteDocument(input: {
     .set({
       verificationLevel: level,
       ...(losesPhoto ? { photoKey: null } : {}),
-      ...(losesPhoto && profile.status === "active"
-        ? { status: "hidden" as const }
-        : {}),
       updatedAt: new Date(),
     })
     .where(eq(specialistProfiles.id, input.profileId));

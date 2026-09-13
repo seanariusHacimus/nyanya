@@ -209,10 +209,14 @@ export async function uploadVerificationDocument(formData: FormData) {
       ...(wasActive
         ? { status: "pending_review" as const, submittedAt: new Date() }
         : {}),
-      // фото профиля сразу становится фотографией анкеты
-      ...(step.key === "profile_photo"
-        ? { photoKey: `/api/documents/${key}` }
-        : {}),
+      /**
+       * Непроверенный снимок семьям не показываем: в photo_key лежит только
+       * фотография, принятая модератором. До решения в карточке стоит аватар
+       * по полу — так новое фото не попадёт ни в каталог, ни в избранное, ни
+       * в список открытых контактов. Сам специалист свой снимок видит:
+       * кабинет и мастер читают его из документов, а не из этой колонки.
+       */
+      ...(step.key === "profile_photo" ? { photoKey: null } : {}),
       updatedAt: new Date(),
     })
     .where(eq(specialistProfiles.id, profile.id));

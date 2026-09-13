@@ -43,10 +43,12 @@ export type AdminProfileRow = {
   slug: string | null;
   moderationNote: string | null;
   banned: boolean;
-  /** Принято обязательных документов из скольких — публикация требует всех. */
+  /** Принято обязательных документов из скольких — до «Премиум-профиля». */
   approvedDocuments: number;
+  /** Фото загружено и ждёт решения — до него публиковать нельзя. */
+  photoPending: boolean;
   requiredDocuments: number;
-  /** Названия обязательных шагов, мешающих публикации. */
+  /** Названия обязательных шагов, которых не хватает до «Премиум-профиля». */
   blockingSteps: string;
   /** Сколько рекомендуемых принято — от них зависит «Премиум-профиль». */
   approvedOptional: number;
@@ -206,6 +208,7 @@ export async function getAdminData(): Promise<AdminData> {
       return {
         ...p,
         approvedDocuments: summary.approvedRequired.length,
+        photoPending: summary.photoPending,
         requiredDocuments: summary.requiredCount,
         blockingSteps: stepTitles(summary.blockingRequired),
         approvedOptional: summary.approvedOptional.length,

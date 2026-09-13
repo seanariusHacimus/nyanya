@@ -20,7 +20,8 @@ export function AdminProfileActions({
   profileId,
   status,
   slug,
-  canPublish,
+  photoPending,
+  hasPhoto,
   blocking,
   premiumReady,
   moderationNote,
@@ -28,8 +29,10 @@ export function AdminProfileActions({
   profileId: string;
   status: "draft" | "pending_review" | "active" | "hidden" | "rejected";
   slug: string | null;
-  /** Принята фотография — минимум для публикации. */
-  canPublish: boolean;
+  /** Фото загружено, но не просмотрено — единственное, что мешает публикации. */
+  photoPending: boolean;
+  /** В карточке есть снимок; без него семья видит аватар по полу. */
+  hasPhoto: boolean;
   /** Сколько обязательных документов не принято — до премиума. */
   blocking: number;
   premiumReady: boolean;
@@ -51,8 +54,8 @@ export function AdminProfileActions({
       });
       if (!result.ok) {
         setError(
-          result.error === "photo_required"
-            ? "Сначала примите фотографию — без неё публиковать нельзя."
+          result.error === "photo_pending"
+            ? "Сначала примите или отклоните загруженную фотографию."
             : result.error === "note_required"
               ? "Укажите причину отклонения."
               : "Не удалось выполнить действие."
@@ -97,7 +100,7 @@ export function AdminProfileActions({
           <button
             type="button"
             onClick={() => run("publish")}
-            disabled={pending || !canPublish}
+            disabled={pending || photoPending}
             className="label-caps inline-flex min-h-11 items-center bg-ink px-6 text-cream transition-colors duration-300 hover:bg-charcoal disabled:opacity-40"
           >
             {pending ? "…" : "Опубликовать"}
@@ -126,9 +129,14 @@ export function AdminProfileActions({
           </button>
         )}
 
-        {!canPublish ? (
+        {photoPending ? (
           <span className="text-sm text-ink-soft">
-            Для публикации примите фотографию.
+            Сначала примите или отклоните фотографию.
+          </span>
+        ) : !hasPhoto ? (
+          <span className="text-sm text-ink-soft">
+            Фотографии нет — в каталоге семьи увидят аватар по полу.
+            Публиковать можно.
           </span>
         ) : !premiumReady ? (
           <span className="text-sm text-ink-soft">

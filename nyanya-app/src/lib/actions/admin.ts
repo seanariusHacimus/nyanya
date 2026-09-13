@@ -124,17 +124,16 @@ export async function moderateProfile(input: unknown): Promise<Result> {
 
   if (action === "publish") {
     /**
-     * Для публикации достаточно принятой фотографии: каталог показывает
-     * лицо, район, цену и рассказ о себе, а значок честно говорит, что
-     * документы не проверялись. Справки поднимают анкету до премиума, но не
-     * решают, показывать человека семье или нет.
-     *
-     * Без фотографии публиковать нельзя ни при каких условиях: карточка без
-     * лица бесполезна семье, а модератору нечего проверять.
+     * Фотография для публикации необязательна (решение владельца,
+     * 2026-09-13): анкета без неё выходит в каталог с аватаром по полу.
+     * Единственный запрет — загруженная, но ещё не просмотренная
+     * фотография: показать семье непроверенный снимок нельзя, модератор
+     * сначала принимает или отклоняет его. Справки поднимают анкету до
+     * премиума, но не решают, показывать человека семье или нет.
      */
     const summary = await documentSummaryFor(profileId, profile.category);
-    if (!summary.photoApproved) {
-      return fail("photo_required", "Фотография");
+    if (summary.photoPending) {
+      return fail("photo_pending", "Фотография");
     }
 
     // уровень выводится из документов: фотография → «Стандартный профиль»,
@@ -166,6 +165,10 @@ export async function moderateProfile(input: unknown): Promise<Result> {
         // уровень выводится из документов: фотография → «Стандартный
         // профиль», полный комплект → «Премиум-профиль»
         verificationLevel: level,
+        // Страховка инварианта «в photo_key только принятое фото»: анкеты,
+        // чью фотографию отклонили до 2026-09-13, хранят ссылку на неё до
+        // сих пор, и публикация показала бы семье отвергнутый снимок.
+        ...(summary.photoApproved ? {} : { photoKey: null }),
         reviewedAt: now,
         publishedAt: profile.publishedAt ?? now,
         updatedAt: now,
@@ -261,6 +264,7 @@ export async function reviewDocument(input: unknown): Promise<Result> {
     .select({
       id: documents.id,
       type: documents.type,
+      fileKey: documents.fileKey,
       ownerId: specialistProfiles.userId,
       ownerEmail: user.email,
       ownerName: specialistProfiles.fullName,
@@ -292,32 +296,39 @@ export async function reviewDocument(input: unknown): Promise<Result> {
     .where(eq(documents.id, documentId));
 
   // Уровень верификации пересчитывается после каждого решения: отклонённый
-  // документ снимает значок, а опубликованную анкету убирает из каталога —
-  // иначе семья продолжала бы видеть «Премиум-профиль» по отклонённому паспорту.
+  // документ снимает значок — иначе семья продолжала бы видеть
+  // «Премиум-профиль» по отклонённому паспорту.
   const summary = await documentSummaryFor(doc.profileId, doc.profileCategory);
   const nextLevel = deriveVerificationLevel(summary);
   /**
-   * Из каталога анкету убирает только потеря фотографии — она единственная
-   * обязательна для публикации. Отклонённая справка снимает премиум, но не
-   * прячет человека: значок честно скажет, что документы не проверены.
+   * Решение по фотографии — единственное, что меняет снимок в карточке:
+   * принятая фотография в неё попадает, отклонённая исчезает, и семья видит
+   * аватар по полу. Анкету это больше не прячет (решение владельца,
+   * 2026-09-13): фото необязательно. Отклонённая справка снимает премиум, но
+   * не прячет человека: значок честно скажет, что документы не проверены.
    */
-  const demote = doc.profileStatus === "active" && !summary.photoApproved;
+  const isPhoto = doc.type === "profile_photo";
+  const photoApproved = isPhoto && decision === "approve";
+  const photoRejected = isPhoto && decision === "reject";
 
   await db
     .update(specialistProfiles)
     .set({
       verificationLevel: nextLevel,
-      ...(demote ? { status: "hidden" as const } : {}),
+      ...(photoApproved ? { photoKey: `/api/documents/${doc.fileKey}` } : {}),
+      ...(photoRejected ? { photoKey: null } : {}),
       updatedAt: new Date(),
     })
     .where(eq(specialistProfiles.id, doc.profileId));
 
-  if (demote) {
+  if (photoApproved) revalidateCatalog(doc.profileSlug);
+
+  if (photoRejected) {
     await db.insert(notifications).values({
       userId: doc.ownerId,
       type: "verification_status",
-      title: "Анкета скрыта из каталога",
-      body: "Один из документов больше не подтверждён. Анкета вернётся в каталог после повторной проверки.",
+      title: "Фотография не принята",
+      body: `Причина: ${(note ?? "").replace(/[.\s]+$/, "")}. Пока в анкете показывается аватар — загрузите другую фотографию в кабинете.`,
     });
     revalidateCatalog(doc.profileSlug);
   }
@@ -328,17 +339,20 @@ export async function reviewDocument(input: unknown): Promise<Result> {
     await sendDocumentsApprovedEmail(doc.ownerEmail, doc.ownerName);
   }
 
+  // об отклонённой фотографии уже сказано выше — вторым письмом о том же
+  // решении кабинет не заваливаем
   const stepTitle = stepByKey.get(doc.type as never)?.title ?? "Документ";
-  await db.insert(notifications).values({
+  if (!photoRejected)
+    await db.insert(notifications).values({
     userId: doc.ownerId,
     type: "verification_status",
     title:
       decision === "approve" ? `${stepTitle}: принят` : `${stepTitle}: отклонён`,
     body:
       decision === "approve"
-        ? "Документ проверен и принят."
-        : (note ?? "Документ отклонён, загрузите файл заново."),
-  });
+          ? "Документ проверен и принят."
+          : (note ?? "Документ отклонён, загрузите файл заново."),
+    });
 
   revalidatePath("/admin");
   revalidatePath("/specialist");

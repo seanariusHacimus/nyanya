@@ -140,7 +140,9 @@ export function SpecialistCabinet({
    * Отправить анкету можно с одной фотографией — тот же минимум, что и у
    * публикации. Остальные документы поднимают её до «Премиум-профиля».
    */
-  const photoReady = steps["profile_photo"]?.status !== "empty";
+  // отклонённое фото не в счёт: его не увидит ни семья, ни каталог
+  const photoStatus = steps["profile_photo"]?.status;
+  const photoReady = photoStatus === "pending" || photoStatus === "approved";
   const photoKey = photoReady ? (steps["profile_photo"]?.fileKey ?? null) : null;
 
   // сводка для карточки обзора: те же признаки, что и внутри мастера

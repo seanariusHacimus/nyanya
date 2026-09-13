@@ -61,7 +61,11 @@ function toUi(row: ProfileRow, districtName: string | null): UiSpecialist {
     // опубликованная анкета без проверки документов; называть её
     // «проверенной» значит обещать семье то, чего не было.
     verification:
-      row.verificationLevel === "premium_verified" ? "premium" : "published",
+      row.verificationLevel === "premium_verified"
+        ? "premium"
+        : row.verificationLevel === "verified"
+          ? "published"
+          : null,
     available: !row.employed,
     languages: row.languages ?? [],
     english: englishLabels[row.englishLevel] ?? "Нет",

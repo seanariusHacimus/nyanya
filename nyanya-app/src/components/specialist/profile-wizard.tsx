@@ -91,8 +91,14 @@ function nameReady(p: CabinetProfile): boolean {
 function placeReady(p: CabinetProfile): boolean {
   return Boolean(p.districtId) && p.priceAmount > 0;
 }
+/**
+ * Отклонённое фото считается отсутствующим: модератор его не принял, семья
+ * видит аватар по полу, и мастер должен привести человека обратно к экрану
+ * фотографии, а не показывать отвергнутый снимок как готовый шаг.
+ */
 function photoReady(steps: Record<string, StepState>): boolean {
-  return Boolean(steps["profile_photo"]) && steps["profile_photo"].status !== "empty";
+  const status = steps["profile_photo"]?.status;
+  return status === "pending" || status === "approved";
 }
 
 /**

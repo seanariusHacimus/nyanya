@@ -45,14 +45,16 @@ export function SpecialistCard({
           Печать с галочкой — только у премиума: сама по себе она читается как
           «проверено», а у стандартного профиля документов никто не видел.
         */}
-        <span className="label-caps absolute top-4 left-4 inline-flex items-center gap-1.5 bg-cream/95 px-3 py-2 text-ink">
-          {s.verification === "premium" ? (
-            <SealCheck size={13} className="text-bronze" aria-hidden="true" />
-          ) : (
-            <IdentificationCard size={13} className="text-bronze" aria-hidden="true" />
-          )}
-          {PROFILE_TIER[s.verification].label}
-        </span>
+        {s.verification && (
+          <span className="label-caps absolute top-4 left-4 inline-flex items-center gap-1.5 bg-cream/95 px-3 py-2 text-ink">
+            {s.verification === "premium" ? (
+              <SealCheck size={13} className="text-bronze" aria-hidden="true" />
+            ) : (
+              <IdentificationCard size={13} className="text-bronze" aria-hidden="true" />
+            )}
+            {PROFILE_TIER[s.verification].label}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-6">
