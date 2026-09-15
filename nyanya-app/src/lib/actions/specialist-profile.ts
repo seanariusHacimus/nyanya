@@ -161,73 +161,91 @@ export async function uploadVerificationDocument(formData: FormData) {
     mimeType: detected,
   });
 
-  // предыдущий файл этого шага заменяется
-  const previous = await db
-    .select({ id: documents.id, fileKey: documents.fileKey })
-    .from(documents)
-    .where(
-      and(eq(documents.specialistId, profile.id), eq(documents.type, step.key))
-    )
-    .limit(1);
+  // Новый файл не проверен, поэтому полный комплект больше не собран (D27).
+  // Опубликованная анкета уходит на повторную модерацию — иначе замена
+  // паспорта после публикации обходила бы проверку целиком.
+  const wasActive = profile.status === "active";
 
-  if (previous[0]) {
-    await db
-      .update(documents)
-      .set({
+  /**
+   * Строка документа, состояние анкеты и уведомление — в одной транзакции:
+   * запись о новом файле без сброса уровня означала бы «Премиум-профиль» по
+   * непроверенному паспорту, а сброшенный уровень без записи — потерянный
+   * файл. Сам файл уже в хранилище: его запись откатить нельзя, поэтому
+   * прежний файл удаляется только после коммита.
+   */
+  const replacedKey = await db.transaction(async (tx) => {
+    // предыдущий файл этого шага заменяется
+    const [previous] = await tx
+      .select({ id: documents.id, fileKey: documents.fileKey })
+      .from(documents)
+      .where(
+        and(eq(documents.specialistId, profile.id), eq(documents.type, step.key))
+      )
+      .limit(1);
+
+    if (previous) {
+      await tx
+        .update(documents)
+        .set({
+          fileKey: key,
+          fileName: file.name,
+          mimeType: detected,
+          fileSize: file.size,
+          status: "pending",
+          reviewNote: null,
+          reviewedBy: null,
+          reviewedAt: null,
+          createdAt: new Date(),
+        })
+        .where(eq(documents.id, previous.id));
+    } else {
+      await tx.insert(documents).values({
+        specialistId: profile.id,
+        type: step.key,
         fileKey: key,
         fileName: file.name,
         mimeType: detected,
         fileSize: file.size,
         status: "pending",
-        reviewNote: null,
-        reviewedBy: null,
-        reviewedAt: null,
-        createdAt: new Date(),
-      })
-      .where(eq(documents.id, previous[0].id));
-    await removeDocument(previous[0].fileKey);
-  } else {
-    await db.insert(documents).values({
-      specialistId: profile.id,
-      type: step.key,
-      fileKey: key,
-      fileName: file.name,
-      mimeType: detected,
-      fileSize: file.size,
-      status: "pending",
-    });
-  }
+      });
+    }
 
-  // Новый файл не проверен, поэтому полный комплект больше не собран (D27).
-  // Опубликованная анкета уходит на повторную модерацию — иначе замена
-  // паспорта после публикации обходила бы проверку целиком.
-  const wasActive = profile.status === "active";
-  await db
-    .update(specialistProfiles)
-    .set({
-      verificationLevel: "unverified",
-      ...(wasActive
-        ? { status: "pending_review" as const, submittedAt: new Date() }
-        : {}),
-      /**
-       * Непроверенный снимок семьям не показываем: в photo_key лежит только
-       * фотография, принятая модератором. До решения в карточке стоит аватар
-       * по полу — так новое фото не попадёт ни в каталог, ни в избранное, ни
-       * в список открытых контактов. Сам специалист свой снимок видит:
-       * кабинет и мастер читают его из документов, а не из этой колонки.
-       */
-      ...(step.key === "profile_photo" ? { photoKey: null } : {}),
-      updatedAt: new Date(),
-    })
-    .where(eq(specialistProfiles.id, profile.id));
+    await tx
+      .update(specialistProfiles)
+      .set({
+        verificationLevel: "unverified",
+        ...(wasActive
+          ? { status: "pending_review" as const, submittedAt: new Date() }
+          : {}),
+        /**
+         * Непроверенный снимок семьям не показываем: в photo_key лежит только
+         * фотография, принятая модератором. До решения в карточке стоит аватар
+         * по полу — так новое фото не попадёт ни в каталог, ни в избранное, ни
+         * в список открытых контактов. Сам специалист свой снимок видит:
+         * кабинет и мастер читают его из документов, а не из этой колонки.
+         */
+        ...(step.key === "profile_photo" ? { photoKey: null } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(specialistProfiles.id, profile.id));
+
+    if (wasActive) {
+      await tx.insert(notifications).values({
+        userId: guard.session.user.id,
+        type: "verification_status",
+        title: "Анкета отправлена на повторную проверку",
+        body: `Вы заменили документ «${step.title}». Анкета вернётся в каталог после проверки модератором.`,
+      });
+    }
+
+    return previous?.fileKey ?? null;
+  });
+
+  // после коммита: при откате прежний файл обязан остаться на месте — на него
+  // всё ещё ссылается строка документа
+  if (replacedKey) await removeDocument(replacedKey);
 
   if (wasActive) {
-    await db.insert(notifications).values({
-      userId: guard.session.user.id,
-      type: "verification_status",
-      title: "Анкета отправлена на повторную проверку",
-      body: `Вы заменили документ «${step.title}». Анкета вернётся в каталог после проверки модератором.`,
-    });
     revalidatePath("/catalog");
     if (profile.slug) revalidatePath(`/specialists/${profile.slug}`);
   }
@@ -266,14 +284,19 @@ export async function deleteVerificationDocument(input: unknown) {
     .limit(1);
 
   if (rows[0]) {
-    await db.delete(documents).where(eq(documents.id, rows[0].id));
+    // строка и ссылка на фотографию исчезают вместе: анкета с photo_key на
+    // удалённый документ показывала бы семье битую картинку
+    await db.transaction(async (tx) => {
+      await tx.delete(documents).where(eq(documents.id, rows[0].id));
+      if (parsed.data.step === "profile_photo") {
+        await tx
+          .update(specialistProfiles)
+          .set({ photoKey: null, updatedAt: new Date() })
+          .where(eq(specialistProfiles.id, profile.id));
+      }
+    });
+    // файл — после коммита: при откате строка снова ссылается на него
     await removeDocument(rows[0].fileKey);
-    if (parsed.data.step === "profile_photo") {
-      await db
-        .update(specialistProfiles)
-        .set({ photoKey: null, updatedAt: new Date() })
-        .where(eq(specialistProfiles.id, profile.id));
-    }
   }
 
   revalidatePath("/specialist");

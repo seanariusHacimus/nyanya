@@ -5,7 +5,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { auth, type Session } from "@/lib/auth";
-import { db } from "@/db";
+import { db, type DbExecutor } from "@/db";
 import {
   documents,
   notifications,
@@ -29,8 +29,12 @@ import {
  * Сводка по документам анкеты. Перечень зависит от категории: водителю
  * добавляется удостоверение, поэтому категорию передаём явно.
  */
-async function documentSummaryFor(profileId: string, category: CategoryKey) {
-  const rows = await db
+async function documentSummaryFor(
+  executor: DbExecutor,
+  profileId: string,
+  category: CategoryKey
+) {
+  const rows = await executor
     .select({ type: documents.type, status: documents.status })
     .from(documents)
     .where(eq(documents.specialistId, profileId));
@@ -131,7 +135,7 @@ export async function moderateProfile(input: unknown): Promise<Result> {
      * сначала принимает или отклоняет его. Справки поднимают анкету до
      * премиума, но не решают, показывать человека семье или нет.
      */
-    const summary = await documentSummaryFor(profileId, profile.category);
+    const summary = await documentSummaryFor(db, profileId, profile.category);
     if (summary.photoPending) {
       return fail("photo_pending", "Фотография");
     }
@@ -156,32 +160,38 @@ export async function moderateProfile(input: unknown): Promise<Result> {
       );
     }
 
-    await db
-      .update(specialistProfiles)
-      .set({
-        status: "active",
-        slug,
-        moderationNote: null,
-        // уровень выводится из документов: фотография → «Стандартный
-        // профиль», полный комплект → «Премиум-профиль»
-        verificationLevel: level,
-        // Страховка инварианта «в photo_key только принятое фото»: анкеты,
-        // чью фотографию отклонили до 2026-09-13, хранят ссылку на неё до
-        // сих пор, и публикация показала бы семье отвергнутый снимок.
-        ...(summary.photoApproved ? {} : { photoKey: null }),
-        reviewedAt: now,
-        publishedAt: profile.publishedAt ?? now,
-        updatedAt: now,
-      })
-      .where(eq(specialistProfiles.id, profileId));
+    // анкета и уведомление о публикации — одной записью: опубликованная анкета,
+    // о которой специалисту не сообщили, выглядит как «модератор молчит»
+    await db.transaction(async (tx) => {
+      await tx
+        .update(specialistProfiles)
+        .set({
+          status: "active",
+          slug,
+          moderationNote: null,
+          // уровень выводится из документов: фотография → «Стандартный
+          // профиль», полный комплект → «Премиум-профиль»
+          verificationLevel: level,
+          // Страховка инварианта «в photo_key только принятое фото»: анкеты,
+          // чью фотографию отклонили до 2026-09-13, хранят ссылку на неё до
+          // сих пор, и публикация показала бы семье отвергнутый снимок.
+          ...(summary.photoApproved ? {} : { photoKey: null }),
+          reviewedAt: now,
+          publishedAt: profile.publishedAt ?? now,
+          updatedAt: now,
+        })
+        .where(eq(specialistProfiles.id, profileId));
 
-    await db.insert(notifications).values({
-      userId: profile.userId,
-      type: "listing_published",
-      title: "Анкета опубликована",
-      body: "Ваша анкета прошла модерацию и видна в каталоге.",
+      await tx.insert(notifications).values({
+        userId: profile.userId,
+        type: "listing_published",
+        title: "Анкета опубликована",
+        body: "Ваша анкета прошла модерацию и видна в каталоге.",
+      });
     });
 
+    // письмо — только после коммита: откатить его нельзя, а извещать о
+    // публикации, которой не случилось, хуже, чем не извещать вовсе
     if (profile.ownerEmail) {
       await sendProfilePublishedEmail(
         profile.ownerEmail,
@@ -196,37 +206,43 @@ export async function moderateProfile(input: unknown): Promise<Result> {
   }
 
   if (action === "hide") {
-    await db
-      .update(specialistProfiles)
-      .set({ status: "hidden", reviewedAt: now, updatedAt: now })
-      .where(eq(specialistProfiles.id, profileId));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(specialistProfiles)
+        .set({ status: "hidden", reviewedAt: now, updatedAt: now })
+        .where(eq(specialistProfiles.id, profileId));
 
-    await db.insert(notifications).values({
-      userId: profile.userId,
-      type: "verification_status",
-      title: "Анкета скрыта",
-      body: "Модератор временно скрыл вашу анкету из каталога.",
+      await tx.insert(notifications).values({
+        userId: profile.userId,
+        type: "verification_status",
+        title: "Анкета скрыта",
+        body: "Модератор временно скрыл вашу анкету из каталога.",
+      });
     });
 
     revalidateCatalog(profile.slug);
     return done();
   }
 
-  await db
-    .update(specialistProfiles)
-    .set({
-      status: "rejected",
-      moderationNote: note,
-      reviewedAt: now,
-      updatedAt: now,
-    })
-    .where(eq(specialistProfiles.id, profileId));
+  // отклонение: без уведомления с причиной специалист видит только пропавшую
+  // анкету, поэтому статус и уведомление пишутся вместе
+  await db.transaction(async (tx) => {
+    await tx
+      .update(specialistProfiles)
+      .set({
+        status: "rejected",
+        moderationNote: note,
+        reviewedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(specialistProfiles.id, profileId));
 
-  await db.insert(notifications).values({
-    userId: profile.userId,
-    type: "profile_rejected",
-    title: "Анкета отклонена",
-    body: note ?? "Модератор отклонил анкету.",
+    await tx.insert(notifications).values({
+      userId: profile.userId,
+      type: "profile_rejected",
+      title: "Анкета отклонена",
+      body: note ?? "Модератор отклонил анкету.",
+    });
   });
 
   revalidateCatalog(profile.slug);
@@ -285,21 +301,6 @@ export async function reviewDocument(input: unknown): Promise<Result> {
 
   if (!doc) return fail("not_found");
 
-  await db
-    .update(documents)
-    .set({
-      status: decision === "approve" ? "approved" : "rejected",
-      reviewNote: decision === "reject" ? note : null,
-      reviewedBy: guard.session.user.id,
-      reviewedAt: new Date(),
-    })
-    .where(eq(documents.id, documentId));
-
-  // Уровень верификации пересчитывается после каждого решения: отклонённый
-  // документ снимает значок — иначе семья продолжала бы видеть
-  // «Премиум-профиль» по отклонённому паспорту.
-  const summary = await documentSummaryFor(doc.profileId, doc.profileCategory);
-  const nextLevel = deriveVerificationLevel(summary);
   /**
    * Решение по фотографии — единственное, что меняет снимок в карточке:
    * принятая фотография в неё попадает, отклонённая исчезает, и семья видит
@@ -310,49 +311,80 @@ export async function reviewDocument(input: unknown): Promise<Result> {
   const isPhoto = doc.type === "profile_photo";
   const photoApproved = isPhoto && decision === "approve";
   const photoRejected = isPhoto && decision === "reject";
+  const stepTitle = stepByKey.get(doc.type as never)?.title ?? "Документ";
 
-  await db
-    .update(specialistProfiles)
-    .set({
-      verificationLevel: nextLevel,
-      ...(photoApproved ? { photoKey: `/api/documents/${doc.fileKey}` } : {}),
-      ...(photoRejected ? { photoKey: null } : {}),
-      updatedAt: new Date(),
-    })
-    .where(eq(specialistProfiles.id, doc.profileId));
+  /**
+   * Решение, уровень анкеты и уведомление — в одной транзакции. Полсостояния
+   * («паспорт принят, а уровень прежний» или «фотография отклонена, а в
+   * photo_key ссылка на неё») никто бы не заметил, пока семья не увидела бы
+   * чужой значок или отклонённый снимок. Сводка читается через `tx`: она
+   * обязана видеть только что записанное решение.
+   */
+  const summary = await db.transaction(async (tx) => {
+    await tx
+      .update(documents)
+      .set({
+        status: decision === "approve" ? "approved" : "rejected",
+        reviewNote: decision === "reject" ? note : null,
+        reviewedBy: guard.session.user.id,
+        reviewedAt: new Date(),
+      })
+      .where(eq(documents.id, documentId));
 
-  if (photoApproved) revalidateCatalog(doc.profileSlug);
+    // Уровень верификации пересчитывается после каждого решения: отклонённый
+    // документ снимает значок — иначе семья продолжала бы видеть
+    // «Премиум-профиль» по отклонённому паспорту.
+    const current = await documentSummaryFor(
+      tx,
+      doc.profileId,
+      doc.profileCategory
+    );
 
-  if (photoRejected) {
-    await db.insert(notifications).values({
-      userId: doc.ownerId,
-      type: "verification_status",
-      title: "Фотография не принята",
-      body: `Причина: ${(note ?? "").replace(/[.\s]+$/, "")}. Пока в анкете показывается аватар — загрузите другую фотографию в кабинете.`,
-    });
-    revalidateCatalog(doc.profileSlug);
-  }
+    await tx
+      .update(specialistProfiles)
+      .set({
+        verificationLevel: deriveVerificationLevel(current),
+        ...(photoApproved ? { photoKey: `/api/documents/${doc.fileKey}` } : {}),
+        ...(photoRejected ? { photoKey: null } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(specialistProfiles.id, doc.profileId));
+
+    if (photoRejected) {
+      await tx.insert(notifications).values({
+        userId: doc.ownerId,
+        type: "verification_status",
+        title: "Фотография не принята",
+        body: `Причина: ${(note ?? "").replace(/[.\s]+$/, "")}. Пока в анкете показывается аватар — загрузите другую фотографию в кабинете.`,
+      });
+    } else {
+      // об отклонённой фотографии уже сказано выше — вторым уведомлением о том
+      // же решении кабинет не заваливаем
+      await tx.insert(notifications).values({
+        userId: doc.ownerId,
+        type: "verification_status",
+        title:
+          decision === "approve"
+            ? `${stepTitle}: принят`
+            : `${stepTitle}: отклонён`,
+        body:
+          decision === "approve"
+            ? "Документ проверен и принят."
+            : (note ?? "Документ отклонён, загрузите файл заново."),
+      });
+    }
+
+    return current;
+  });
 
   // Письмо о пройденной проверке — ровно в момент, когда принят последний
-  // документ: до этого вызова комплект полным быть не мог, значит уйдёт один раз.
+  // документ: до этого вызова комплект полным быть не мог, значит уйдёт один
+  // раз. Отправляется после коммита: письмо об откате не отзовёшь.
   if (decision === "approve" && summary.allApproved) {
     await sendDocumentsApprovedEmail(doc.ownerEmail, doc.ownerName);
   }
 
-  // об отклонённой фотографии уже сказано выше — вторым письмом о том же
-  // решении кабинет не заваливаем
-  const stepTitle = stepByKey.get(doc.type as never)?.title ?? "Документ";
-  if (!photoRejected)
-    await db.insert(notifications).values({
-    userId: doc.ownerId,
-    type: "verification_status",
-    title:
-      decision === "approve" ? `${stepTitle}: принят` : `${stepTitle}: отклонён`,
-    body:
-      decision === "approve"
-          ? "Документ проверен и принят."
-          : (note ?? "Документ отклонён, загрузите файл заново."),
-    });
+  if (photoApproved || photoRejected) revalidateCatalog(doc.profileSlug);
 
   revalidatePath("/admin");
   revalidatePath("/specialist");

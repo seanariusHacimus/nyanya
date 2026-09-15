@@ -4,7 +4,7 @@ import { z } from "zod";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { db } from "@/db";
+import { db, type DbExecutor } from "@/db";
 import {
   specialistProfiles,
   contactUnlocks,
@@ -46,6 +46,10 @@ const schema = z.object({ slug: z.string().trim().min(1).max(120) });
  * запросы — это скрипт или несколько вкладок. Уже открытый контакт
  * проверяется до блокировки, поэтому в нём такой отказ не случается.
  *
+ * Запись об открытии, счётчик анкеты и уведомление специалисту пишутся в одной
+ * транзакции (`recordUnlock`): открытие без счётчика и без уведомления — это
+ * анкета, владелец которой не знает, что его контакты смотрят.
+ *
  * Аккаунт, исчерпавший лимит, получает отметку `user.flagged_at` и попадает в
  * блок «Подозрительная активность» на обзоре админки; администраторам уходит
  * уведомление. Блокировки нет — решает человек.
@@ -83,18 +87,20 @@ export async function unlockContacts(input: unknown) {
   const contacts = buildContacts(specialist.ownerPhone);
   const values = { parentId, specialistId: specialist.id };
 
-  let inserted = false;
   /** Сколько новых контактов аккаунт открыл за 24 часа, если это открытие исчерпало лимит. */
   let reachedCapAt: number | null = null;
 
   if (session.user.role === "admin") {
     // администратор лимитом не ограничен
-    const added = await db
-      .insert(contactUnlocks)
-      .values(values)
-      .onConflictDoNothing()
-      .returning({ id: contactUnlocks.id });
-    inserted = added.length > 0;
+    await db.transaction(async (tx) => {
+      const added = await tx
+        .insert(contactUnlocks)
+        .values(values)
+        .onConflictDoNothing()
+        .returning({ id: contactUnlocks.id });
+      if (added.length === 0) return;
+      await recordUnlock(tx, specialist.id, specialist.ownerId);
+    });
   } else {
     const limits = parseUnlockLimits(process.env);
     const alreadyOpened = and(
@@ -179,9 +185,11 @@ export async function unlockContacts(input: unknown) {
         .values(values)
         .onConflictDoNothing()
         .returning({ id: contactUnlocks.id });
+      if (added.length > 0) {
+        await recordUnlock(tx, specialist.id, specialist.ownerId);
+      }
       return {
         kind: "opened" as const,
-        inserted: added.length > 0,
         reachedCapAt: added.length > 0 && decision.reachesCap ? opened24h + 1 : null,
       };
     });
@@ -203,23 +211,8 @@ export async function unlockContacts(input: unknown) {
       };
     }
     if (outcome.kind === "opened") {
-      inserted = outcome.inserted;
       reachedCapAt = outcome.reachedCapAt;
     }
-  }
-
-  // события только при первом открытии
-  if (inserted) {
-    await db
-      .update(specialistProfiles)
-      .set({ unlockCount: sql`${specialistProfiles.unlockCount} + 1` })
-      .where(eq(specialistProfiles.id, specialist.id));
-    await db.insert(notifications).values({
-      userId: specialist.ownerId,
-      type: "contact_unlocked",
-      title: "Ваши контакты открыли",
-      body: "Семья открыла ваши контакты в каталоге — возможно, вам скоро напишут.",
-    });
   }
 
   // семья получает и этот контакт; администратор узнаёт об аккаунте сразу, а
@@ -227,6 +220,31 @@ export async function unlockContacts(input: unknown) {
   if (reachedCapAt !== null) await flagForReview(parentId, reachedCapAt);
 
   return { ok: true as const, contacts };
+}
+
+/**
+ * Последствия первого открытия — в той же транзакции, что и сама запись.
+ *
+ * Счётчик анкеты и уведомление специалисту раньше писались отдельными
+ * запросами после транзакции: сбой между ними оставлял открытие без счётчика и
+ * без уведомления, а специалист так и не узнавал, что его контакты смотрят.
+ * Вызывается только когда строка contact_unlocks действительно вставлена.
+ */
+async function recordUnlock(
+  tx: DbExecutor,
+  specialistId: string,
+  ownerId: string
+) {
+  await tx
+    .update(specialistProfiles)
+    .set({ unlockCount: sql`${specialistProfiles.unlockCount} + 1` })
+    .where(eq(specialistProfiles.id, specialistId));
+  await tx.insert(notifications).values({
+    userId: ownerId,
+    type: "contact_unlocked",
+    title: "Ваши контакты открыли",
+    body: "Семья открыла ваши контакты в каталоге — возможно, вам скоро напишут.",
+  });
 }
 
 /**
