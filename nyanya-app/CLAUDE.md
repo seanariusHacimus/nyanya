@@ -182,7 +182,7 @@ and a dead page would just confuse them.
 
 `parent` (default) · `specialist` · `admin`. Role is chosen at signup; `admin` is set manually.
 
-**Two layers guard the private pages, and only the second one is real.** `src/middleware.ts` does an
+**Two layers guard the private pages, and only the second one is real.** `src/proxy.ts` (Next 16 renamed middleware to proxy) does an
 optimistic check for the session cookie so an anonymous request is redirected before Next starts
 streaming (`loading.tsx` creates a Suspense boundary, which otherwise commits a 200 before the page
 can call `redirect()`). The cookie proves nothing on its own — every one of `/account`,
@@ -208,7 +208,12 @@ specialist sees in their cabinet.
   specialist emails exist: welcome (rewritten 2026-09-03 for the one-track onboarding, with the
   premium block), «принята на модерации», and «опубликована» (premium block only for a standard
   profile). The premium wording in all of them comes from `PREMIUM_BENEFITS`.
-- **Signup is email-OTP, login is email + password.** The code proves the address once, at
+- **Signup is email-OTP, login is email + password.** Better Auth's own `/sign-up/email` is switched
+  off (`disableSignUp` + `disabledPaths`, 2026-09-15): it created a signed-in account on any address
+  without the code and told a registered address from a free one. Every `?next=` goes through
+  `safeNext` (`lib/safe-next.ts`) — `startsWith("/")` let `//evil.com` send people off-site after a real
+  login, and the check must run on the parsed path because `/a/..//evil.com` normalises to `//evil.com`.
+  Run `node --experimental-strip-types --test src/lib/safe-next.test.mjs` after touching it. The code proves the address once, at
   registration; afterwards only the password is used. The password is written by `completeProfile`
   (Better Auth has no public set-password endpoint) and only when none exists yet.
 - **Password recovery is `/reset-password`** (added 2026-09-01): address → code from the email →

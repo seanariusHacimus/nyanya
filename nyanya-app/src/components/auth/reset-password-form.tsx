@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { safeNext } from "@/lib/safe-next";
 import { OtpStep } from "@/components/auth/otp-step";
 import { PasswordInput } from "@/components/auth/password-input";
 
@@ -28,7 +29,7 @@ const MIN_PASSWORD = 8; // должно совпадать с minPasswordLength 
 export function ResetPasswordForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next");
+  const next = safeNext(params.get("next"));
 
   const [step, setStep] = useState<"email" | "otp" | "password">("email");
   // адрес не принимаем параметром ссылки: он осел бы в истории браузера и в
@@ -115,7 +116,7 @@ export function ResetPasswordForm() {
     const role = data?.user.role;
     const home =
       role === "admin" ? "/admin" : role === "specialist" ? "/specialist" : "/account";
-    router.push(next && next.startsWith("/") ? next : home);
+    router.push(next ?? home);
   };
 
   if (step === "otp") {

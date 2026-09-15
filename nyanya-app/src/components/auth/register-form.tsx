@@ -9,6 +9,7 @@ import {
   CheckCircle,
 } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
+import { safeNext } from "@/lib/safe-next";
 import {
   completeProfile,
   registrationState,
@@ -32,7 +33,7 @@ const MIN_PASSWORD = 8; // должно совпадать с minPasswordLength 
 export function RegisterForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next");
+  const next = safeNext(params.get("next"));
 
   const [step, setStep] = useState<
     "email" | "otp" | "details" | "existing" | "done"
@@ -63,7 +64,11 @@ export function RegisterForm() {
     });
     setBusy(false);
     if (sendError) {
-      setError("Не удалось отправить код. Проверьте адрес и попробуйте ещё раз.");
+      setError(
+        sendError.status === 429
+          ? "Слишком много запросов кода. Подождите минуту и попробуйте ещё раз."
+          : "Не удалось отправить код. Проверьте адрес и попробуйте ещё раз."
+      );
       return;
     }
     setStep("otp");
@@ -79,7 +84,11 @@ export function RegisterForm() {
     });
     if (signInError) {
       setBusy(false);
-      setError("Неверный или устаревший код. Попробуйте ещё раз.");
+      setError(
+        signInError.status === 429
+          ? "Слишком много попыток. Подождите минуту и попробуйте ещё раз."
+          : "Неверный или устаревший код. Попробуйте ещё раз."
+      );
       return;
     }
 
@@ -129,9 +138,7 @@ export function RegisterForm() {
     role === "specialist"
       // не кабинет, а сразу первый экран анкеты: кабинету пока нечего показать
       ? "/specialist?anketa=1"
-      : next && next.startsWith("/")
-        ? next
-        : "/catalog";
+      : (next ?? "/catalog");
 
   if (step === "done") {
     return (
@@ -174,7 +181,7 @@ export function RegisterForm() {
         : existingRole === "specialist"
           ? "/specialist"
           : "/account";
-    const target = next && next.startsWith("/") ? next : home;
+    const target = next ?? home;
 
     return (
       <div className="space-y-5">
