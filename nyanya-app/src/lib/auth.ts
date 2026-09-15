@@ -10,6 +10,7 @@ import {
   TOO_MANY_LOGIN_ATTEMPTS,
   clearAllLoginFailures,
   clearLoginFailuresForIp,
+  describeThrottleError,
   loginEmailFromBody,
   loginLockMinutesLeft,
   recordLoginFailure,
@@ -111,7 +112,7 @@ export const auth = betterAuth({
         minutesLeft = await loginLockMinutesLeft(email, clientIp(ctx));
       } catch (error) {
         // сбой учёта не должен закрыть вход всем: лимит по IP остаётся
-        console.error("[login-throttle] lock check failed", error);
+        console.error("[login-throttle] lock check failed", describeThrottleError(error));
         return;
       }
       if (minutesLeft) {
@@ -159,7 +160,7 @@ export const auth = betterAuth({
         if (!isAPIError(returned)) await clearAllLoginFailures(email);
       } catch (error) {
         // вход уже состоялся или уже отклонён; сбой учёта не меняет ответ
-        console.error("[login-throttle] bookkeeping failed", error);
+        console.error("[login-throttle] bookkeeping failed", describeThrottleError(error));
       }
     }),
   },

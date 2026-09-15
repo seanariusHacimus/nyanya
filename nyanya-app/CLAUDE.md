@@ -325,8 +325,10 @@ specialist sees in their cabinet.
   `hooks.after` in `lib/auth.ts` — **the only global hooks Better Auth takes (one function each);
   extend those functions, never add another `hooks` object**. `ctx.body` in `hooks.before` is not
   validated yet (`loginEmailFromBody` accepts anything). A throttle DB error is logged
-  (`[login-throttle]`) and fails open. **The table holds addresses people tried to sign in with,
-  registered or not, plus their IPs**: rows are deleted 24 h after their last failure, by a sweep
+  (`[login-throttle]`, through `describeThrottleError` — only the driver's cause: Drizzle's own error
+  text carries the query params, i.e. the address and IP, so never log the raw error) and fails
+  open. **The table holds addresses people tried to sign in with, registered or not, plus their
+  IPs**: rows are deleted 24 h after their last failure, by a sweep
   that runs on a password sign-in attempt at most once per 10 min per process — so a row can
   outlive 24 h until the next attempt. `/privacy` does not mention this yet (owner's call).
   Unlocking one person without a deploy is `delete from login_attempts where email = '<address>'`

@@ -47,6 +47,24 @@ export const LOGIN_THROTTLE = {
 /** Код ошибки 429 для формы входа — отличает блокировку от лимита по IP. */
 export const TOO_MANY_LOGIN_ATTEMPTS = "TOO_MANY_LOGIN_ATTEMPTS";
 
+/**
+ * Сбой учёта для журнала — без адреса почты и IP.
+ *
+ * Drizzle пишет в текст ошибки (и в первую строку стека) весь запрос с
+ * параметрами — `params: адрес,IP,…`. `console.error(error)` уносил бы их в
+ * журналы Railway, где они живут дольше суток, обещанных для этой таблицы, и
+ * при недоступной базе — на каждую попытку входа. Причина от драйвера Postgres
+ * («relation … does not exist», ECONNREFUSED) и её код адресов не содержат.
+ */
+export function describeThrottleError(error: unknown): string {
+  const source = error instanceof Error && error.cause instanceof Error ? error.cause : error;
+  if (!(source instanceof Error)) return "unknown error";
+  if (source.message.startsWith("Failed query:")) return "Failed query (no driver cause)";
+  // имя класса не пишем: в сборке оно сжато до «ej» и ничего не говорит
+  const code = "code" in source && typeof source.code === "string" ? `[${source.code}] ` : "";
+  return `${code}${source.message}`;
+}
+
 type Tier = (typeof LOGIN_THROTTLE)["perIp" | "perAccount"];
 
 /** Значение колонки ip у общего счётчика адреса. IP-адрес не содержит «*». */
@@ -184,6 +202,6 @@ export function sweepOldLoginAttempts() {
     )
     .then(
       () => undefined,
-      (error: unknown) => console.error("[login-throttle] cleanup failed", error),
+      (error: unknown) => console.error("[login-throttle] cleanup failed", describeThrottleError(error)),
     );
 }
