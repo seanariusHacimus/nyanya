@@ -15,6 +15,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { user } from "./auth-schema";
 
 export * from "./auth-schema";
@@ -345,18 +346,29 @@ export const complaints = pgTable("complaints", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const notifications = pgTable("notifications", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  type: notificationTypeEnum("type").notNull(),
-  title: text("title").notNull(),
-  body: text("body"),
-  data: jsonb("data"),
-  readAt: timestamp("read_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    type: notificationTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    data: jsonb("data"),
+    readAt: timestamp("read_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    // лента кабинета: последние уведомления пользователя по дате
+    index("notifications_user_created_at_idx").on(t.userId, t.createdAt),
+    // значок непрочитанных в шапке (каждый переход) и markNotificationsRead
+    index("notifications_user_unread_idx")
+      .on(t.userId)
+      .where(sql`${t.readAt} is null`),
+  ],
+);
 
 /**
  * Неудачные входы по паролю — защита от перебора (`src/lib/login-throttle.ts`).
