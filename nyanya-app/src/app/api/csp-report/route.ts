@@ -39,9 +39,17 @@ const ACCEPTED_TYPES = new Set([
   "application/json",
 ]);
 
-/** Нарушения, которые вызывают расширения браузера, а не сайт, — шум. */
+/**
+ * Нарушения, которые вызывают расширения браузера, а не сайт, — шум.
+ *
+ * Браузер обрезает в отчёте адрес не-http(s) до одной схемы (CSP3, «strip URL
+ * for use in reports»): ресурс расширения приходит как "chrome-extension",
+ * без двоеточия и пути. Chrome 152 так и отдаёт — data:/blob: приходят как
+ * "data"/"blob" (проверено 2026-09-15). Поэтому двоеточие необязательно.
+ * webkit-masked-url — так Safari прячет адреса скриптов расширений.
+ */
 const EXTENSION_URL =
-  /^(chrome|moz|safari|safari-web|ms-browser)-extension:/i;
+  /^(?:(?:chrome|moz|safari|safari-web|ms-browser)-extension|webkit-masked-url)(?::|$)/i;
 
 let windowStartedAt = 0;
 let linesInWindow = 0;
@@ -189,17 +197,16 @@ export async function POST(request: Request) {
   }
 
   const now = Date.now();
-  const violations = extractViolations(payload).slice(
-    0,
-    MAX_REPORTS_PER_REQUEST
-  );
+  // Шум расширений отсеивается до лимита на запрос: иначе пачка report-to из
+  // двадцати отчётов расширения вытеснила бы настоящее нарушение за ними.
+  const violations = extractViolations(payload)
+    .filter(
+      (violation) =>
+        !EXTENSION_URL.test(violation.blocked ?? "") &&
+        !EXTENSION_URL.test(violation.source ?? "")
+    )
+    .slice(0, MAX_REPORTS_PER_REQUEST);
   for (const violation of violations) {
-    if (
-      EXTENSION_URL.test(violation.blocked ?? "") ||
-      EXTENSION_URL.test(violation.source ?? "")
-    ) {
-      continue;
-    }
     if (!takeLogSlot(now)) continue;
     console.warn("[csp]", JSON.stringify(violation));
   }

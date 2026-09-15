@@ -203,8 +203,9 @@ Every response carries them, set once in `next.config.ts` `headers()` (`SECURITY
 **A route handler cannot override these keys**: Next copies a header from the handler's `Response`
 only when the key is not already on the response (`server/send-response.js`), so a per-route
 policy has to be another `headers()` entry. `/api/documents` keeps its own `Cache-Control`,
-`Content-Type` and `Content-Disposition` because the config does not set them. The one exception
-is the 307 from `redirects()` (`/ru/*`): Next sends it without `headers()` values; it has no body.
+`Content-Type` and `Content-Disposition` because the config does not set them. The exceptions are
+the redirects Next answers from its own config — the 307 from `redirects()` (`/ru/*`) and the 308
+that strips a trailing slash (`/catalog/`): they go out without `headers()` values and have no body.
 
 **State (2026-09-15): CSP is `Content-Security-Policy-Report-Only` — it blocks nothing.** HSTS is
 `max-age=31536000` **without `includeSubDomains` and without `preload`** (owner decision: the apex
@@ -222,8 +223,10 @@ clean `[csp]` log lines — update the marker comment in `next.config.ts` and th
 - `Permissions-Policy` must not deny `clipboard-write`: «Поделиться» (`share-button.tsx`) copies the link.
 - Violations go to `/api/csp-report` (public, no session, no DB): it accepts `application/csp-report`
   (`report-uri`) and `application/reports+json` (`report-to`), reads at most 64 KB, drops
-  browser-extension noise, strips query strings and writes at most 60 `[csp] {…}` lines a minute
-  per process. Read them in the Railway service log (`grep '\[csp\]'`).
+  browser-extension noise (browsers cut a non-http(s) address to its bare scheme, so an extension
+  arrives as `chrome-extension` with no colon — match it that way), strips query strings and
+  writes at most 60 `[csp] {…}` lines a minute per process. Read them in the Railway service log
+  (`grep '\[csp\]'`).
 - **Locally over http, Chrome delivers no reports at all**: checked 2026-09-15 on Chrome 152, it
   kept `report-to` reports queued on `http://localhost:3111` and delivered them at once when the
   same page came over HTTPS, and it ignores `report-uri` because `report-to` is present. Locally,
