@@ -4,8 +4,9 @@ import { admin, emailOTP } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { APIError, createAuthMiddleware, getIp, isAPIError } from "better-auth/api";
 import { db } from "@/db";
-import { user, session, account, verification, rateLimit } from "@/db/auth-schema";
+import { user, session, account, verification } from "@/db/auth-schema";
 import { IP_ADDRESS_OPTIONS } from "@/lib/client-ip";
+import { authRateLimitStorage } from "@/lib/rate-limit";
 import { sendOtpEmail, sendPasswordResetOtpEmail } from "@/lib/email";
 import {
   TOO_MANY_LOGIN_ATTEMPTS,
@@ -44,7 +45,7 @@ import {
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
-    schema: { user, session, account, verification, rateLimit },
+    schema: { user, session, account, verification },
   }),
   user: {
     additionalFields: {
@@ -180,9 +181,13 @@ export const auth = betterAuth({
    * плагина emailOTP); остальные пути, включая get-session, — 100 за 10 с.
    * `enabled` не задан — Better Auth включает лимиты только при
    * NODE_ENV=production.
+   *
+   * Хранилище своё, а не штатное `storage: "database"`: штатное пропускает
+   * одновременные запросы с одного IP сверх предела (почему — в
+   * `lib/rate-limit.ts`). С `customStorage` поле `storage` Better Auth не читает.
    */
   rateLimit: {
-    storage: "database",
+    customStorage: authRateLimitStorage,
   },
   plugins: [
     emailOTP({

@@ -64,14 +64,14 @@ export const verification = pgTable("verification", {
 });
 
 /**
- * Счётчики ограничения частоты Better Auth (`rateLimit.storage: "database"`).
+ * Счётчики ограничения частоты Better Auth — пишет и читает их
+ * `authRateLimitStorage` (`lib/rate-limit.ts`, `rateLimit.customStorage`), а не
+ * адаптер Better Auth.
  *
- * Поля — ровно те, что ждёт Better Auth (`getAuthTables`, модель `rateLimit`):
- * `key` вида `<ip>|<путь>`, `count`, `lastRequest` — миллисекунды `Date.now()`,
- * поэтому bigint. `id` адаптер генерирует сам при создании строки, и без него
- * атомарный `incrementOne` не работает (обновляет строку по id). Строки старше
- * минуты Better Auth удаляет сам — попутно, когда у какого-нибудь ключа
- * начинается новое окно.
+ * Поля повторяют модель `rateLimit` Better Auth: `key` вида `<ip>|<путь>`
+ * (уникален — на нём держится атомарный upsert), `count`, `lastRequest` —
+ * миллисекунды, поэтому bigint; `id` — случайный UUID. Строки без запросов
+ * дольше 10 минут удаляются попутной чисткой там же.
  */
 export const rateLimit = pgTable("rate_limit", {
   id: text("id").primaryKey(),

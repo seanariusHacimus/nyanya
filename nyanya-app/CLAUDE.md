@@ -99,20 +99,33 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   camelCase so the Drizzle adapter resolves them). Local = Postgres on 5434, prod = Railway.
 - **Rate-limit counters live in Postgres, never in process memory** (2026-09-16, migration 0010),
   so a deploy does not reset them and a second replica would share them instead of multiplying the
-  limit. Better Auth: `rateLimit.storage: "database"` in `lib/auth.ts`, table `rate_limit` (model
-  `rateLimit` in `auth-schema.ts`; the `id` column is required — the adapter's atomic `incrementOne`
-  updates by id). Its built-in rules are unchanged, all per IP per path: password sign-in (and
-  `/change-password`, `/change-email`) 3 per 10 s; sending/checking a code, code sign-in and
-  password reset 3 per 60 s (emailOTP plugin rules); everything else, `get-session` included, 100
-  per 10 s. Every `/api/auth/*` HTTP request therefore costs two small queries, three once it is
-  over the limit (the header's `useSession` calls `get-session` on page load); server-side
-  `auth.api.getSession` is not rate-limited and costs nothing extra. Better Auth deletes rows older
-  than 60 s itself, but only when some counter's window restarts, so rows linger on a quiet site.
+  limit. Better Auth: `rateLimit.customStorage: authRateLimitStorage` in `lib/auth.ts`
+  (implementation in `lib/rate-limit.ts`), table `rate_limit` (`key` `<ip>|<path>` unique, `count`,
+  `last_request` in ms). **Not `rateLimit.storage: "database"`** — Better Auth's own database
+  storage reads the row and then runs `UPDATE … WHERE id IN (SELECT … AND count < max LIMIT 1)`;
+  the sub-select sees the snapshot from before a concurrent update, so simultaneous requests from
+  one IP all pass (checked locally 2026-09-16: 60 simultaneous code requests got 8–10 through a
+  3-per-minute limit, 100 simultaneous sign-ins up to 11 through 3 per 10 s; the in-memory store
+  used before checked and counted in one synchronous step and could not be raced). Ours is one `INSERT … ON CONFLICT (key) DO UPDATE` with Better
+  Auth's exact semantics — the window runs from the last *allowed* request, a rejected request does
+  not extend it, `count` is capped at `max + 1` so the returned row says whether the request was
+  rejected, time is the database's `now()` in ms; the same bursts now get exactly 3. With
+  `customStorage` set Better Auth ignores `storage`, and the model is not registered with the
+  adapter (the table is only read and written by `authRateLimitStorage`). Its built-in rules are
+  unchanged, all per IP per path: password sign-in (and `/change-password`, `/change-email`) 3 per
+  10 s; sending/checking a code, code sign-in and password reset 3 per 60 s (emailOTP plugin
+  rules); everything else, `get-session` included, 100 per 10 s. Every `/api/auth/*` HTTP request
+  therefore costs one small query (the header's `useSession` calls `get-session` on page load);
+  server-side `auth.api.*` calls (`getSession`, `banUser`) are not rate-limited and cost nothing
+  extra. If that query fails, every `/api/auth/*` request answers 500 (the thrown error carries
+  only the driver's cause, not the key with the IP) — the same as Better Auth's own database
+  storage; sessions need the database anyway. Rows idle for 10 min are deleted by a sweep that runs
+  on a call at most once per 10 min per process.
   Own routes: `consumeRateLimit` (`lib/rate-limit.ts`, table `app_rate_limits`) — one atomic
   `INSERT … ON CONFLICT DO UPDATE` per key, fixed window, time from the database's `now()`,
   rejected requests count too; expired rows are deleted by a sweep that runs on a call at most
-  once per 10 min per process. Do not put own counters into `rate_limit`: Better Auth's 60 s prune
-  would erase longer windows. **The contact form** (`/api/contact`) allows 5 messages per IP per
+  once per 10 min per process. Do not put own counters into `rate_limit`: its sweep deletes rows
+  idle for 10 min and would erase longer windows. **The contact form** (`/api/contact`) allows 5 messages per IP per
   10 min and 30 emails per hour for the whole site (`CONTACT_RATE_LIMITS`); the per-IP check runs
   first, so requests it rejects do not use up the site-wide cap; a honeypot hit or an invalid body
   is answered before either check and counts for neither. Either limit is a 429 `rate_limited` with `Retry-After`, and the form says
