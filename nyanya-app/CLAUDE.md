@@ -56,7 +56,13 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   `/_next/image`, which fetches without cookies, while the cabinet header, the wizard preview and
   the admin «Открыть файл» load the owner's own pending photo from the browser with the session
   cookie (`unoptimized` / plain links). Keep it that way: an optimized `<Image>` of a pending photo
-  would break for the owner too.
+  would break for the owner too. **Known gap, not closed:** `/_next/image` keeps its own disk cache
+  (`.next/cache/images`, 4 h by default), and when the source later answers 403/404 Next 16.3.5
+  keeps serving the stale copy and re-arms it (`response-cache` `handleRevalidate` re-sets the old
+  entry on error; checked locally 2026-09-16). So an optimized copy of a photo that *was* approved
+  and then replaced or deleted stays reachable at its old `/_next/image?url=…` address until the
+  cache is cleared — a new deploy starts with an empty one. `images.minimumCacheTTL` does not
+  shorten this. A pending photo never reaches that cache (the optimizer gets 403 and caches nothing).
 - **Uploads**: `MAX_FILE_BYTES` (10 МБ) is checked in the browser before sending and again inside
   both upload actions before `file.arrayBuffer()`; the platform caps the raw body at 11 МБ
   (`serverActions.bodySizeLimit`, `proxyClientMaxBodySize`). Checked 2026-09-16 with real JPEGs: a
