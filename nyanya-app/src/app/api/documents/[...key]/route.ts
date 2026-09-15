@@ -8,7 +8,13 @@ import { DocumentNotFoundError, openDocument } from "@/lib/storage";
 /**
  * Выдача документа верификации. Паспорта и медсправки — чувствительные данные,
  * поэтому файл отдаётся только владельцу анкеты и администратору.
- * Исключение: фотография профиля публична (её видят в каталоге).
+ * Исключение: фотография профиля, которую принял модератор, публична — её
+ * видят в каталоге, и оптимизатор /_next/image запрашивает её без куки.
+ * Снимок на проверке и отклонённый открываются только владельцу и
+ * администратору: ссылка, ушедшая наружу до решения модератора, после
+ * отклонения перестаёт работать (аудит 2026-09-14). Семьям такой снимок и не
+ * нужен — в photo_key анкеты попадает только принятое фото, а превью в
+ * кабинете и мастере грузится из браузера владельца вместе с его кукой.
  *
  * Тело объекта проксируется потоком: файл не собирается целиком в памяти
  * процесса, а бакет остаётся приватным — прямых ссылок наружу нет.
@@ -23,6 +29,7 @@ export async function GET(
   const rows = await db
     .select({
       type: documents.type,
+      status: documents.status,
       mimeType: documents.mimeType,
       fileName: documents.fileName,
       ownerId: specialistProfiles.userId,
@@ -38,7 +45,8 @@ export async function GET(
   const doc = rows[0];
   if (!doc) return new Response("Not found", { status: 404 });
 
-  const isPublicPhoto = doc.type === "profile_photo";
+  const isPublicPhoto =
+    doc.type === "profile_photo" && doc.status === "approved";
   if (!isPublicPhoto) {
     const session = await auth.api.getSession({ headers: await headers() });
     const isOwner = session?.user.id === doc.ownerId;

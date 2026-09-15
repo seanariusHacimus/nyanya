@@ -143,6 +143,28 @@ export async function getActiveSpecialists(): Promise<UiSpecialist[]> {
   return rows.map((r) => toUi({ ...r.profile, districtName: r.districtName }));
 }
 
+/**
+ * Адреса анкет для sitemap.xml — ровно те анкеты, что видны в каталоге
+ * (listedInCatalog). Поставленные на паузу открываются по прямой ссылке, но
+ * роботам их не предлагаем, как и семьям в каталоге.
+ */
+export async function getSitemapSpecialists(): Promise<
+  { slug: string; updatedAt: Date }[]
+> {
+  const rows = await db
+    .select({
+      slug: specialistProfiles.slug,
+      updatedAt: specialistProfiles.updatedAt,
+    })
+    .from(specialistProfiles)
+    .where(listedInCatalog)
+    .orderBy(desc(specialistProfiles.publishedAt));
+  // slug не null по условию выборки; проверка — для типа
+  return rows.flatMap((r) =>
+    r.slug ? [{ slug: r.slug, updatedAt: r.updatedAt }] : []
+  );
+}
+
 export async function getSpecialistBySlug(
   slug: string
 ): Promise<(UiSpecialist & { reviews: UiReview[] }) | null> {

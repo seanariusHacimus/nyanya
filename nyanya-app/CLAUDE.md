@@ -49,8 +49,20 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   by `STORAGE_PROVIDER`. `s3` in production, `local` (writes to `.storage/`) when S3 variables are
   absent. Never touch the filesystem or the S3 SDK from a call site.
 - **Verification documents are private.** The bucket is not public; files are served only through
-  `/api/documents/[...key]`, which checks owner-or-admin. Profile photos are the one public
-  exception.
+  `/api/documents/[...key]`, which checks owner-or-admin. The one public exception is a profile
+  photo **whose document status is `approved`** (2026-09-16): a pending or rejected photo gets 403
+  for anyone but its owner and an admin, and `Cache-Control: private, no-store`. That is safe
+  because every family-facing `<Image>` takes `photo_key` (approved only) and goes through
+  `/_next/image`, which fetches without cookies, while the cabinet header, the wizard preview and
+  the admin «Открыть файл» load the owner's own pending photo from the browser with the session
+  cookie (`unoptimized` / plain links). Keep it that way: an optimized `<Image>` of a pending photo
+  would break for the owner too.
+- **Uploads**: `MAX_FILE_BYTES` (10 МБ) is checked in the browser before sending and again inside
+  both upload actions before `file.arrayBuffer()`; the platform caps the raw body at 11 МБ
+  (`serverActions.bodySizeLimit`, `proxyClientMaxBodySize`). Checked 2026-09-16 with real JPEGs: a
+  file of exactly 10 485 760 bytes is accepted, 10 485 761 bytes gets «Файл больше 10 МБ…» in the
+  browser without a request and `too_large` from the action when posted past the browser; only a
+  body over 11 МБ, which the form never sends, ends in a 500 («Unexpected end of form»).
 - **Verification steps have a single source of truth**: `src/content/verification-steps.ts`, used
   by the specialist form, the server actions, the admin queue and the public pages. Steps are
   **required or recommended**, and the list is **category-aware** (`stepsForCategory`) — only
@@ -62,7 +74,9 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   uploading writes the file to `documents` only, `reviewDocument` fills the column on approve
   and clears it on reject, both delete paths clear it, and `moderateProfile` clears it while
   publishing whenever the photo is not approved (rows whose photo was rejected before
-  2026-09-13 still carry a stale pointer, so that clear is what repairs them). Losing the photo
+  2026-09-13 carried a stale pointer; production was repaired that day and checked at 0 such rows).
+  The invariant now matters for more than honesty: since 2026-09-16 `/api/documents` serves only
+  an approved photo publicly, so a pointer to any other photo would be a broken image. Losing the photo
   no longer flips a profile to `hidden`. A rejected photo counts as no photo for the wizard and
   the cabinet checklist, so the specialist is sent back to the photo screen. The catalogue shows
   a face (or the avatar), district, price and the person's own words. A profile with every step
@@ -233,6 +247,26 @@ clean `[csp]` log lines — update the marker comment in `next.config.ts` and th
   look for «violates the following Content Security Policy directive» in the DevTools console or
   test the receiver with `curl`.
 
+## Search engines — robots.txt and sitemap.xml
+
+Both are generated (`src/app/robots.ts`, `src/app/sitemap.ts`, added 2026-09-16) from `SITE_URL`
+(`lib/site-url.ts`: `NEXT_PUBLIC_APP_URL`, falling back to `https://www.nyanya.uz`; emails use it
+too). `NEXT_PUBLIC_` is inlined at `next build`, so the variable must be present at build time.
+
+- **robots.txt** is static (built once). It disallows `/api/`, `/_next/image` (owner decision:
+  specialists' faces stay out of image search — profile pages themselves are indexed), `/admin`,
+  `/account`, `/reset-password` and the specialist cabinet as `/specialist$`, `/specialist/`,
+  `/specialist?`. **Never write a bare `Disallow: /specialist`** — robots rules are prefixes, and it
+  would also close every `/specialists/<slug>`.
+- **sitemap.xml** is `force-dynamic`: it reads Postgres on every request, so `next build` needs no
+  database and a paused or unpublished profile drops out at once. It lists the public
+  static pages, the blog posts and exactly the catalogue's profiles (`getSitemapSpecialists`, same
+  `listedInCatalog` condition — active, has a slug, not paused) with `lastModified = updated_at`.
+  Static pages and posts carry no `lastModified`: there is no honest edit date for them. A new
+  public page goes into `STATIC_PAGES`; a private one goes into the robots disallow list.
+- Registering the site in Google Search Console / Яндекс Вебмастер is the owner's step, outside the
+  code; until then crawlers find the map only through the `Sitemap:` line in robots.txt.
+
 ## Profile lifecycle
 
 `draft → pending_review → active | rejected | hidden`. A `slug` is generated on first publish
@@ -250,6 +284,12 @@ specialist sees in their cabinet.
   specialist emails exist: welcome (rewritten 2026-09-03 for the one-track onboarding, with the
   premium block), «принята на модерации», and «опубликована» (premium block only for a standard
   profile). The premium wording in all of them comes from `PREMIUM_BENEFITS`.
+  **User-supplied text reaches email HTML only through `escapeHtml`** (`lib/email.ts`, 2026-09-16):
+  names are validated by length alone, and `<b>` or `&` in a name broke the heading. `shell()`
+  escapes the heading, and `renderBlock` escapes `code`, button `label` and `href`; `text`, `note`
+  and list `items` are HTML on purpose (they carry `<b>`), so a value interpolated into them is
+  escaped at the interpolation point, as the contact-form fields are. `plain()` is not HTML and
+  stays unescaped. Subjects have line breaks collapsed.
 - **Signup is email-OTP, login is email + password.** Better Auth's own `/sign-up/email` is switched
   off (`disableSignUp` + `disabledPaths`, 2026-09-15): it created a signed-in account on any address
   without the code and told a registered address from a free one. Every `?next=` goes through

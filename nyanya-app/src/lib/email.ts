@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Resend } from "resend";
 import { PREMIUM_BENEFITS } from "@/lib/specialists-shared";
+import { SITE_URL } from "@/lib/site-url";
 
 /**
  * Письма сервиса.
@@ -12,11 +13,18 @@ import { PREMIUM_BENEFITS } from "@/lib/specialists-shared";
  *
  * Провайдер один — Resend. Без ключа письма не уходят, а содержимое
  * печатается в лог: разработка не блокируется отсутствием почты.
+ *
+ * Всё, что пришло от человека (имя из анкеты, поля формы обратной связи),
+ * попадает в HTML только через escapeHtml. Имя проверяется одной длиной, и
+ * «<b>» или «&» в нём ломали вёрстку заголовка (аудит 2026-09-14). Заголовок
+ * письма, код, подпись и адрес кнопки экранирует сам каркас; текст, пункты
+ * списка и сноска — готовый HTML (в них намеренное <b>), поэтому подставленное
+ * в них значение экранируется в месте подстановки. Текстовая версия plain()
+ * не HTML и не экранируется.
  */
 
 const FROM = process.env.EMAIL_FROM ?? "nyanya.uz <onboarding@resend.dev>";
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://nyanya-production.up.railway.app";
+const APP_URL = SITE_URL;
 
 /* ------------------------------ палитра ------------------------------ */
 
@@ -35,8 +43,20 @@ const SANS = "Arial,Helvetica,sans-serif";
 
 /* ------------------------------ каркас ------------------------------- */
 
+/** Экранирование текста перед вставкой в HTML письма — в тело тега и в атрибут. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 type Block =
+  /** text, note и items — готовый HTML: подставленное значение экранировать самому */
   | { kind: "text"; text: string }
+  /** code, label и href — простой текст: экранирует renderBlock */
   | { kind: "code"; code: string }
   | { kind: "note"; text: string }
   /** Список «что дальше» — маркеры рисуем символом, а не <ul> */
@@ -48,7 +68,7 @@ function renderBlock(b: Block): string {
     case "text":
       return `<p style="margin:0 0 16px;font-family:${SANS};font-size:14px;line-height:1.65;color:${C.soft};">${b.text}</p>`;
     case "code":
-      return `<div style="font-family:${SERIF};font-size:36px;letter-spacing:12px;color:${C.ink};padding:16px 0 20px;margin:8px 0 4px;border-top:1px solid ${C.line};border-bottom:1px solid ${C.line};">${b.code}</div>`;
+      return `<div style="font-family:${SERIF};font-size:36px;letter-spacing:12px;color:${C.ink};padding:16px 0 20px;margin:8px 0 4px;border-top:1px solid ${C.line};border-bottom:1px solid ${C.line};">${escapeHtml(b.code)}</div>`;
     case "note":
       return `<p style="margin:20px 0 0;font-family:${SANS};font-size:12px;line-height:1.6;color:${C.faint};">${b.text}</p>`;
     case "list":
@@ -60,12 +80,16 @@ function renderBlock(b: Block): string {
         .join("")}</tbody></table>`;
     case "button":
       return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px auto 4px;"><tbody><tr><td style="background-color:${C.ink};">
-        <a href="${b.href}" style="display:inline-block;padding:14px 32px;font-family:${SANS};font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:${C.bg};text-decoration:none;">${b.label}</a>
+        <a href="${escapeHtml(b.href)}" style="display:inline-block;padding:14px 32px;font-family:${SANS};font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:${C.bg};text-decoration:none;">${escapeHtml(b.label)}</a>
       </td></tr></tbody></table>`;
   }
 }
 
-/** Общая оболочка всех писем: шапка с логотипом, карточка, подпись. */
+/**
+ * Общая оболочка всех писем: шапка с логотипом, карточка, подпись.
+ * Заголовок — всегда простой текст: в него подставляется имя из анкеты, поэтому
+ * он экранируется здесь. Разметка в заголовке покажется буквально.
+ */
 function shell(heading: string, blocks: Block[]): string {
   return `<!doctype html>
 <html lang="ru">
@@ -78,7 +102,7 @@ function shell(heading: string, blocks: Block[]): string {
           <div style="font-family:${SERIF};font-size:15px;color:${C.bronze};padding-top:6px;">жизнь без забот</div>
         </td></tr>
         <tr><td style="background-color:${C.card};border:1px solid ${C.line};padding:36px 32px;" align="center">
-          <div style="font-family:${SERIF};font-size:22px;line-height:1.35;color:${C.ink};padding-bottom:16px;">${heading}</div>
+          <div style="font-family:${SERIF};font-size:22px;line-height:1.35;color:${C.ink};padding-bottom:16px;">${escapeHtml(heading)}</div>
           ${blocks.map(renderBlock).join("\n          ")}
         </td></tr>
         <tr><td align="center" style="padding-top:24px;">
@@ -110,12 +134,15 @@ function plain(heading: string, lines: string[]): string {
 
 async function send(
   to: string,
-  subject: string,
+  rawSubject: string,
   html: string,
   text: string,
   replyTo?: string
 ): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
+  // в теме письма обратной связи — имя посетителя; перевод строки в теме
+  // письму не нужен, какой бы путь до почтового сервера оно ни прошло
+  const subject = rawSubject.replace(/[\r\n]+/g, " ");
 
   if (!apiKey) {
     console.info(`[email:mock] «${subject}» → ${to}`);
@@ -228,7 +255,9 @@ function premiumBlocks(): Block[] {
     },
     {
       kind: "list",
-      items: PREMIUM_BENEFITS.map((b) => `<b>${b.title}</b> — ${b.text}`),
+      items: PREMIUM_BENEFITS.map(
+        (b) => `<b>${escapeHtml(b.title)}</b> — ${escapeHtml(b.text)}`
+      ),
     },
     { kind: "button", label: "Документы для премиума", href: `${APP_URL}/specialist/premium` },
   ];
@@ -427,15 +456,6 @@ export async function sendDocumentsApprovedEmail(
 
 /** Куда приходят обращения с формы обратной связи. */
 const CONTACT_TO = process.env.CONTACT_EMAIL_TO ?? "shokhedu@gmail.com";
-
-/** Экранирование пользовательского текста перед вставкой в HTML письма. */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 /**
  * Обращение с формы обратной связи — владельцу на почту.
