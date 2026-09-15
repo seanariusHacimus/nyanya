@@ -66,6 +66,8 @@ Interface language is **Russian only**. There is no `next-intl` and no `[locale]
 - `docker compose up -d` (from the repository root) — local Postgres on host port **5434**
 - `npm run db:generate` · `npm run db:migrate` · `npm run db:studio`
 - `npm run lint` · `npx tsc --noEmit`
+- `node scripts/db-cleanup.mjs` — посчитать мусорные строки; `--apply` — удалить (см. «Database
+  hygiene» ниже)
 - `npm audit --omit=dev` — run on the first working day of each month. Fix with `npm audit fix`
   (never `--force`: it proposes downgrading drizzle-kit to 0.18). Bump `next` and
   `eslint-config-next` together, exact versions, within the major. Accepted residual: `esbuild`
@@ -189,6 +191,72 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   `contact:ip:<ip>`); `/privacy` does not mention this yet (owner's call). Locally, counters survive
   a restart of `next start` now — clear them with `delete from rate_limit; delete from
   app_rate_limits;` (local database only).
+
+## Database hygiene — indexes, transactions, cleanup
+
+**Indexes are declared in the Drizzle schema, not only in SQL** — a `CREATE INDEX` that exists only
+in a migration is one the next `drizzle-kit generate` offers to drop. Migration 0013 (2026-09-16)
+added `notifications(user_id, created_at)`, a partial `notifications(user_id) WHERE read_at IS NULL`
+for the header's unread badge, `session(user_id)`, `account(user_id)` and `verification(identifier)`:
+each of those tables had nothing but its primary key, and Better Auth searches them on every ban,
+sign-in and code entry. Deliberately not added: `reviews(specialist_id)` — the leading column of the
+unique index from 0012 — and `contact_unlocks(parent_id, unlocked_at)`, added by 0011.
+
+- **Never put `CREATE INDEX CONCURRENTLY` in a migration**: the migrator runs every pending file in
+  one transaction, where it is illegal. A plain `CREATE INDEX` takes a SHARE lock (reads pass,
+  writes wait) for the build — milliseconds on today's tables. If a table ever reaches hundreds of
+  thousands of rows, build the index by hand with CONCURRENTLY before the deploy; the migration's
+  `IF NOT EXISTS` then does nothing.
+- A new query on a hot path (rendered on every page, or called by the header) gets its index in the
+  same commit, or it is a sequential scan nobody notices until the table grows.
+
+**Writes that change more than one row run in one `db.transaction`** (2026-09-16):
+`unlockContacts` (the unlock row + the profile's counter + the specialist's notification),
+`moderateProfile` (status + notification, each branch), `reviewDocument` (the document's verdict +
+the profile's level and `photo_key` + the notification), the two document uploads and the two
+document deletions (`specialist-profile.ts`, `admin-documents.ts`), plus `createReview` /
+`moderateReview`, which were already transactional. Half a decision is worse than none: an unlock
+the specialist never hears about, or a rejected photo still pointed at by `photo_key`.
+
+- **Inside the callback everything goes through `tx`.** A `db.` call there runs on another
+  connection and cannot see the uncommitted rows — `documentSummaryFor(tx, …)` and `levelFor(tx, …)`
+  take the executor for exactly that reason (the type is `DbExecutor` in `src/db/index.ts`).
+- **What cannot be rolled back stays outside**: emails, storage writes and deletes, and
+  `revalidatePath` run **after** the commit, on values the callback returned. A replaced document's
+  old file is deleted only after the commit — on a rollback the row still points at it. The new
+  file is written before the transaction, so a rollback leaves it orphaned in storage; that is what
+  `scripts/purge-orphan-files.mjs` is for.
+- Never wrap a network call (S3, Resend) inside a transaction: postgres-js holds one of ten pool
+  connections for its whole life.
+
+**`scripts/db-cleanup.mjs` deletes rows nobody needs any more.** Dry run by default — it only
+counts and prints «строк было N, стало N»; `--apply` deletes. Retention (constants at the top of
+the file): read notifications older than **90 days** (unread ones are never touched), sessions and
+verification codes that expired more than **1 day** ago, `login_attempts` older than **24 h**,
+`rate_limit` rows idle for 10 minutes and expired `app_rate_limits` windows — the last three match
+the sweeps the application already does when someone happens to hit it. It connects like
+`db-migrate.mjs` (inside Railway `DATABASE_URL`, outside `DATABASE_PUBLIC_URL`) and exits on its own.
+
+**Nothing runs it on a schedule yet** (owner's step, not done: it needs a Railway service). When the
+owner wants it, in this order:
+
+1. Commit `nyanya-app/railway.cron.json` with
+   `{"$schema":"https://railway.com/railway.schema.json","build":{"builder":"RAILPACK","buildCommand":"echo cron: сборка Next не нужна"},"deploy":{"startCommand":"node scripts/db-cleanup.mjs --apply","cronSchedule":"0 22 * * *","restartPolicyType":"NEVER"}}`.
+   A separate file is not optional: a service pointed at `/nyanya-app` would otherwise pick up
+   `railway.json`, and config-as-code overrides the dashboard — the cron service would run the
+   migrations and start the Next server instead of the script.
+2. Railway → New Service → the same GitHub repository and branch `master` → Settings: Root Directory
+   `/nyanya-app`, Railway Config File `/nyanya-app/railway.cron.json`, name `nyanya-cron`, no public
+   domain; Variables: `DATABASE_URL = ${{Postgres.DATABASE_URL}}`.
+3. Before the first scheduled run, run it by hand without `--apply` and show the owner the numbers.
+4. After the first run check the service's log for the six «строк было … стало …» lines and confirm
+   that `user`, `specialist_profiles`, `documents`, `reviews`, `contact_unlocks` and `favorites` did
+   not change and that unread notifications did not drop.
+
+The schedule is UTC (`0 22` = 03:00 Tashkent), the shortest interval Railway allows is 5 minutes, a
+run that is still going blocks the next one, and the process must exit by itself — this one closes
+its connection and does. Deleted rows do not come back: that is why the dry run is the default and
+the retention windows are generous.
 
 ## Copy that must stay true
 
