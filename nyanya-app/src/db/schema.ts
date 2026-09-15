@@ -323,6 +323,35 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+/**
+ * Неудачные входы по паролю — защита от перебора (`src/lib/login-throttle.ts`).
+ *
+ * Строка на пару «адрес почты + IP клиента» и ещё одна строка на адрес с
+ * `ip = '*'` — общий счётчик со всех IP. Здесь лежат адреса, по которым
+ * пытались войти, в том числе незарегистрированные, поэтому строки старше суток
+ * удаляются. Время — с часовым поясом: окна считаются в самой базе через now().
+ */
+export const loginAttempts = pgTable(
+  "login_attempts",
+  {
+    email: text("email").notNull(), // всегда в нижнем регистре
+    ip: text("ip").notNull(),
+    failures: integer("failures").notNull(),
+    // начало окна подсчёта; при блокировке переносится на её конец
+    windowStartedAt: timestamp("window_started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastFailedAt: timestamp("last_failed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.email, t.ip] }),
+    index("login_attempts_last_failed_at_idx").on(t.lastFailedAt),
+  ],
+);
+
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")

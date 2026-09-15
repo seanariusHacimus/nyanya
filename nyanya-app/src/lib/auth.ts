@@ -2,9 +2,19 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, emailOTP } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
+import { APIError, createAuthMiddleware, getIp, isAPIError } from "better-auth/api";
 import { db } from "@/db";
 import { user, session, account, verification } from "@/db/auth-schema";
 import { sendOtpEmail, sendPasswordResetOtpEmail } from "@/lib/email";
+import {
+  TOO_MANY_LOGIN_ATTEMPTS,
+  clearAllLoginFailures,
+  clearLoginFailuresForIp,
+  loginEmailFromBody,
+  loginLockMinutesLeft,
+  recordLoginFailure,
+  sweepOldLoginAttempts,
+} from "@/lib/login-throttle";
 
 /**
  * Код на почту — только при регистрации, вход — по паролю.
@@ -22,6 +32,9 @@ import { sendOtpEmail, sendPasswordResetOtpEmail } from "@/lib/email";
  * письме не шлём — код короче, вводится с телефона и не ломается почтовыми
  * клиентами, которые «прокликивают» ссылки ради проверки на вирусы. Коды входа
  * и восстановления хранятся под разными ключами и не заменяют друг друга.
+ *
+ * Перебор паролей: кроме лимита Better Auth по IP, неудачи считаются по адресу
+ * почты в базе (`lib/login-throttle.ts`, `hooks` ниже).
  *
  * Роли: parent (по умолчанию) · specialist · admin (только вручную/сидом).
  */
@@ -72,6 +85,84 @@ export const auth = betterAuth({
   },
   // путь отвечает 404 ещё до лимитов и хуков — снаружи эндпоинта просто нет
   disabledPaths: ["/sign-up/email"],
+  /**
+   * Единственные глобальные хуки Better Auth: библиотека принимает ровно одну
+   * функцию `before` и одну `after` на весь сервис (dispatch берёт
+   * `options.hooks.before/after` как есть, списка нет). Новой логике нужен
+   * хук — дописывать ветку в эти функции; другой объект `hooks`, подмешанный
+   * в опции, заменил бы этот целиком вместе с защитой от перебора. Оба
+   * вызываются на КАЖДОМ запросе к /api/auth/* (включая get-session с каждой
+   * страницы), поэтому проверка пути стоит первой и в базу ходят только
+   * нужные пути.
+   *
+   * Порядок на /sign-in/email: disabledPaths → лимит по IP (3 за 10 с) →
+   * before (блокировка по почте) → обработчик → after (учёт результата).
+   */
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-in/email") return;
+      sweepOldLoginAttempts();
+      // тело здесь ещё не проверено схемой эндпоинта — см. loginEmailFromBody
+      const email = loginEmailFromBody(ctx.body);
+      if (!email) return;
+
+      let minutesLeft: number | null = null;
+      try {
+        minutesLeft = await loginLockMinutesLeft(email, clientIp(ctx));
+      } catch (error) {
+        // сбой учёта не должен закрыть вход всем: лимит по IP остаётся
+        console.error("[login-throttle] lock check failed", error);
+        return;
+      }
+      if (minutesLeft) {
+        throw new APIError(
+          "TOO_MANY_REQUESTS",
+          {
+            code: TOO_MANY_LOGIN_ATTEMPTS,
+            message: "Too many failed sign-in attempts",
+            retryAfterMinutes: minutesLeft,
+          },
+          { "Retry-After": String(minutesLeft * 60) },
+        );
+      }
+    }),
+    after: createAuthMiddleware(async (ctx) => {
+      const path = ctx.path;
+      if (
+        path !== "/sign-in/email" &&
+        path !== "/sign-in/email-otp" &&
+        path !== "/email-otp/reset-password"
+      ) {
+        return;
+      }
+      const email = loginEmailFromBody(ctx.body);
+      if (!email) return;
+      // при ошибке обработчика здесь лежит сам APIError, после успеха — ответ
+      const returned = ctx.context.returned;
+
+      try {
+        if (path === "/sign-in/email") {
+          if (!isAPIError(returned)) {
+            await clearLoginFailuresForIp(email, clientIp(ctx));
+          } else if (
+            // только неверный пароль (или неизвестный адрес — ответ тот же).
+            // 403 BANNED_USER бросается уже после проверки пароля, 400 — это
+            // ошибка тела, 429 сюда не доходит вовсе: ничто из этого не перебор
+            returned.statusCode === 401 &&
+            returned.body?.code === "INVALID_EMAIL_OR_PASSWORD"
+          ) {
+            await recordLoginFailure(email, clientIp(ctx));
+          }
+          return;
+        }
+        // код из письма доказал владение почтой — все счётчики адреса снимаются
+        if (!isAPIError(returned)) await clearAllLoginFailures(email);
+      } catch (error) {
+        // вход уже состоялся или уже отклонён; сбой учёта не меняет ответ
+        console.error("[login-throttle] bookkeeping failed", error);
+      }
+    }),
+  },
   advanced: {
     ipAddress: {
       /**
@@ -144,3 +235,16 @@ export const auth = betterAuth({
 });
 
 export type Session = typeof auth.$Infer.Session;
+
+/**
+ * IP клиента ровно так, как его видит Better Auth (тот же `getIp` с теми же
+ * `trustedProxies`), — чтобы блокировка и лимит по IP говорили об одном адресе.
+ */
+function clientIp(ctx: {
+  request?: Request;
+  headers?: Headers;
+  context: { options: Parameters<typeof getIp>[1] };
+}): string | null {
+  const source = ctx.request ?? ctx.headers;
+  return source ? getIp(source, ctx.context.options) : null;
+}

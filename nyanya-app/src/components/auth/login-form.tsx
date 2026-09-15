@@ -39,13 +39,19 @@ export function LoginForm() {
       setBusy(false);
       // заблокированному аккаунту Better Auth отвечает 403 (§9 R1);
       // 429 — ограничение частоты: не выдавать его за неверный пароль,
-      // иначе человек начнёт перебирать правильный пароль и продлит блок
+      // иначе человек начнёт перебирать правильный пароль и продлит блок.
+      // У 429 два источника: блокировка по адресу почты после серии неверных
+      // паролей (код TOO_MANY_LOGIN_ATTEMPTS и настоящий остаток времени,
+      // lib/login-throttle.ts) и лимит Better Auth по IP — 3 запроса за 10 секунд,
+      // без кода. Срок и совет про сброс пароля верны только для первого.
       setError(
         signInError.status === 403
           ? "Аккаунт заблокирован. Свяжитесь с поддержкой."
-          : signInError.status === 429
-            ? "Слишком много попыток входа. Подождите немного и попробуйте снова."
-            : "Неверная почта или пароль."
+          : signInError.code === "TOO_MANY_LOGIN_ATTEMPTS"
+            ? lockedMessage(signInError)
+            : signInError.status === 429
+              ? "Слишком много попыток входа. Подождите немного и попробуйте снова."
+              : "Неверная почта или пароль."
       );
       return;
     }
@@ -131,4 +137,17 @@ export function LoginForm() {
       </div>
     </form>
   );
+}
+
+/**
+ * Текст блокировки по адресу почты. Сброс пароля по коду действительно снимает
+ * её сразу (hooks.after в lib/auth.ts), поэтому совет честный.
+ */
+function lockedMessage(error: object): string {
+  const minutes =
+    "retryAfterMinutes" in error && typeof error.retryAfterMinutes === "number"
+      ? error.retryAfterMinutes
+      : null;
+  const wait = minutes && minutes > 0 ? `Подождите ${minutes} мин` : "Подождите немного";
+  return `Слишком много неудачных попыток входа. ${wait} или задайте новый пароль через «Забыли пароль?».`;
 }

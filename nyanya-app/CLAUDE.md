@@ -304,6 +304,35 @@ specialist sees in their cabinet.
   Run `node --experimental-strip-types --test src/lib/safe-next.test.mjs` after touching it. The code proves the address once, at
   registration; afterwards only the password is used. The password is written by `completeProfile`
   (Better Auth has no public set-password endpoint) and only when none exists yet.
+- **Password guessing is throttled per account in Postgres** (`login_attempts`, migration 0009,
+  2026-09-16), on top of Better Auth's in-memory IP limit (3 sign-ins per 10 s per IP). Two tiers,
+  thresholds only in `LOGIN_THROTTLE` (`src/lib/login-throttle.ts`): **per address + client IP** —
+  5 wrong passwords within 15 min lock that pair for 15 min; **per address across all IPs** (row
+  with `ip = '*'`) — 30 within 60 min lock the account everywhere for 60 min. One attacker who
+  knows the owner's address locks only their own IP; a botnet hits the account ceiling. Windows
+  are fixed, start at the first failure and, on a lock, move to the lock's end, so a failure soon
+  after a lock expires locks again at once. Each tier is one atomic `INSERT … ON CONFLICT DO
+  UPDATE`; all time arithmetic happens in the database (`timestamptz`, `now()`). Only a 401
+  `INVALID_EMAIL_OR_PASSWORD` counts (an unknown address counts the same, so nothing leaks) — not
+  403 `BANNED_USER`, not 400 body errors, not any 429. A correct password clears only its own
+  address+IP row (clearing the account row on every owner login would hand a botnet 30 fresh
+  guesses); a successful OTP sign-in or password reset clears every row of the address — that is
+  the way out, and during a lock even the correct password gets 429. The lock is a 429 with
+  `code: "TOO_MANY_LOGIN_ATTEMPTS"`, `retryAfterMinutes` and `Retry-After`; `login-form.tsx`
+  branches on that code («Подождите N мин или задайте новый пароль через «Забыли пароль?»») and keeps
+  the generic text for the IP limit's 429, which has no code. The client IP comes from Better
+  Auth's own `getIp` with the configured `trustedProxies`. It is wired through `hooks.before` /
+  `hooks.after` in `lib/auth.ts` — **the only global hooks Better Auth takes (one function each);
+  extend those functions, never add another `hooks` object**. `ctx.body` in `hooks.before` is not
+  validated yet (`loginEmailFromBody` accepts anything). A throttle DB error is logged
+  (`[login-throttle]`) and fails open. **The table holds addresses people tried to sign in with,
+  registered or not, plus their IPs**: rows are deleted 24 h after their last failure, by a sweep
+  that runs on a password sign-in attempt at most once per 10 min per process — so a row can
+  outlive 24 h until the next attempt. `/privacy` does not mention this yet (owner's call).
+  Unlocking one person without a deploy is `delete from login_attempts where email = '<address>'`
+  (a production write — owner approval first). Locally the limits run only under
+  `NODE_ENV=production` (`next start`); curl tests need a distinct `x-forwarded-for` per sequence
+  and at most 3 sign-ins per IP per 10 s, and Node `fetch` also needs an `Origin` header (curl does not).
 - **Password recovery is `/reset-password`** (added 2026-09-01): address → code from the email →
   new password → automatic sign-in. It runs on the `emailOTP` plugin's own endpoints, so the code
   lives under a different key than the sign-in code and the two cannot be swapped. The request
