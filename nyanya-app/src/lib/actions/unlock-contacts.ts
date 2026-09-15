@@ -35,6 +35,17 @@ const schema = z.object({ slug: z.string().trim().min(1).max(120) });
  * без неё пачка одновременных запросов видела бы один и тот же счёт и
  * проходила вся — и мимо паузы, и мимо суточного лимита.
  *
+ * Блокировка берётся через `pg_try_advisory_xact_lock` и НЕ ждёт: запрос,
+ * пришедший, пока другой запрос того же аккаунта проверяет и вставляет,
+ * сразу получает `too_fast`. Ожидающая блокировку транзакция держала бы
+ * соединение из пула (max 10), и пачка из сотен одновременных запросов
+ * одного аккаунта выстраивалась бы в очередь по одному, занимая весь пул:
+ * проверено локально 2026-09-16 с задержкой до базы 2 мс — 300 запросов шли
+ * 9,7 с, и всё это время чужая страница анкеты не открывалась. Браузер
+ * отправляет действия одного клиента по очереди, так что одновременные
+ * запросы — это скрипт или несколько вкладок. Уже открытый контакт
+ * проверяется до блокировки, поэтому в нём такой отказ не случается.
+ *
  * Аккаунт, исчерпавший лимит, получает отметку `user.flagged_at` и попадает в
  * блок «Подозрительная активность» на обзоре админки; администраторам уходит
  * уведомление. Блокировки нет — решает человек.
@@ -86,28 +97,43 @@ export async function unlockContacts(input: unknown) {
     inserted = added.length > 0;
   } else {
     const limits = parseUnlockLimits(process.env);
-    const outcome = await db.transaction(async (tx) => {
-      // запросы одного аккаунта идут по очереди; другие аккаунты не ждут
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended(${`contact-unlock:${parentId}`}, 0))`
-      );
+    const alreadyOpened = and(
+      eq(contactUnlocks.parentId, parentId),
+      eq(contactUnlocks.specialistId, specialist.id)
+    );
+    // уже открытое не считается и не блокируется — проверка до лимитов и до
+    // блокировки: занятая блокировка не должна отказать в открытом контакте
+    const existing = await db
+      .select({ id: contactUnlocks.id })
+      .from(contactUnlocks)
+      .where(alreadyOpened)
+      .limit(1);
+    if (existing.length > 0) return { ok: true as const, contacts };
 
-      // уже открытое не считается и не блокируется — проверка до лимитов
-      const existing = await tx
+    const outcome = await db.transaction(async (tx) => {
+      // один запрос аккаунта за раз; другие аккаунты не ждут. Не ждём и мы:
+      // занято — значит, этот же аккаунт прямо сейчас открывает контакт
+      const [lock] = await tx.execute<{ locked: boolean }>(
+        sql`select pg_try_advisory_xact_lock(hashtextextended(${`contact-unlock:${parentId}`}, 0)) as locked`
+      );
+      if (!lock?.locked) {
+        return {
+          kind: "too_fast" as const,
+          retryAfterSec: Math.max(1, limits.minIntervalSec),
+        };
+      }
+
+      // пока мы шли к блокировке, этот контакт мог открыть параллельный запрос
+      const openedMeanwhile = await tx
         .select({ id: contactUnlocks.id })
         .from(contactUnlocks)
-        .where(
-          and(
-            eq(contactUnlocks.parentId, parentId),
-            eq(contactUnlocks.specialistId, specialist.id)
-          )
-        )
+        .where(alreadyOpened)
         .limit(1);
-      if (existing.length > 0) return { kind: "already" as const };
+      if (openedMeanwhile.length > 0) return { kind: "already" as const };
 
       // время — только из базы, которая сама пишет unlocked_at. Не now(): оно
-      // заморожено на начале транзакции, а до этой строки запрос мог ждать
-      // блокировку, пока другой запрос того же аккаунта вставлял более позднюю
+      // заморожено на начале транзакции, а между её началом и блокировкой
+      // другой запрос того же аккаунта мог успеть вставить более позднюю
       // запись, — «с последнего открытия» вышло бы меньше нуля
       const inWindow = and(
         eq(contactUnlocks.parentId, parentId),

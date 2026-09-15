@@ -20,12 +20,22 @@ and **one new open per 3 s** per account, overridable by `CONTACT_UNLOCK_DAILY_C
 empty, non-integer or zero cap falls back to 20; the interval accepts 0 and has no upper bound, so a
 typo like 3600 means one open an hour — a restart applies a new value). **Every role is limited
 except `admin`**; specialists may open contacts too (owner decision — not forbidden). A contact the
-account already opened never counts and is never refused — that check comes first. Check and
-insert run in one transaction under `pg_advisory_xact_lock(hashtextextended('contact-unlock:' ||
-user_id, 0))`, so simultaneous requests of one account queue instead of all seeing the same count
-(checked locally 2026-09-16: 6 simultaneous opens with the 3 s pause opened 1; with the pause at 0,
-cap 3 and one contact already open, 5 simultaneous opens added exactly 2). The limit queries use `clock_timestamp()`, because `now()` is frozen at
-the start of a transaction that may have waited for that lock. The action answers `too_fast` /
+account already opened never counts and is never refused — that check comes first, before the lock. Check and
+insert run in one transaction under `pg_try_advisory_xact_lock(hashtextextended('contact-unlock:' ||
+user_id, 0))`, so simultaneous requests of one account cannot all see the same count. **The lock
+never waits**: a request arriving while another request of the same account holds it gets `too_fast`
+at once (`retryAfterSec` = the pause, at least 1 s — also with the pause at 0). The first version
+waited with `pg_advisory_xact_lock`, and every waiting transaction held a pool connection (max 10):
+locally with a 2 ms app↔database round trip (a delaying TCP proxy), one account's 300 simultaneous
+requests queued for 9.7 s and another family's profile page hung for all of it; with the try-lock
+the same burst took 1.9 s and that page waited at most 1.9 s (the admin path, which takes no lock:
+1.2 s). A browser dispatches one client's actions one
+at a time, so only a script or several tabs ever hit that refusal (checked locally 2026-09-16: 6
+simultaneous opens with the 3 s pause opened exactly 1, a repeat of the contact being opened got the
+phone, an already opened one always did; with the pause at 0 and cap 5, 6 simultaneous opens of two
+new contacts added 1, reaching the cap, and flagged once). The limit queries use `clock_timestamp()`,
+because `now()` is frozen at the start of the transaction, and another request of the account may
+have inserted a later row between that start and the lock. The action answers `too_fast` /
 `daily_limit` with `retryAfterSec` (for the cap: when the oldest open in the window turns 24 h),
 and `unlock-panel.tsx` words it without payment and without calling anyone suspicious: «За 24 часа
 можно открыть не больше N новых контактов. Контакты, которые вы уже открыли, остаются доступны, а
