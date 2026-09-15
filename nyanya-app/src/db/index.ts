@@ -17,3 +17,12 @@ if (process.env.NODE_ENV !== "production") globalForDb.client = client;
 
 export const db = drizzle(client, { schema });
 export { schema };
+
+/**
+ * Где выполнить запрос: сам `db` или транзакция из `db.transaction(async (tx) => …)`.
+ * Нужен функциям, которые вызываются и отдельно, и внутри чужой транзакции
+ * (`lib/rating.ts`, `lib/review-eligibility.ts`).
+ */
+export type DbExecutor =
+  | typeof db
+  | Parameters<Parameters<typeof db.transaction>[0]>[0];

@@ -13,6 +13,7 @@ import {
   Warning,
   MagnifyingGlass,
   Plus,
+  ChatCircleText,
 } from "@phosphor-icons/react";
 import type {
   AdminData,
@@ -157,6 +158,11 @@ export function AdminView({
       label: "Документы на проверке",
       value: data.stats.pendingDocuments,
     },
+    {
+      icon: ChatCircleText,
+      label: "Отзывы на проверке",
+      value: data.stats.pendingReviews,
+    },
     { icon: LockKeyOpen, label: "Открытий контактов", value: data.stats.unlocks },
     { icon: Percent, label: "Конверсия", value: `${data.stats.conversion}%` },
   ];
@@ -209,7 +215,7 @@ export function AdminView({
       )}
 
       {section === "overview" && (
-      <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+      <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="border border-line bg-paper p-5">
             <dt className="label-caps flex items-center gap-2 text-ink-faint">

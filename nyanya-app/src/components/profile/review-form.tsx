@@ -2,14 +2,18 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, Star, Warning } from "@phosphor-icons/react";
+import { CheckCircle, Hourglass, Star, Warning } from "@phosphor-icons/react";
 import { createReview } from "@/lib/actions/reviews";
+import { reviewDenialText, type ReviewStatus } from "@/lib/review-policy";
+import { formatRetryAfter } from "@/lib/unlock-limits";
 
 /**
  * Форма отзыва о специалисте.
  *
- * Показывается только семье, которая открывала контакты этого специалиста, —
- * иначе отзывы писали бы люди, которые с ним не работали.
+ * Показывается только тому, кто открывал контакты этого специалиста и прошёл
+ * правила `lib/review-policy.ts`, — иначе отзывы писали бы люди, которые с ним
+ * не работали. Новый и изменённый отзыв уходит модератору и появляется в
+ * анкете после публикации; форма говорит об этом до отправки, а не после.
  *
  * Оценка обязательна, текст нет: поставить звёзды человек готов почти всегда,
  * а писать — далеко не всегда, и требовать текст значит остаться вовсе без
@@ -21,7 +25,11 @@ export function ReviewForm({
 }: {
   slug: string;
   /** Прежний отзыв этой семьи — форма открывается заполненной. */
-  existing: { rating: number; text: string } | null;
+  existing: {
+    rating: number;
+    text: string;
+    status: Exclude<ReviewStatus, "hidden">;
+  } | null;
 }) {
   const router = useRouter();
   const [rating, setRating] = useState(existing?.rating ?? 0);
@@ -36,15 +44,25 @@ export function ReviewForm({
       setError(null);
       const result = await createReview({ slug, rating, text });
       if (!result.ok) {
-        setError(
-          result.error === "not_allowed"
-            ? "Отзыв можно оставить после того, как вы откроете контакты специалиста."
-            : result.error === "own_profile"
-              ? "Нельзя оставить отзыв о собственной анкете."
-              : result.error === "unauthorized"
-                ? "Войдите, чтобы оставить отзыв."
-                : "Не удалось сохранить отзыв. Попробуйте ещё раз."
-        );
+        switch (result.error) {
+          case "unauthorized":
+            setError("Войдите, чтобы оставить отзыв.");
+            break;
+          case "busy":
+            setError("Отзыв уже сохраняется. Подождите пару секунд и обновите страницу.");
+            break;
+          case "invalid":
+          case "not_found":
+            setError("Не удалось сохранить отзыв. Обновите страницу и попробуйте ещё раз.");
+            break;
+          default:
+            setError(
+              reviewDenialText(
+                result.error,
+                result.retryAfterSec ? formatRetryAfter(result.retryAfterSec) : null
+              )
+            );
+        }
         return;
       }
       setDone(true);
@@ -56,8 +74,8 @@ export function ReviewForm({
       <div className="mt-8 flex items-start gap-3 border border-bronze bg-cream-deep px-5 py-4">
         <CheckCircle size={20} weight="fill" className="mt-0.5 shrink-0 text-bronze" />
         <p className="text-sm leading-relaxed text-ink">
-          Спасибо — отзыв сохранён и уже виден в анкете. Изменить его можно в
-          любой момент здесь же.
+          Спасибо — отзыв отправлен на проверку. В анкете он появится, когда его
+          опубликует модератор.
         </p>
       </div>
     );
@@ -70,8 +88,21 @@ export function ReviewForm({
       <h3 className="font-display text-xl font-medium text-ink">
         {existing ? "Изменить отзыв" : "Оставить отзыв"}
       </h3>
-      <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-        Ваш опыт помогает другим семьям выбрать. Имя рядом с отзывом видят все.
+      {existing?.status === "pending" ? (
+        <p className="mt-3 flex items-start gap-2 border border-line bg-cream-deep px-4 py-3 text-sm leading-relaxed text-ink">
+          <Hourglass size={16} className="mt-0.5 shrink-0 text-bronze" aria-hidden="true" />
+          Ваш отзыв на проверке у модератора. В анкете он появится после
+          публикации.
+        </p>
+      ) : existing?.status === "visible" ? (
+        <p className="mt-3 border border-line bg-cream-deep px-4 py-3 text-sm leading-relaxed text-ink">
+          Ваш отзыв опубликован. Если измените его, он снова уйдёт на проверку и
+          до публикации не будет виден в анкете.
+        </p>
+      ) : null}
+      <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+        Ваш опыт помогает другим семьям выбрать. Отзыв появится в анкете после
+        проверки модератором; имя рядом с отзывом видят все.
       </p>
 
       <div className="mt-5 flex items-center gap-1" onMouseLeave={() => setHover(0)}>

@@ -73,8 +73,8 @@ Interface language is **Russian only**. There is no `next-intl` and no `[locale]
   production migrations run through drizzle-orm's migrator, not drizzle-kit.
 
 There is **no test suite** — no `npm run test`, no Vitest. Verification is typecheck + lint +
-`npm run build`, plus two `node:test` files for pure functions:
-`node --experimental-strip-types --test src/lib/safe-next.test.mjs src/lib/unlock-limits.test.mjs`.
+`npm run build`, plus three `node:test` files for pure functions:
+`node --experimental-strip-types --test src/lib/safe-next.test.mjs src/lib/unlock-limits.test.mjs src/lib/review-policy.test.mjs`.
 
 ## Stack
 
@@ -294,6 +294,64 @@ moderator; if the cabinet wrote there, a specialist could undo a moderator's dec
 click. Paused profiles drop out of the catalogue, the similar-profiles strip and the home-page
 reviews, but stay reachable by direct link with a notice — families keep and forward those links,
 and a dead page would just confuse them.
+
+## Reviews — one per pair, premoderated
+
+Owner decisions of 2026-09-16 (migration 0012). **Only a moderator puts a review in front of
+families**: a new review and an edited one are written as `pending`, which the profile page, the
+home page (`getLatestReviews`), the catalogue rating and the cabinet counter never show; an admin
+publishes or hides it in **`/admin/reviews`** (pending first, oldest first; badge «Отзывы» in the
+sidebar and a tile on the overview) or in the profile card. Reviews that existed before stay
+`visible`. **Editing a published review sends it back to `pending`** — it disappears from the
+profile until published again, and the form warns about that before saving. A **hidden** review
+cannot be edited (`hidden_by_moderator`): its author sees only «Отзыв не опубликован модератором»,
+otherwise every save would put it back into the queue. The specialist gets an in-app `new_review`
+notification **only when a moderator publishes** (also when a hidden one is published back); every
+admin gets a `system` notification when a review enters the queue (new, or a published one edited)
+— not for re-edits of what is already pending. Admin notifications still show only in the header
+badge and on `/account`.
+
+- **One review per family per specialist is held by the database**: unique index
+  `uniq_review_specialist_parent (specialist_id, author_parent_id)`, and `createReview` is one
+  `INSERT … ON CONFLICT DO UPDATE` (the old find-then-insert let 8 simultaneous submissions write 8
+  rows). Migration 0012 first moved duplicate pairs into `reviews_dedupe_backup` (newest row by
+  `created_at` kept — the old code rewrote `created_at` on every edit) and recomputed only the
+  profiles that had them; that table is deliberately not in `schema.ts`. `created_at` is now when the
+  review appeared, `updated_at` the author's last edit (filled from `created_at` for old rows).
+- **`reviews.status` keeps the database default `visible`** — `pending` was added in the same
+  migration, and the migrator runs all pending migrations in one transaction, where a freshly added
+  enum value cannot be used. The code always writes the status explicitly. Do not "fix" the default
+  inside a migration that adds a value.
+- **Rules live once, in `REVIEW_POLICY` (`lib/review-policy.ts`)**, a pure module with a `node:test`
+  file: the author's account is at least **24 h** old, the family opened this specialist's contacts
+  at least **24 h** ago, at most **3 new reviews per account per rolling 24 h** (editing one's own
+  review never counts); `0` switches a rule off, and the numbers change by commit, not env.
+  `decideReview` returns the reason and, for the time-based ones, `retryAfterSec`;
+  `reviewDenialText` is the one wording for the profile page and the form. The facts are gathered by
+  `lib/review-eligibility.ts` (time from the database's `clock_timestamp()`), used both by
+  `getReviewAccess` for the page and by the action — the page never shows a form the action refuses.
+  **Any role may review** if it opened the contacts (nothing restricts it to `parent`); the queue
+  shows the author's role, account age, unlock age and review count, and highlights the line for a
+  young account, a non-family author, no unlock or more than 3 reviews.
+- **`createReview` runs in one transaction** under `pg_try_advisory_xact_lock(hashtextextended('review:'
+  || user_id, 0))` — **it never waits** (same reason as the contact-unlock lock): a concurrent
+  submission of the same account gets `busy`. Inside: the eligibility check with the own review read
+  `FOR UPDATE`, the upsert (`setWhere status <> 'hidden'` as a last guard), the rating recalculation
+  and the admin notifications. Checked locally 2026-09-16: 8 simultaneous submissions → 1 row, 7
+  `busy`, 1 admin notification; staggered re-edits → still 1 row and no new notification.
+- **`moderateReview({ reviewId, status: "visible" | "hidden", seenUpdatedAt })`** locks the row
+  `FOR UPDATE` and **refuses to publish (`stale`) when `updated_at` differs from the version the
+  moderator read** — otherwise a family could swap the text between the moderator opening the queue
+  and pressing «Опубликовать». The component refreshes and shows the new version.
+- **`rating_avg` / `review_count` count `visible` reviews only** and are recomputed by
+  `recalcRating(tx, profileId)` (`lib/rating.ts`) inside the same transaction as every write and
+  decision. It updates the profile row only when the numbers change, so a pending review does not
+  move the sitemap's `lastModified`. It used to be exported from the `"use server"` file — a public
+  endpoint. `scripts/db-seed-upgrade.mjs` still writes `rating_avg` as a constant and inserts reviews
+  past moderation: do not run it on production.
+- Public copy says reviews appear after the moderator's check (`/faq`, `/how-it-works`, the home
+  page's «Отзывы семей», `/become-specialist`) and names no hour count — the exact rule is shown on
+  the profile page, computed from `REVIEW_POLICY`.
 
 ## Roles and access
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChartPie,
+  ChatCircleText,
   IdentificationCard,
   FileText,
   Users,
@@ -20,7 +21,8 @@ import {
  * Счётчики рядом с разделами показывают, где ждут решения. Это главное, что
  * модератор хочет узнать, не открывая ничего: сколько анкет и документов
  * висит. У «Обзора» — аккаунты, исчерпавшие лимит открытий контактов: блок
- * «Подозрительная активность» с кнопками живёт там.
+ * «Подозрительная активность» с кнопками живёт там. У «Отзывов» — отзывы на
+ * проверке: пока их не опубликуют, семьи их не видят.
  */
 
 export type AdminNavCounts = {
@@ -28,6 +30,7 @@ export type AdminNavCounts = {
   flagged: number;
   pendingProfiles: number;
   pendingDocuments: number;
+  pendingReviews: number;
   profiles: number;
   users: number;
 };
@@ -48,6 +51,12 @@ export function AdminSidebar({ counts }: { counts: AdminNavCounts }) {
       label: "Документы",
       icon: FileText,
       badge: counts.pendingDocuments,
+    },
+    {
+      href: "/admin/reviews",
+      label: "Отзывы",
+      icon: ChatCircleText,
+      badge: counts.pendingReviews,
     },
     { href: "/admin/users", label: "Пользователи", icon: Users, badge: 0 },
   ];

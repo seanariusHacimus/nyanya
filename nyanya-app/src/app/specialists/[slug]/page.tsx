@@ -9,7 +9,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { PROFILE_TIER, yearsLabel } from "@/lib/specialists-shared";
+import { PROFILE_TIER, pluralRu, yearsLabel } from "@/lib/specialists-shared";
 import {
   getSpecialistBySlug,
   getSimilarSpecialists,
@@ -18,7 +18,12 @@ import {
   formatPrice,
 } from "@/lib/queries/specialists";
 import { getFavoriteSlugs } from "@/lib/queries/account";
-import { getReviewAccess } from "@/lib/queries/reviews";
+import {
+  ANONYMOUS_REVIEW_ACCESS,
+  getReviewAccess,
+} from "@/lib/queries/reviews";
+import { reviewDenialText } from "@/lib/review-policy";
+import { formatRetryAfter } from "@/lib/unlock-limits";
 import { ReviewForm } from "@/components/profile/review-form";
 import { SpecialistCard } from "@/components/specialist-card";
 import { Stars } from "@/components/ui/stars";
@@ -70,7 +75,7 @@ export default async function SpecialistPage({
         getFavoriteSlugs(session.user.id),
         getReviewAccess(session.user.id, s.slug),
       ])
-    : [null, [] as string[], { canReview: false, existing: null }];
+    : [null, [] as string[], ANONYMOUS_REVIEW_ACCESS];
 
   return (
     <main className="flex-1 pb-24 lg:pb-0">
@@ -169,11 +174,7 @@ export default async function SpecialistPage({
                     className="border-b border-ink/30 pb-0.5 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
                   >
                     {s.reviews.length}{" "}
-                    {s.reviews.length === 1
-                      ? "отзыв"
-                      : s.reviews.length < 5
-                        ? "отзыва"
-                        : "отзывов"}
+                    {pluralRu(s.reviews.length, "отзыв", "отзыва", "отзывов")}
                   </a>
                 </p>
                 <p className="mt-6 font-display text-2xl font-medium text-ink">
@@ -230,7 +231,10 @@ export default async function SpecialistPage({
               )}
             </section>
 
-            {/* P6 — отзывы: показ и форма для той семьи, что открывала контакты */}
+            {/*
+              P6 — отзывы: только опубликованные модератором; форма — для той
+              семьи, что открывала контакты и прошла правила review-policy
+            */}
             <section
               id="reviews"
               className="mt-16 scroll-mt-24 border-t border-line pt-12"
@@ -270,11 +274,19 @@ export default async function SpecialistPage({
 
               {reviewAccess.canReview ? (
                 <ReviewForm slug={slug} existing={reviewAccess.existing} />
-              ) : (
+              ) : reviewAccess.reason === "own_profile" ? null : (
                 <p className="mt-8 border border-line bg-paper px-5 py-4 text-sm leading-relaxed text-ink-soft">
-                  Отзыв может оставить семья, которая открыла контакты этого
-                  специалиста, — так в отзывах остаются те, кто с ним
-                  действительно общался.
+                  {reviewAccess.reason === "anonymous"
+                    ? reviewDenialText("not_unlocked", null)
+                    : reviewDenialText(
+                        reviewAccess.reason,
+                        reviewAccess.retryAfterSec
+                          ? formatRetryAfter(reviewAccess.retryAfterSec)
+                          : null
+                      )}
+                  {(reviewAccess.reason === "anonymous" ||
+                    reviewAccess.reason === "not_unlocked") &&
+                    " Каждый отзыв перед публикацией читает модератор."}
                 </p>
               )}
             </section>

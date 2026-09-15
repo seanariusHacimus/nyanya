@@ -12,6 +12,7 @@ import {
   numeric,
   primaryKey,
   unique,
+  uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
@@ -103,7 +104,15 @@ export const complaintStatusEnum = pgEnum("complaint_status", [
   "resolved",
   "dismissed",
 ]);
-export const reviewStatusEnum = pgEnum("review_status", ["visible", "hidden"]);
+/**
+ * `pending` — отзыв ждёт модератора (добавлено 2026-09-16, миграция 0012): новый и
+ * изменённый отзыв семьям не виден, пока его не опубликуют в /admin/reviews.
+ */
+export const reviewStatusEnum = pgEnum("review_status", [
+  "pending",
+  "visible",
+  "hidden",
+]);
 export const notificationTypeEnum = pgEnum("notification_type", [
   "verification_status",
   "new_review",
@@ -282,21 +291,43 @@ export const favorites = pgTable(
   (t) => [primaryKey({ columns: [t.parentId, t.specialistId] })],
 );
 
-export const reviews = pgTable("reviews", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  specialistId: uuid("specialist_id")
-    .notNull()
-    .references(() => specialistProfiles.id, { onDelete: "cascade" }),
-  authorParentId: text("author_parent_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  rating: integer("rating").notNull(),
-  text: text("text"),
-  textUz: text("text_uz"),
-  textEn: text("text_en"),
-  status: reviewStatusEnum("status").notNull().default("visible"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+/**
+ * Отзывы семей (`lib/actions/reviews.ts`, правила — `lib/review-policy.ts`).
+ *
+ * Один отзыв на пару «специалист — автор» держит база (`uniq_review_specialist_parent`):
+ * повторная отправка — это `INSERT … ON CONFLICT DO UPDATE` той же строки.
+ * `created_at` — когда отзыв появился (по нему считается суточный лимит новых
+ * отзывов), `updated_at` — последняя правка автора.
+ *
+ * Default статуса намеренно остался `visible`: значение `pending` добавлено
+ * в той же миграции, а мигратор выполняет все новые миграции одной
+ * транзакцией, где новое значение enum использовать нельзя. Код пишет статус
+ * явно при каждой вставке и правке.
+ */
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    specialistId: uuid("specialist_id")
+      .notNull()
+      .references(() => specialistProfiles.id, { onDelete: "cascade" }),
+    authorParentId: text("author_parent_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    rating: integer("rating").notNull(),
+    text: text("text"),
+    textUz: text("text_uz"),
+    textEn: text("text_en"),
+    status: reviewStatusEnum("status").notNull().default("visible"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uniq_review_specialist_parent").on(t.specialistId, t.authorParentId),
+    // суточный лимит новых отзывов автора и очередь модератора
+    index("reviews_author_created_idx").on(t.authorParentId, t.createdAt),
+  ],
+);
 
 export const complaints = pgTable("complaints", {
   id: uuid("id").primaryKey().defaultRandom(),

@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { documents, districts, reviews, specialistProfiles } from "@/db/schema";
@@ -106,11 +106,14 @@ export default async function AdminProfilePage({
       text: reviews.text,
       status: reviews.status,
       createdAt: reviews.createdAt,
+      updatedAt: reviews.updatedAt,
       author: user.name,
     })
     .from(reviews)
     .innerJoin(user, eq(user.id, reviews.authorParentId))
-    .where(eq(reviews.specialistId, id));
+    .where(eq(reviews.specialistId, id))
+    .orderBy(desc(reviews.updatedAt));
+  const pendingReviews = reviewRows.filter((r) => r.status === "pending").length;
 
   const byType = new Map(docRows.map((d) => [d.type, d]));
   const steps = stepsForCategory(row.category);
@@ -184,14 +187,28 @@ export default async function AdminProfilePage({
         <h2 className="font-display text-2xl font-medium text-ink">
           Отзывы ({reviewRows.filter((r) => r.status === "visible").length})
         </h2>
+        {pendingReviews > 0 && (
+          <p className="mt-2 text-sm text-ink-soft">
+            На проверке: {pendingReviews}. Все отзывы на проверке собраны в
+            разделе{" "}
+            <Link
+              href="/admin/reviews"
+              className="border-b border-ink/30 text-ink transition-colors duration-300 hover:border-bronze hover:text-bronze-text"
+            >
+              «Отзывы»
+            </Link>
+            .
+          </p>
+        )}
         <AdminReviews
           reviews={reviewRows.map((r) => ({
             id: r.id,
             rating: r.rating,
             text: r.text ?? "",
             author: r.author,
-            hidden: r.status === "hidden",
-            createdAt: r.createdAt.toLocaleDateString("ru-RU"),
+            status: r.status,
+            createdAt: r.createdAt.toISOString(),
+            updatedAt: r.updatedAt.toISOString(),
           }))}
         />
       </section>

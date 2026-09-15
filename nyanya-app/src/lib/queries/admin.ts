@@ -1,11 +1,13 @@
-import { asc, count, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   contactUnlocks,
   documents,
+  reviews,
   specialistProfiles,
   user,
 } from "@/db/schema";
+import type { ReviewStatus } from "@/lib/review-policy";
 import type { CategoryKey } from "@/lib/specialists-shared";
 import {
   stepTitles,
@@ -33,6 +35,8 @@ export type AdminStats = {
   conversion: number;
   /** аккаунты с отметкой для разбора (лимит открытий контактов) */
   flagged: number;
+  /** отзывы, которые ждут модератора в /admin/reviews */
+  pendingReviews: number;
 };
 
 export type AdminProfileRow = {
@@ -142,6 +146,7 @@ export async function getAdminData(): Promise<AdminData> {
     allDocumentRows,
     flaggedRows,
     flaggedTotalRows,
+    pendingReviewTotal,
   ] = await Promise.all([
     db.select({ role: user.role, n: count() }).from(user).groupBy(user.role),
     db
@@ -234,6 +239,7 @@ export async function getAdminData(): Promise<AdminData> {
       .orderBy(desc(user.flaggedAt))
       .limit(FLAGGED_LIMIT),
     db.select({ n: count() }).from(user).where(isNotNull(user.flaggedAt)),
+    getPendingReviewCount(),
   ]);
 
   const byRole = (role: string) =>
@@ -260,6 +266,7 @@ export async function getAdminData(): Promise<AdminData> {
       unlocks: unlockRows[0]?.n ?? 0,
       conversion: parents ? Math.round((unlockingParents / parents) * 100) : 0,
       flagged: flaggedTotalRows[0]?.n ?? 0,
+      pendingReviews: pendingReviewTotal,
     },
     profiles: profileRows.map((p) => {
       const summary = summarizeDocuments(docsByProfile.get(p.id) ?? [], p.category);
@@ -296,4 +303,96 @@ export async function getAdminData(): Promise<AdminData> {
     ),
     unlockDailyCap: parseUnlockLimits(process.env).dailyCap,
   };
+}
+
+/* ------------------------------ отзывы ------------------------------ */
+
+/**
+ * Строка очереди отзывов. Кроме самого отзыва — то, по чему модератор отличает
+ * семью от второго аккаунта: пятёрка без текста выглядит одинаково, а
+ * «аккаунту два часа, контакты открыты вчера, это седьмой отзыв автора» — нет.
+ */
+export type AdminReviewQueueRow = {
+  id: string;
+  rating: number;
+  text: string;
+  status: ReviewStatus;
+  /** ISO — когда отзыв появился */
+  createdAt: string;
+  /** ISO — последняя правка автора; публикация сверяет её (`seenUpdatedAt`) */
+  updatedAt: string;
+  author: string;
+  authorEmail: string;
+  authorRole: string;
+  /** полных суток с регистрации автора */
+  accountAgeDays: number;
+  /** полных суток с открытия контактов этого специалиста; null — не открывал */
+  unlockAgeDays: number | null;
+  /** всех отзывов автора, включая этот */
+  authorReviewsTotal: number;
+  specialistId: string;
+  specialistName: string;
+  specialistSlug: string | null;
+};
+
+/** Отзывы, которые ждут модератора, — бейдж «Отзывы» и счётчик очереди. */
+export async function getPendingReviewCount(): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(reviews)
+    .where(eq(reviews.status, "pending"));
+  return row?.n ?? 0;
+}
+
+/** Сколько отзывов показываем в очереди; число ждущих — getPendingReviewCount. */
+export const REVIEW_QUEUE_LIMIT = 200;
+
+/**
+ * Очередь: сначала ждущие решения — от самых давних (как документы), затем
+ * остальные — свежие первыми.
+ */
+export async function getAdminReviewQueue(): Promise<AdminReviewQueueRow[]> {
+  const rows = await db
+    .select({
+      id: reviews.id,
+      rating: reviews.rating,
+      text: reviews.text,
+      status: reviews.status,
+      createdAt: reviews.createdAt,
+      updatedAt: reviews.updatedAt,
+      author: user.name,
+      authorEmail: user.email,
+      authorRole: user.role,
+      accountAgeDays: sql<number>`floor(extract(epoch from (now() - ${user.createdAt})) / 86400)::int`,
+      unlockAgeDays: sql<number | null>`floor(extract(epoch from (now() - ${contactUnlocks.unlockedAt})) / 86400)::int`,
+      // подзапрос целиком: в нём своя таблица, и Drizzle не должен подставлять имена колонок
+      authorReviewsTotal: sql<number>`(select count(*) from reviews r2 where r2.author_parent_id = "reviews"."author_parent_id")::int`,
+      specialistId: specialistProfiles.id,
+      specialistName: specialistProfiles.fullName,
+      specialistSlug: specialistProfiles.slug,
+    })
+    .from(reviews)
+    .innerJoin(user, eq(user.id, reviews.authorParentId))
+    .innerJoin(specialistProfiles, eq(specialistProfiles.id, reviews.specialistId))
+    .leftJoin(
+      contactUnlocks,
+      and(
+        eq(contactUnlocks.parentId, reviews.authorParentId),
+        eq(contactUnlocks.specialistId, reviews.specialistId)
+      )
+    )
+    .orderBy(
+      sql`case ${reviews.status} when 'pending' then 0 when 'visible' then 1 else 2 end`,
+      sql`case when ${reviews.status} = 'pending' then ${reviews.updatedAt} end asc`,
+      desc(reviews.updatedAt)
+    )
+    .limit(REVIEW_QUEUE_LIMIT);
+
+  return rows.map((r) => ({
+    ...r,
+    text: r.text ?? "",
+    unlockAgeDays: r.unlockAgeDays === null ? null : Number(r.unlockAgeDays),
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+  }));
 }

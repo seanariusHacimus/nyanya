@@ -34,6 +34,7 @@ export default async function AdminLayout({
               flagged: data.stats.flagged,
               pendingProfiles: data.stats.pendingProfiles,
               pendingDocuments: data.stats.pendingDocuments,
+              pendingReviews: data.stats.pendingReviews,
               profiles: data.profiles.length,
               users: data.usersTotal,
             }}

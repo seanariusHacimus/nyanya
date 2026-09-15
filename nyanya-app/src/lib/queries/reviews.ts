@@ -1,66 +1,74 @@
 import { and, desc, eq, isNotNull, ne } from "drizzle-orm";
 import { db } from "@/db";
-import {
-  contactUnlocks,
-  reviews,
-  specialistProfiles,
-  user,
-} from "@/db/schema";
+import { reviews, specialistProfiles, user } from "@/db/schema";
+import { checkReviewEligibility } from "@/lib/review-eligibility";
+import type { ReviewDenial, ReviewStatus } from "@/lib/review-policy";
 
 /**
- * Может ли текущий пользователь оставить отзыв об этой анкете.
+ * Может ли текущий пользователь оставить отзыв об этой анкете — та же проверка,
+ * что в действии `createReview` (`lib/review-eligibility.ts`), без блокировок.
  *
- * Право даёт только открытие контактов: это единственный след, что семья с
- * этим специалистом действительно имела дело. Заодно возвращаем прежний
- * отзыв, если он был, — форма откроется заполненной, и человек поймёт, что
- * меняет своё мнение, а не пишет второе.
+ * Если отзыв уже есть, форма откроется заполненной, и человек поймёт, что
+ * меняет своё мнение, а не пишет второе; статус нужен, чтобы честно сказать
+ * «на проверке» или «опубликован». Скрытый модератором отзыв не правится —
+ * автор видит нейтральное «Отзыв не опубликован модератором».
  */
-export type ReviewAccess = {
-  canReview: boolean;
-  existing: { rating: number; text: string } | null;
+export type ReviewAccess =
+  | {
+      canReview: true;
+      existing: {
+        rating: number;
+        text: string;
+        status: Exclude<ReviewStatus, "hidden">;
+      } | null;
+    }
+  | {
+      canReview: false;
+      reason: ReviewDenial | "anonymous";
+      /** для отказов, которые пройдут со временем: через сколько секунд */
+      retryAfterSec: number | null;
+    };
+
+/** Гость: формы нет, текст — как для тех, кто не открывал контакты. */
+export const ANONYMOUS_REVIEW_ACCESS: ReviewAccess = {
+  canReview: false,
+  reason: "anonymous",
+  retryAfterSec: null,
 };
 
 export async function getReviewAccess(
   userId: string | null,
   slug: string
 ): Promise<ReviewAccess> {
-  if (!userId) return { canReview: false, existing: null };
+  if (!userId) return ANONYMOUS_REVIEW_ACCESS;
 
   const [profile] = await db
     .select({ id: specialistProfiles.id, userId: specialistProfiles.userId })
     .from(specialistProfiles)
     .where(eq(specialistProfiles.slug, slug))
     .limit(1);
-  if (!profile || profile.userId === userId) {
-    return { canReview: false, existing: null };
+  if (!profile) {
+    return { canReview: false, reason: "not_unlocked", retryAfterSec: null };
   }
 
-  const [unlocked] = await db
-    .select({ id: contactUnlocks.id })
-    .from(contactUnlocks)
-    .where(
-      and(
-        eq(contactUnlocks.parentId, userId),
-        eq(contactUnlocks.specialistId, profile.id)
-      )
-    )
-    .limit(1);
-  if (!unlocked) return { canReview: false, existing: null };
-
-  const [own] = await db
-    .select({ rating: reviews.rating, text: reviews.text })
-    .from(reviews)
-    .where(
-      and(
-        eq(reviews.specialistId, profile.id),
-        eq(reviews.authorParentId, userId)
-      )
-    )
-    .limit(1);
-
+  const { decision, own } = await checkReviewEligibility(db, {
+    userId,
+    profileId: profile.id,
+    profileOwnerId: profile.userId,
+  });
+  if (!decision.allowed) {
+    return {
+      canReview: false,
+      reason: decision.reason,
+      retryAfterSec: decision.retryAfterSec,
+    };
+  }
   return {
     canReview: true,
-    existing: own ? { rating: own.rating, text: own.text ?? "" } : null,
+    existing:
+      own && own.status !== "hidden"
+        ? { rating: own.rating, text: own.text, status: own.status }
+        : null,
   };
 }
 
