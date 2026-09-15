@@ -3,7 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { getSessionUncached } from "@/lib/auth";
 import { db, type DbExecutor } from "@/db";
 import type { CategoryKey } from "@/lib/specialists-shared";
 import { documents, notifications, specialistProfiles } from "@/db/schema";
@@ -40,7 +40,9 @@ type Result =
   | { ok: false; error: string };
 
 export async function adminUploadDocument(formData: FormData): Promise<Result> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  // роль admin — из базы, мимо кэша сессии в куке: снятая роль и блокировка
+  // должны закрывать админские действия сразу
+  const session = await getSessionUncached(await headers());
   if (!session) return { ok: false, error: "unauthorized" };
   if (session.user.role !== "admin") return { ok: false, error: "forbidden" };
 
@@ -196,7 +198,9 @@ export async function adminDeleteDocument(input: {
   profileId: string;
   step: string;
 }): Promise<{ ok: boolean; error?: string }> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  // роль admin — из базы, мимо кэша сессии в куке: снятая роль и блокировка
+  // должны закрывать админские действия сразу
+  const session = await getSessionUncached(await headers());
   if (!session) return { ok: false, error: "unauthorized" };
   if (session.user.role !== "admin") return { ok: false, error: "forbidden" };
 

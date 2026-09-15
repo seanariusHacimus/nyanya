@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getSessionUncached } from "@/lib/auth";
 import { getDistrictOptions } from "@/lib/queries/districts";
 import { CreateSpecialistForm } from "@/components/admin/create-specialist-form";
 
@@ -19,7 +19,9 @@ export const metadata = {
 };
 
 export default async function AdminNewProfilePage() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  // роль читается из базы, мимо кэша сессии в куке: снятая роль и
+  // блокировка должны закрывать админку сразу
+  const session = await getSessionUncached(await headers());
   if (!session) redirect("/login?next=/admin/new");
   if (session.user.role !== "admin") notFound();
 

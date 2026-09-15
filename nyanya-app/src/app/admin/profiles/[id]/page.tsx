@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
+import { getSessionUncached } from "@/lib/auth";
 import { db } from "@/db";
 import { documents, districts, reviews, specialistProfiles } from "@/db/schema";
 import { user } from "@/db/auth-schema";
@@ -42,7 +42,9 @@ export default async function AdminProfilePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  // роль читается из базы, мимо кэша сессии в куке: снятая роль и
+  // блокировка должны закрывать админку сразу
+  const session = await getSessionUncached(await headers());
   if (!session) redirect("/login?next=/admin/profiles");
   if (session.user.role !== "admin") notFound();
 

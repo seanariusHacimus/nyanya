@@ -4,7 +4,7 @@ import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { auth, getSessionUncached } from "@/lib/auth";
 import { db } from "@/db";
 import { specialistProfiles, documents, notifications, user } from "@/db/schema";
 import {
@@ -117,6 +117,9 @@ export async function saveSpecialistProfile(input: unknown) {
       .update(user)
       .set({ name: d.fullName, updatedAt: new Date() })
       .where(eq(user.id, guard.session.user.id));
+    // имя записано мимо Better Auth: перечитываем сессию из базы, иначе кэш в
+    // куке до пяти минут показывал бы в шапке кабинета прежнее имя
+    await getSessionUncached(await headers());
   }
 
   revalidatePath("/specialist");

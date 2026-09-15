@@ -5,7 +5,7 @@ import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { hashPassword } from "better-auth/crypto";
-import { auth } from "@/lib/auth";
+import { auth, getSessionUncached } from "@/lib/auth";
 import { db } from "@/db";
 import { user, account } from "@/db/auth-schema";
 import { sendWelcomeEmail } from "@/lib/email";
@@ -138,6 +138,15 @@ export async function completeProfile(input: unknown) {
       });
     }
   }
+
+  /**
+   * Роль, имя и телефон записаны прямо в таблицу `user`, мимо Better Auth, —
+   * кэш сессии в куке об этом не знает. Без этого перечитывания специалист
+   * сразу после регистрации до пяти минут оставался бы в куке родителем:
+   * /specialist показал бы ему «Вы вошли как родитель», а действия анкеты
+   * отвечали бы `forbidden`.
+   */
+  await getSessionUncached(await headers());
 
   const role = isFreshAccount ? parsed.data.role : current.role;
 

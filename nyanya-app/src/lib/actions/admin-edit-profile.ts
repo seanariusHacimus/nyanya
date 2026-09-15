@@ -4,7 +4,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { getSessionUncached } from "@/lib/auth";
 import { db } from "@/db";
 import { documents, specialistProfiles } from "@/db/schema";
 import { user } from "@/db/auth-schema";
@@ -73,7 +73,9 @@ export type AdminEditResult =
 export async function adminUpdateProfile(
   input: unknown
 ): Promise<AdminEditResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  // роль admin — из базы, мимо кэша сессии в куке: снятая роль и блокировка
+  // должны закрывать админские действия сразу
+  const session = await getSessionUncached(await headers());
   if (!session) return { ok: false, error: "unauthorized" };
   if (session.user.role !== "admin") return { ok: false, error: "forbidden" };
 

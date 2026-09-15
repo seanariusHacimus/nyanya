@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getSessionUncached } from "@/lib/auth";
 import { getAdminData } from "@/lib/queries/admin";
 import { AdminView } from "@/components/admin-view";
 
@@ -13,7 +13,9 @@ export const metadata = {
 
 export default async function AdminSectionPage() {
   // проверка роли повторяется на странице: layout защитой не является
-  const session = await auth.api.getSession({ headers: await headers() });
+  // роль читается из базы, мимо кэша сессии в куке: снятая роль и
+  // блокировка должны закрывать админку сразу
+  const session = await getSessionUncached(await headers());
   if (!session) redirect("/login?next=/admin/profiles");
   if (session.user.role !== "admin") notFound();
 

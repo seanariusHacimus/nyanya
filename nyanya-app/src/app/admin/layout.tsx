@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { auth } from "@/lib/auth";
+import { getSessionUncached } from "@/lib/auth";
 import { getAdminData } from "@/lib/queries/admin";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 
@@ -18,7 +18,9 @@ export default async function AdminLayout({
 }: {
   children: ReactNode;
 }) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  // роль читается из базы, мимо кэша сессии в куке: снятая роль и
+  // блокировка должны закрывать админку сразу
+  const session = await getSessionUncached(await headers());
   if (!session) redirect("/login?next=/admin");
   if (session.user.role !== "admin") notFound();
 

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { and, eq, ne } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { auth, type Session } from "@/lib/auth";
+import { auth, getSessionUncached, type Session } from "@/lib/auth";
 import { db, type DbExecutor } from "@/db";
 import {
   documents,
@@ -55,7 +55,9 @@ type AdminGuard =
  * а не в компоненте: server action вызывается по сети и защищать надо её.
  */
 async function requireAdmin(): Promise<AdminGuard> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  // роль admin — из базы, мимо кэша сессии в куке: снятая роль и блокировка
+  // должны закрывать админские действия сразу
+  const session = await getSessionUncached(await headers());
   if (!session) return { ok: false, error: "unauthorized" };
   if (session.user.role !== "admin") return { ok: false, error: "forbidden" };
   return { ok: true, session };

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { and, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { auth, getSessionUncached } from "@/lib/auth";
 import { db } from "@/db";
 import { notifications, reviews, specialistProfiles, user } from "@/db/schema";
 import { recalcRating } from "@/lib/rating";
@@ -179,7 +179,9 @@ const moderateSchema = z.object({
 export async function moderateReview(
   input: unknown
 ): Promise<{ ok: boolean; error?: string }> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  // роль admin — из базы, мимо кэша сессии в куке: снятая роль и блокировка
+  // должны закрывать админские действия сразу
+  const session = await getSessionUncached(await headers());
   if (!session) return { ok: false, error: "unauthorized" };
   if (session.user.role !== "admin") return { ok: false, error: "forbidden" };
 

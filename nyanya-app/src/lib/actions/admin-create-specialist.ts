@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { hashPassword } from "better-auth/crypto";
-import { auth } from "@/lib/auth";
+import { getSessionUncached } from "@/lib/auth";
 import { db } from "@/db";
 import { specialistProfiles } from "@/db/schema";
 import { user, account } from "@/db/auth-schema";
@@ -54,7 +54,9 @@ export type AdminCreateResult =
 export async function adminCreateSpecialist(
   input: unknown
 ): Promise<AdminCreateResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  // роль admin — из базы, мимо кэша сессии в куке: снятая роль и блокировка
+  // должны закрывать админские действия сразу
+  const session = await getSessionUncached(await headers());
   if (!session) return { ok: false, error: "unauthorized" };
   if (session.user.role !== "admin") return { ok: false, error: "forbidden" };
 

@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
+import { auth, getSessionUncached } from "@/lib/auth";
 import { db } from "@/db";
 import { documents, specialistProfiles } from "@/db/schema";
 import { DocumentNotFoundError, openDocument } from "@/lib/storage";
@@ -48,9 +48,14 @@ export async function GET(
   const isPublicPhoto =
     doc.type === "profile_photo" && doc.status === "approved";
   if (!isPublicPhoto) {
-    const session = await auth.api.getSession({ headers: await headers() });
+    const requestHeaders = await headers();
+    const session = await auth.api.getSession({ headers: requestHeaders });
     const isOwner = session?.user.id === doc.ownerId;
-    const isAdmin = session?.user.role === "admin";
+    // Роль из кэша сессии в куке может отставать до пяти минут, а здесь лежат
+    // паспорта и медсправки: доступ по роли подтверждается запросом в базу.
+    const isAdmin =
+      session?.user.role === "admin" &&
+      (await getSessionUncached(requestHeaders))?.user.role === "admin";
     if (!isOwner && !isAdmin) return new Response("Forbidden", { status: 403 });
   }
 

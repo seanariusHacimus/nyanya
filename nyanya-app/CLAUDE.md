@@ -373,6 +373,38 @@ so does every server action.
 
 Blocking a user goes through Better Auth's admin plugin, which also revokes active sessions.
 
+**The session is cached in a cookie for 5 minutes** (`session.cookieCache` in `lib/auth.ts`,
+2026-09-16), so a server render of a private page and a server action no longer cost two queries
+(session by token, then user). The price is a lag, and it is the whole trade-off of this setting:
+**a ban, a role change and the session revocation of a password reset reach a device whose
+`better-auth.session_data` cookie is already issued up to 5 minutes late.** Signing in is not
+affected — a new session goes through the database, so a banned account is refused at once
+(checked locally 2026-09-16 with `maxAge` lowered to 30 s: sessions were deleted from the
+database immediately, a new sign-in got 403 `BANNED_USER`, and the banned device's own cookie kept
+opening `/specialist` for exactly those 30 s, then started redirecting to `/login`). The cookie is
+not renewed silently (`refreshCache` is off and Better Auth disables it whenever a database is
+configured), so the lag can never exceed `maxAge`.
+
+- **Admin checks read the database, never the cookie**: `getSessionUncached` (`lib/auth.ts`) is
+  what `/admin/*` pages and every admin action call, so a role taken away closes the panel at once
+  (checked: the cookie still said `role: admin`, `/admin` and `/admin/users` already answered 404).
+  `/api/documents` does the same before serving a private document to an admin — passports and
+  medical certificates must not hang on a five-minute-old role.
+- **A direct write to the `user` table must rewrite the cookie**: Better Auth does not know about
+  it. `completeProfile` (role, name, phone) and `saveSpecialistProfile` (name) call
+  `getSessionUncached` right after the update — without it a freshly registered specialist stayed
+  a `parent` in the cookie for five minutes: `/specialist` answered «Вы вошли как родитель» and the
+  wizard's actions answered `forbidden`. It works only where Next allows `Set-Cookie` — server
+  actions and route handlers, never a server component. An admin editing **someone else's** name
+  (`adminUpdateProfile`) cannot rewrite that person's cookie: their cabinet header shows the old
+  name until the cache expires.
+- The cookie holds the session and the user row (name, email, phone, role) — about 1.1 KB on every
+  request, base64url + HMAC, **signed but not encrypted**, `HttpOnly`, in that person's own
+  browser. Do not put anything into `user` that its owner may not see.
+- To invalidate every cached session at once, add `version: "2"` to `cookieCache` and deploy; to
+  turn the whole thing off, `enabled: false` — `session_token` keeps working and nobody has to
+  sign in again.
+
 ## Security headers
 
 Every response carries them, set once in `next.config.ts` `headers()` (`SECURITY_HEADERS`,
