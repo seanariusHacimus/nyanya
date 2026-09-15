@@ -129,8 +129,14 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   10 min and 30 emails per hour for the whole site (`CONTACT_RATE_LIMITS`); the per-IP check runs
   first, so requests it rejects do not use up the site-wide cap; a honeypot hit or an invalid body
   is answered before either check and counts for neither. Either limit is a 429 `rate_limited` with `Retry-After`, and the form says
-  «Слишком много обращений подряд. Попробуйте позже или напишите на info@nyanya.uz.» If the
-  counter query fails the route answers 503 and sends nothing — no counter, no email.
+  «Слишком много обращений подряд. Попробуйте позже или напишите на info@nyanya.uz.» (owner's
+  wording). **Nobody has confirmed that this mailbox receives mail**: `content/home.ts` still marks
+  the address «почта-заглушка», it was taken off the footer and `/contacts` on 2026-08-04 for that
+  reason, `/privacy` still names it, and the MX record of `nyanya.uz` points at the apex, which
+  still resolves to the old host. Owner to confirm, or drop the address from the message. The
+  per-IP limit (5 per 10 min = 30 per hour) equals the site-wide cap, so one address sending
+  steadily can keep the form at 429 for everyone — the price of protecting the owner's inbox. If
+  the counter query fails the route answers 503 and sends nothing — no counter, no email.
   **The client IP comes only from `lib/client-ip.ts`**: `IP_ADDRESS_OPTIONS` (the trusted-proxy
   list) is what `lib/auth.ts` passes to Better Auth, and `clientIpFromHeaders` runs Better Auth's
   own `getIp` with it — the forwarded chain is read right to left past trusted hops. Never take the
