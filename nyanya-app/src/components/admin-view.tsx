@@ -58,18 +58,22 @@ const ROLE_LABEL: Record<string, string> = {
   admin: "Администратор",
 };
 
+/**
+ * Дата и время — по Ташкенту, пояс задан явно. Компонент рендерится и на
+ * сервере (на Railway это UTC), и в браузере администратора: без пояса
+ * запись, сделанная между 00:00 и 05:00 по Ташкенту, получала на сервере
+ * вчерашнюю дату, и React падал с ошибкой гидратации #418 (проверено
+ * локально 2026-09-16: сервер с TZ=UTC, браузер в Asia/Tashkent).
+ */
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ru-RU", {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Tashkent",
   });
 }
 
-/**
- * Дата и время по Ташкенту. Пояс задан явно: компонент рендерится и на
- * сервере (UTC), и в браузере, и без него время разошлось бы при гидратации.
- */
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("ru-RU", {
     day: "numeric",
