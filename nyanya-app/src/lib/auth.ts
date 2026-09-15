@@ -4,7 +4,8 @@ import { admin, emailOTP } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { APIError, createAuthMiddleware, getIp, isAPIError } from "better-auth/api";
 import { db } from "@/db";
-import { user, session, account, verification } from "@/db/auth-schema";
+import { user, session, account, verification, rateLimit } from "@/db/auth-schema";
+import { IP_ADDRESS_OPTIONS } from "@/lib/client-ip";
 import { sendOtpEmail, sendPasswordResetOtpEmail } from "@/lib/email";
 import {
   TOO_MANY_LOGIN_ATTEMPTS,
@@ -35,14 +36,15 @@ import {
  * и восстановления хранятся под разными ключами и не заменяют друг друга.
  *
  * Перебор паролей: кроме лимита Better Auth по IP, неудачи считаются по адресу
- * почты в базе (`lib/login-throttle.ts`, `hooks` ниже).
+ * почты в базе (`lib/login-throttle.ts`, `hooks` ниже). Счётчики обоих — в
+ * Postgres (`rateLimit` ниже).
  *
  * Роли: parent (по умолчанию) · specialist · admin (только вручную/сидом).
  */
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
-    schema: { user, session, account, verification },
+    schema: { user, session, account, verification, rateLimit },
   }),
   user: {
     additionalFields: {
@@ -165,31 +167,22 @@ export const auth = betterAuth({
     }),
   },
   advanced: {
-    ipAddress: {
-      /**
-       * Без этого ограничение частоты запросов не работает как задумано.
-       *
-       * Better Auth читает X-Forwarded-For, но без списка доверенных прокси
-       * принимает заголовок только с одним адресом. Railway терминирует
-       * TLS на своём edge и дописывает собственный хоп, адресов становится
-       * больше одного — IP не определялся, и все клиенты попадали в одну
-       * общую корзину лимитов на путь. При входе по паролю это особенно
-       * неприятно: перебор паролей больше не ограничивался по источнику.
-       *
-       * Разбор идёт справа налево, внутренние адреса пропускаются, первым
-       * недоверенным оказывается реальный клиент. Подделать заголовок не
-       * получится: значение, дописанное edge последним, перекрывает то,
-       * что прислал клиент.
-       */
-      trustedProxies: [
-        "10.0.0.0/8",
-        "172.16.0.0/12",
-        "192.168.0.0/16",
-        "127.0.0.0/8",
-        "::1/128",
-        "fd00::/8",
-      ],
-    },
+    // список доверенных прокси и почему он нужен — в lib/client-ip.ts; оттуда же
+    // IP берёт форма обратной связи, чтобы все лимиты видели один адрес
+    ipAddress: IP_ADDRESS_OPTIONS,
+  },
+  /**
+   * Счётчики ограничения частоты — в Postgres (таблица `rate_limit`), а не в
+   * памяти процесса: деплой их не обнуляет, второй экземпляр приложения не
+   * умножает предел. Правила и окна — встроенные, без изменений, всё с одного
+   * IP на путь: вход по паролю (и смена пароля или почты) 3 запроса за 10 с;
+   * отправка и проверка кода, вход по коду и сброс пароля — 3 за 60 с (правила
+   * плагина emailOTP); остальные пути, включая get-session, — 100 за 10 с.
+   * `enabled` не задан — Better Auth включает лимиты только при
+   * NODE_ENV=production.
+   */
+  rateLimit: {
+    storage: "database",
   },
   plugins: [
     emailOTP({

@@ -11,7 +11,7 @@ export const metadata = {
  * Почта, Telegram, Instagram и часы работы убраны по решению владельца:
  * публичных контактов у площадки пока нет, а показывать нерабочие адреса
  * хуже, чем не показывать никаких. Обращения принимает форма — она уходит
- * в Telegram владельцу (см. /api/contact).
+ * владельцу письмом (см. /api/contact).
  */
 export default function ContactsPage() {
   return (

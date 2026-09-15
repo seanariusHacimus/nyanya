@@ -6,29 +6,35 @@
  * написать на почту, которой на сайте уже нет. Теперь письмо отправляется
  * через Resend с подтверждённого домена, адрес получателя — CONTACT_EMAIL_TO.
  */
+import { clientIpFromHeaders } from "@/lib/client-ip";
 import { sendContactMessage } from "@/lib/email";
+import { describeThrottleError } from "@/lib/login-throttle";
+import { consumeRateLimit, type RateLimitRule } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 const LIMITS = { name: 100, contact: 120, message: 2000 };
 
-/** Простое окно частоты: не больше 5 обращений с одного IP за 10 минут. */
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 5;
-const hits = new Map<string, number[]>();
+/**
+ * Пределы частоты — счётчики в Postgres (`lib/rate-limit.ts`), деплой их не
+ * обнуляет. На любом из двух — 429 `rate_limited`, и форма говорит «Слишком
+ * много обращений подряд».
+ */
+const CONTACT_RATE_LIMITS = {
+  /** С одного IP — не больше 5 обращений за 10 минут. */
+  perIp: { max: 5, windowSeconds: 10 * 60 },
+  /**
+   * Со всего сайта — не больше 30 писем в час: лимит по IP не защищает почту
+   * владельца от рассылки с множества адресов.
+   */
+  siteWide: { max: 30, windowSeconds: 60 * 60 },
+} satisfies Record<string, RateLimitRule>;
 
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  if (hits.size > 500) {
-    // не даём карте расти бесконечно
-    for (const [key, times] of hits) {
-      if (times.every((t) => now - t >= WINDOW_MS)) hits.delete(key);
-    }
-  }
-  return recent.length > MAX_PER_WINDOW;
+function tooManyRequests(retryAfterSeconds: number) {
+  return Response.json(
+    { ok: false, error: "rate_limited" },
+    { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } },
+  );
 }
 
 export async function POST(request: Request) {
@@ -67,13 +73,23 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "invalid" }, { status: 400 });
   }
 
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
+  // тот же разбор цепочки прокси, что у Better Auth: левый край X-Forwarded-For
+  // присылает сам клиент, и по нему лимит обходился подстановкой нового адреса.
+  // Без определяемого адреса все попадают в одну корзину — её прикрывает и
+  // общий предел сайта
+  const ip = clientIpFromHeaders(request.headers) ?? "unknown";
 
-  if (rateLimited(ip)) {
-    return Response.json({ ok: false, error: "rate_limited" }, { status: 429 });
+  try {
+    // сначала адрес: запросы, отбитые по IP, не расходуют общий предел сайта
+    const perIp = await consumeRateLimit(`contact:ip:${ip}`, CONTACT_RATE_LIMITS.perIp);
+    if (!perIp.allowed) return tooManyRequests(perIp.retryAfterSeconds);
+    const siteWide = await consumeRateLimit("contact:all", CONTACT_RATE_LIMITS.siteWide);
+    if (!siteWide.allowed) return tooManyRequests(siteWide.retryAfterSeconds);
+  } catch (error) {
+    // без счётчика письмо не отправляем: иначе при сбое базы предела нет вовсе.
+    // В журнал — только причина от драйвера, без ключа с IP
+    console.error("[contact] rate limit check failed", describeThrottleError(error));
+    return Response.json({ ok: false, error: "unavailable" }, { status: 503 });
   }
 
   try {

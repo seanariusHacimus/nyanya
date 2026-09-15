@@ -352,6 +352,25 @@ export const loginAttempts = pgTable(
   ],
 );
 
+/**
+ * Окна частоты собственных маршрутов (`src/lib/rate-limit.ts`): форма обратной
+ * связи — ключ `contact:ip:<IP>` и общий `contact:all`.
+ *
+ * Отдельно от `rate_limit` Better Auth: та таблица чистится самим Better Auth от
+ * строк старше минуты и стёрла бы окна в десять минут и в час. Одна строка на
+ * ключ, окно фиксированное: открывается первым запросом и заканчивается в
+ * `expires_at`. Ключ содержит IP, поэтому истёкшие строки удаляются попутно.
+ */
+export const appRateLimits = pgTable(
+  "app_rate_limits",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("app_rate_limits_expires_at_idx").on(t.expiresAt)],
+);
+
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")

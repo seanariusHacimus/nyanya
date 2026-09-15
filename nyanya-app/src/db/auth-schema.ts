@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, bigint } from "drizzle-orm/pg-core";
 
 // Better Auth core + admin plugin + custom fields.
 // Column keys are camelCase so the Better Auth Drizzle adapter resolves them by key.
@@ -61,4 +61,21 @@ export const verification = pgTable("verification", {
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+/**
+ * Счётчики ограничения частоты Better Auth (`rateLimit.storage: "database"`).
+ *
+ * Поля — ровно те, что ждёт Better Auth (`getAuthTables`, модель `rateLimit`):
+ * `key` вида `<ip>|<путь>`, `count`, `lastRequest` — миллисекунды `Date.now()`,
+ * поэтому bigint. `id` адаптер генерирует сам при создании строки, и без него
+ * атомарный `incrementOne` не работает (обновляет строку по id). Строки старше
+ * минуты Better Auth удаляет сам — попутно, когда у какого-нибудь ключа
+ * начинается новое окно.
+ */
+export const rateLimit = pgTable("rate_limit", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
 });
