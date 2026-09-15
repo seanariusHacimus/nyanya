@@ -196,6 +196,40 @@ so does every server action.
 
 Blocking a user goes through Better Auth's admin plugin, which also revokes active sessions.
 
+## Security headers
+
+Every response carries them, set once in `next.config.ts` `headers()` (`SECURITY_HEADERS`,
+`CONTENT_SECURITY_POLICY`, added 2026-09-15); `poweredByHeader: false` drops `X-Powered-By`.
+**A route handler cannot override these keys**: Next copies a header from the handler's `Response`
+only when the key is not already on the response (`server/send-response.js`), so a per-route
+policy has to be another `headers()` entry. `/api/documents` keeps its own `Cache-Control`,
+`Content-Type` and `Content-Disposition` because the config does not set them. The one exception
+is the 307 from `redirects()` (`/ru/*`): Next sends it without `headers()` values; it has no body.
+
+**State (2026-09-15): CSP is `Content-Security-Policy-Report-Only` — it blocks nothing.** HSTS is
+`max-age=31536000` **without `includeSubDomains` and without `preload`** (owner decision: the apex
+still resolves to an old host for some resolvers, so no promise for every subdomain). Framing is
+blocked today by `X-Frame-Options: DENY`; `frame-ancestors 'none'` only starts blocking once the
+CSP is enforced. The next step is renaming the key to `Content-Security-Policy` after a week of
+clean `[csp]` log lines — update the marker comment in `next.config.ts` and this paragraph then.
+
+- `script-src` keeps `'unsafe-inline'` because Next ships hydration data as inline scripts; the
+  only way out is a per-request nonce, which turns the static pages dynamic — not done.
+  `style-src 'unsafe-inline'` is for the `style=` attributes of next/image and motion; `img-src
+  data:` is the blur placeholders. Everything else is `'self'` — fonts are self-hosted by next/font.
+- **A new external source (analytics, chat widget, image CDN) goes into the policy first**, or it
+  breaks the day the CSP is enforced.
+- `Permissions-Policy` must not deny `clipboard-write`: «Поделиться» (`share-button.tsx`) copies the link.
+- Violations go to `/api/csp-report` (public, no session, no DB): it accepts `application/csp-report`
+  (`report-uri`) and `application/reports+json` (`report-to`), reads at most 64 KB, drops
+  browser-extension noise, strips query strings and writes at most 60 `[csp] {…}` lines a minute
+  per process. Read them in the Railway service log (`grep '\[csp\]'`).
+- **Locally over http, Chrome delivers no reports at all**: checked 2026-09-15 on Chrome 152, it
+  kept `report-to` reports queued on `http://localhost:3111` and delivered them at once when the
+  same page came over HTTPS, and it ignores `report-uri` because `report-to` is present. Locally,
+  look for «violates the following Content Security Policy directive» in the DevTools console or
+  test the receiver with `curl`.
+
 ## Profile lifecycle
 
 `draft → pending_review → active | rejected | hidden`. A `slug` is generated on first publish
