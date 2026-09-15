@@ -45,6 +45,10 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "bad_request" }, { status: 400 });
   }
 
+  // тело `null` разбирается как JSON, но `null.name` уронил бы маршрут в 500
+  if (typeof payload !== "object" || payload === null) {
+    return Response.json({ ok: false, error: "bad_request" }, { status: 400 });
+  }
   const body = payload as Record<string, unknown>;
   const name = String(body.name ?? "").trim();
   const contact = String(body.contact ?? "").trim();
