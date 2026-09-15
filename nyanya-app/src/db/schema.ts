@@ -261,7 +261,11 @@ export const contactUnlocks = pgTable(
     }),
     unlockedAt: timestamp("unlocked_at").notNull().defaultNow(),
   },
-  (t) => [unique("uniq_parent_specialist_unlock").on(t.parentId, t.specialistId)],
+  (t) => [
+    unique("uniq_parent_specialist_unlock").on(t.parentId, t.specialistId),
+    // лимит открытий: сколько новых контактов аккаунт открыл за 24 часа
+    index("contact_unlocks_parent_unlocked_at_idx").on(t.parentId, t.unlockedAt),
+  ],
 );
 
 export const favorites = pgTable(

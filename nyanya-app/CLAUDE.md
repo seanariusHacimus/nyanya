@@ -13,6 +13,38 @@ removed 2026-08-08 by the owner; `src/lib/payments/` is gone and no page may men
 payment or «оплатить». The `payments` table and `contact_unlocks.payment_id` still exist in the
 schema but are unused — nothing writes to them.
 
+**Free is not unlimited** (owner decision, 2026-09-16): one free account used to pull every
+specialist's phone in minutes. `unlockContacts` allows at most **20 new contacts per rolling 24 h**
+and **one new open per 3 s** per account, overridable by `CONTACT_UNLOCK_DAILY_CAP` /
+`CONTACT_UNLOCK_MIN_INTERVAL_SEC` (parsed by `parseUnlockLimits` in `lib/unlock-limits.ts`: an
+empty, non-integer or zero cap falls back to 20; the interval accepts 0 and has no upper bound, so a
+typo like 3600 means one open an hour — a restart applies a new value). **Every role is limited
+except `admin`**; specialists may open contacts too (owner decision — not forbidden). A contact the
+account already opened never counts and is never refused — that check comes first. Check and
+insert run in one transaction under `pg_advisory_xact_lock(hashtextextended('contact-unlock:' ||
+user_id, 0))`, so simultaneous requests of one account queue instead of all seeing the same count
+(checked locally 2026-09-16: 6 simultaneous opens with the 3 s pause opened 1; with the pause at 0,
+cap 3 and one contact already open, 5 simultaneous opens added exactly 2). The limit queries use `clock_timestamp()`, because `now()` is frozen at
+the start of a transaction that may have waited for that lock. The action answers `too_fast` /
+`daily_limit` with `retryAfterSec` (for the cap: when the oldest open in the window turns 24 h),
+and `unlock-panel.tsx` words it without payment and without calling anyone suspicious: «За 24 часа
+можно открыть не больше N новых контактов. Контакты, которые вы уже открыли, остаются доступны, а
+новые можно будет открыть через X». On a phone the button sits in the sticky bottom bar while the
+panel's `role="alert"` may be off-screen, so the bar repeats the text (`aria-hidden`, dismissible).
+**The open that uses the last slot, and any refused attempt, flags the account**:
+`user.flagged_at` / `flag_reason` (migration 0011) plus a `system` notification to every admin
+pointing at the admin overview — once per flag (`UPDATE … WHERE flagged_at IS NULL`, in one
+transaction with the notifications). Flagging never throws: a failure is logged as
+`[contact-limits] flag failed` (driver cause only — Drizzle's text carries the email) and the family
+still gets the limit message. **No automatic ban and no email** (owner decision). The overview's
+«Подозрительная активность» block (`AdminData.flagged`, count in `stats.flagged`, badge on «Обзор»)
+lists flagged accounts with email, registration date, opens in the last 24 h and in total, with
+«Разобрано» (`clearUserFlag` — hitting the cap again re-flags and re-notifies) and the usual
+block/unblock. `/admin/users` only marks the name. The two columns are **not** in Better Auth's
+`additionalFields`, so they stay out of `session.user` (checked: `get-session` returns no flag key).
+Admin notifications appear only in the header's unread badge and on `/account` — `/admin` has no
+notification feed; the block itself is the real channel.
+
 The `tutor` category key is still `tutor` in the database, but is labelled **«Помощник по
 хозяйству»** in the interface.
 
@@ -31,7 +63,8 @@ Interface language is **Russian only**. There is no `next-intl` and no `[locale]
   production migrations run through drizzle-orm's migrator, not drizzle-kit.
 
 There is **no test suite** — no `npm run test`, no Vitest. Verification is typecheck + lint +
-`npm run build`.
+`npm run build`, plus two `node:test` files for pure functions:
+`node --experimental-strip-types --test src/lib/safe-next.test.mjs src/lib/unlock-limits.test.mjs`.
 
 ## Stack
 

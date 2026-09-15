@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
@@ -11,7 +11,9 @@ import {
   notifications,
   user,
 } from "@/db/schema";
-import { buildContacts } from "@/lib/specialists-shared";
+import { buildContacts, pluralRu } from "@/lib/specialists-shared";
+import { decideUnlock, parseUnlockLimits } from "@/lib/unlock-limits";
+import { describeThrottleError } from "@/lib/login-throttle";
 
 const schema = z.object({ slug: z.string().trim().min(1).max(120) });
 
@@ -20,10 +22,22 @@ const schema = z.object({ slug: z.string().trim().min(1).max(120) });
  *
  * Оплата за контакты была введена 2026-08-03 и отменена 2026-08-08: сервис
  * остаётся полностью бесплатным для зарегистрированных. Запись в
- * `contact_unlocks` сохраняется — по ней считается воронка и уходит
+ * `contact_unlocks` сохраняется — по ней считается воронка, лимит и уходит
  * уведомление специалисту; поле `payment_id` остаётся пустым.
  *
- * Идемпотентно: повторный вызов возвращает контакты без новой записи.
+ * Идемпотентно: повторный вызов по уже открытой анкете возвращает контакты
+ * без новой записи и без проверки лимитов.
+ *
+ * **Лимиты** (2026-09-16, `lib/unlock-limits.ts`): не больше `dailyCap` новых
+ * контактов за скользящие 24 часа и не чаще одного нового открытия в
+ * `minIntervalSec` секунд. Касаются всех ролей, кроме admin. Проверка и
+ * вставка идут в одной транзакции под advisory-блокировкой на аккаунт:
+ * без неё пачка одновременных запросов видела бы один и тот же счёт и
+ * проходила вся — и мимо паузы, и мимо суточного лимита.
+ *
+ * Аккаунт, исчерпавший лимит, получает отметку `user.flagged_at` и попадает в
+ * блок «Подозрительная активность» на обзоре админки; администраторам уходит
+ * уведомление. Блокировки нет — решает человек.
  */
 export async function unlockContacts(input: unknown) {
   const parsed = schema.safeParse(input);
@@ -54,14 +68,122 @@ export async function unlockContacts(input: unknown) {
   if (!specialist.ownerPhone)
     return { ok: false as const, error: "no_contacts" as const };
 
-  const inserted = await db
-    .insert(contactUnlocks)
-    .values({ parentId: session.user.id, specialistId: specialist.id })
-    .onConflictDoNothing()
-    .returning({ id: contactUnlocks.id });
+  const parentId = session.user.id;
+  const contacts = buildContacts(specialist.ownerPhone);
+  const values = { parentId, specialistId: specialist.id };
+
+  let inserted = false;
+  /** Сколько новых контактов аккаунт открыл за 24 часа, если это открытие исчерпало лимит. */
+  let reachedCapAt: number | null = null;
+
+  if (session.user.role === "admin") {
+    // администратор лимитом не ограничен
+    const added = await db
+      .insert(contactUnlocks)
+      .values(values)
+      .onConflictDoNothing()
+      .returning({ id: contactUnlocks.id });
+    inserted = added.length > 0;
+  } else {
+    const limits = parseUnlockLimits(process.env);
+    const outcome = await db.transaction(async (tx) => {
+      // запросы одного аккаунта идут по очереди; другие аккаунты не ждут
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${`contact-unlock:${parentId}`}, 0))`
+      );
+
+      // уже открытое не считается и не блокируется — проверка до лимитов
+      const existing = await tx
+        .select({ id: contactUnlocks.id })
+        .from(contactUnlocks)
+        .where(
+          and(
+            eq(contactUnlocks.parentId, parentId),
+            eq(contactUnlocks.specialistId, specialist.id)
+          )
+        )
+        .limit(1);
+      if (existing.length > 0) return { kind: "already" as const };
+
+      // время — только из базы, которая сама пишет unlocked_at. Не now(): оно
+      // заморожено на начале транзакции, а до этой строки запрос мог ждать
+      // блокировку, пока другой запрос того же аккаунта вставлял более позднюю
+      // запись, — «с последнего открытия» вышло бы меньше нуля
+      const inWindow = and(
+        eq(contactUnlocks.parentId, parentId),
+        sql`${contactUnlocks.unlockedAt} > clock_timestamp() - interval '24 hours'`
+      );
+      const [usage] = await tx
+        .select({
+          opened24h: sql<number>`count(*)::int`,
+          secondsSinceLast: sql<number | null>`extract(epoch from (clock_timestamp() - max(${contactUnlocks.unlockedAt})))::float8`,
+        })
+        .from(contactUnlocks)
+        .where(inWindow);
+      const opened24h = usage?.opened24h ?? 0;
+      const decision = decideUnlock(
+        { opened24h, secondsSinceLast: usage?.secondsSinceLast ?? null },
+        limits
+      );
+
+      if (!decision.allowed) {
+        if (decision.reason === "too_fast") {
+          return { kind: "too_fast" as const, retryAfterSec: decision.retryAfterSec };
+        }
+        // новое открытие станет доступно, когда из окна выйдет столько старых
+        // записей, чтобы в нём осталось dailyCap - 1
+        const [freed] = await tx
+          .select({
+            seconds: sql<number>`extract(epoch from (${contactUnlocks.unlockedAt} + interval '24 hours' - clock_timestamp()))::float8`,
+          })
+          .from(contactUnlocks)
+          .where(inWindow)
+          .orderBy(asc(contactUnlocks.unlockedAt))
+          .offset(opened24h - limits.dailyCap)
+          .limit(1);
+        return {
+          kind: "daily_limit" as const,
+          opened24h,
+          retryAfterSec: Math.max(1, Math.ceil(freed?.seconds ?? 1)),
+        };
+      }
+
+      const added = await tx
+        .insert(contactUnlocks)
+        .values(values)
+        .onConflictDoNothing()
+        .returning({ id: contactUnlocks.id });
+      return {
+        kind: "opened" as const,
+        inserted: added.length > 0,
+        reachedCapAt: added.length > 0 && decision.reachesCap ? opened24h + 1 : null,
+      };
+    });
+
+    if (outcome.kind === "too_fast") {
+      return {
+        ok: false as const,
+        error: "too_fast" as const,
+        retryAfterSec: outcome.retryAfterSec,
+      };
+    }
+    if (outcome.kind === "daily_limit") {
+      await flagForReview(parentId, outcome.opened24h);
+      return {
+        ok: false as const,
+        error: "daily_limit" as const,
+        cap: limits.dailyCap,
+        retryAfterSec: outcome.retryAfterSec,
+      };
+    }
+    if (outcome.kind === "opened") {
+      inserted = outcome.inserted;
+      reachedCapAt = outcome.reachedCapAt;
+    }
+  }
 
   // события только при первом открытии
-  if (inserted.length > 0) {
+  if (inserted) {
     await db
       .update(specialistProfiles)
       .set({ unlockCount: sql`${specialistProfiles.unlockCount} + 1` })
@@ -74,8 +196,55 @@ export async function unlockContacts(input: unknown) {
     });
   }
 
-  return {
-    ok: true as const,
-    contacts: buildContacts(specialist.ownerPhone),
-  };
+  // семья получает и этот контакт; администратор узнаёт об аккаунте сразу, а
+  // не только когда тот попробует открыть следующий
+  if (reachedCapAt !== null) await flagForReview(parentId, reachedCapAt);
+
+  return { ok: true as const, contacts };
+}
+
+/**
+ * Отметка для ручного разбора и уведомление администраторам.
+ *
+ * `WHERE flagged_at IS NULL`: пока отметка стоит, повторные упирания в лимит
+ * не плодят уведомлений; после «Разобрано» следующее упирание отмечает и
+ * уведомляет заново. Отметка и уведомления — в одной транзакции, чтобы сбой
+ * вставки не оставил отметку без уведомления.
+ *
+ * Никогда не бросает: сбой здесь не должен подменять семье честное сообщение
+ * о лимите (или уже открытый контакт) общей ошибкой. В журнал — только
+ * причина от драйвера: текст ошибки Drizzle несёт параметры запроса, а среди
+ * них адрес почты.
+ */
+async function flagForReview(userId: string, opened24h: number) {
+  try {
+    await db.transaction(async (tx) => {
+      const flagged = await tx
+        .update(user)
+        .set({
+          flaggedAt: sql`now()`,
+          flagReason: `Лимит открытий контактов: за 24 часа открыто ${opened24h}`,
+        })
+        .where(and(eq(user.id, userId), isNull(user.flaggedAt)))
+        .returning({ email: user.email });
+      if (flagged.length === 0) return;
+
+      const admins = await tx
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.role, "admin"));
+      if (admins.length === 0) return;
+
+      await tx.insert(notifications).values(
+        admins.map((a) => ({
+          userId: a.id,
+          type: "system" as const,
+          title: "Аккаунт исчерпал лимит открытий контактов",
+          body: `${flagged[0].email} открыл(а) ${opened24h} ${pluralRu(opened24h, "новый контакт", "новых контакта", "новых контактов")} за 24 часа. Разберите на обзоре админ-панели, в блоке «Подозрительная активность»: там кнопки «Разобрано» и «Заблокировать».`,
+        }))
+      );
+    });
+  } catch (error) {
+    console.error("[contact-limits] flag failed:", describeThrottleError(error));
+  }
 }

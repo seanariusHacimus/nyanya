@@ -20,6 +20,16 @@ export const user = pgTable("user", {
   phone: text("phone"),
   phoneVerified: boolean("phone_verified").notNull().default(false),
   locale: text("locale").notNull().default("ru"),
+  /**
+   * Отметка для ручного разбора администратором — сейчас ставится, когда
+   * аккаунт исчерпал суточный лимит открытий контактов
+   * (`lib/actions/unlock-contacts.ts`), снимается кнопкой «Разобрано» на обзоре
+   * админки. Ничего не блокирует. В `additionalFields` Better Auth НЕ
+   * объявлять: адаптер отдаёт в `session.user` только поля своей схемы, так
+   * отметка не уходит в браузер и не пишется через эндпоинты Better Auth.
+   */
+  flaggedAt: timestamp("flagged_at", { withTimezone: true }),
+  flagReason: text("flag_reason"),
 });
 
 export const session = pgTable("session", {

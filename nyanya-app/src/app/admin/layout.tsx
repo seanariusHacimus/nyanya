@@ -31,6 +31,7 @@ export default async function AdminLayout({
         <div className="mt-6 grid gap-8 lg:grid-cols-[220px_1fr] lg:gap-12">
           <AdminSidebar
             counts={{
+              flagged: data.stats.flagged,
               pendingProfiles: data.stats.pendingProfiles,
               pendingDocuments: data.stats.pendingDocuments,
               profiles: data.profiles.length,

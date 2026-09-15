@@ -1,4 +1,4 @@
-import { asc, count, eq, sql } from "drizzle-orm";
+import { asc, count, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   contactUnlocks,
@@ -12,6 +12,7 @@ import {
   summarizeDocuments,
   type DocumentStatus,
 } from "@/lib/verification";
+import { parseUnlockLimits } from "@/lib/unlock-limits";
 
 export type ProfileStatus =
   | "draft"
@@ -30,6 +31,8 @@ export type AdminStats = {
   unlocks: number;
   /** доля родителей, открывших хотя бы одни контакты, % */
   conversion: number;
+  /** аккаунты с отметкой для разбора (лимит открытий контактов) */
+  flagged: number;
 };
 
 export type AdminProfileRow = {
@@ -73,6 +76,27 @@ export type AdminUserRow = {
   banned: boolean;
   banReason: string | null;
   createdAt: string;
+  /** отметка для разбора — см. `flagged` в AdminData */
+  flaggedAt: string | null;
+};
+
+/**
+ * Аккаунт, исчерпавший суточный лимит открытий контактов
+ * (`lib/actions/unlock-contacts.ts`). Счётчики — на момент загрузки панели:
+ * по ним модератор отличает семью с большим поиском от выгрузки.
+ */
+export type AdminFlaggedRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  banned: boolean;
+  createdAt: string;
+  flaggedAt: string;
+  flagReason: string | null;
+  /** новых открытий за последние 24 часа */
+  unlocks24h: number;
+  unlocksTotal: number;
 };
 
 export type AdminData = {
@@ -81,10 +105,17 @@ export type AdminData = {
   documentQueue: AdminDocumentRow[];
   users: AdminUserRow[];
   usersTotal: number;
+  /** блок «Подозрительная активность» на обзоре, свежие отметки первыми */
+  flagged: AdminFlaggedRow[];
+  /** действующий суточный лимит открытий контактов — для подписи к блоку */
+  unlockDailyCap: number;
 };
 
 /** Сколько пользователей грузим в таблицу; фильтр по ним — на клиенте. */
 const USERS_LIMIT = 200;
+
+/** Сколько отмеченных аккаунтов показываем на обзоре; общее число — в stats.flagged. */
+const FLAGGED_LIMIT = 100;
 
 /**
  * Порядок модерации: сначала то, что ждёт решения, затем отклонённые и
@@ -109,6 +140,8 @@ export async function getAdminData(): Promise<AdminData> {
     userRows,
     userTotalRows,
     allDocumentRows,
+    flaggedRows,
+    flaggedTotalRows,
   ] = await Promise.all([
     db.select({ role: user.role, n: count() }).from(user).groupBy(user.role),
     db
@@ -165,6 +198,7 @@ export async function getAdminData(): Promise<AdminData> {
         banned: user.banned,
         banReason: user.banReason,
         createdAt: user.createdAt,
+        flaggedAt: user.flaggedAt,
       })
       .from(user)
       .orderBy(asc(user.createdAt))
@@ -177,6 +211,29 @@ export async function getAdminData(): Promise<AdminData> {
         status: documents.status,
       })
       .from(documents),
+    // отдельным запросом, а не из users: список пользователей обрезан по дате
+    // регистрации, и отмеченный аккаунт мог в него не попасть
+    db
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        banned: user.banned,
+        createdAt: user.createdAt,
+        flaggedAt: user.flaggedAt,
+        flagReason: user.flagReason,
+        // подзапросы написаны целиком: в выборке из одной таблицы Drizzle
+        // опускает имя таблицы у колонок, и "id" внутри подзапроса оказался
+        // бы contact_unlocks.id
+        unlocks24h: sql<number>`(select count(*) from contact_unlocks cu where cu.parent_id = "user"."id" and cu.unlocked_at > now() - interval '24 hours')::int`,
+        unlocksTotal: sql<number>`(select count(*) from contact_unlocks cu where cu.parent_id = "user"."id")::int`,
+      })
+      .from(user)
+      .where(isNotNull(user.flaggedAt))
+      .orderBy(desc(user.flaggedAt))
+      .limit(FLAGGED_LIMIT),
+    db.select({ n: count() }).from(user).where(isNotNull(user.flaggedAt)),
   ]);
 
   const byRole = (role: string) =>
@@ -202,6 +259,7 @@ export async function getAdminData(): Promise<AdminData> {
       pendingDocuments: pendingDocRows[0]?.n ?? 0,
       unlocks: unlockRows[0]?.n ?? 0,
       conversion: parents ? Math.round((unlockingParents / parents) * 100) : 0,
+      flagged: flaggedTotalRows[0]?.n ?? 0,
     },
     profiles: profileRows.map((p) => {
       const summary = summarizeDocuments(docsByProfile.get(p.id) ?? [], p.category);
@@ -222,7 +280,20 @@ export async function getAdminData(): Promise<AdminData> {
     users: userRows.map((u) => ({
       ...u,
       createdAt: u.createdAt.toISOString(),
+      flaggedAt: u.flaggedAt?.toISOString() ?? null,
     })),
     usersTotal: userTotalRows[0]?.n ?? 0,
+    flagged: flaggedRows.flatMap((f) =>
+      f.flaggedAt
+        ? [
+            {
+              ...f,
+              createdAt: f.createdAt.toISOString(),
+              flaggedAt: f.flaggedAt.toISOString(),
+            },
+          ]
+        : []
+    ),
+    unlockDailyCap: parseUnlockLimits(process.env).dailyCap,
   };
 }

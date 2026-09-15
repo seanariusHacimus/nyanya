@@ -19,10 +19,13 @@ import {
  *
  * Счётчики рядом с разделами показывают, где ждут решения. Это главное, что
  * модератор хочет узнать, не открывая ничего: сколько анкет и документов
- * висит.
+ * висит. У «Обзора» — аккаунты, исчерпавшие лимит открытий контактов: блок
+ * «Подозрительная активность» с кнопками живёт там.
  */
 
 export type AdminNavCounts = {
+  /** отмеченные лимитом открытий контактов — разбираются на обзоре */
+  flagged: number;
   pendingProfiles: number;
   pendingDocuments: number;
   profiles: number;
@@ -33,7 +36,7 @@ export function AdminSidebar({ counts }: { counts: AdminNavCounts }) {
   const pathname = usePathname();
 
   const items = [
-    { href: "/admin", label: "Обзор", icon: ChartPie, badge: 0 },
+    { href: "/admin", label: "Обзор", icon: ChartPie, badge: counts.flagged },
     {
       href: "/admin/profiles",
       label: "Анкеты",

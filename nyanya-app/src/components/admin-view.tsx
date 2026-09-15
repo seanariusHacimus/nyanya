@@ -19,10 +19,11 @@ import type {
   AdminProfileRow,
   ProfileStatus,
 } from "@/lib/queries/admin";
-import { categories } from "@/lib/specialists-shared";
+import { categories, pluralRu } from "@/lib/specialists-shared";
 import { VERIFICATION_LABEL } from "@/lib/verification";
 import { stepByKey } from "@/content/verification-steps";
 import {
+  clearUserFlag,
   moderateProfile,
   reviewDocument,
   setUserBlocked,
@@ -62,6 +63,20 @@ function formatDate(iso: string) {
     day: "numeric",
     month: "short",
     year: "numeric",
+  });
+}
+
+/**
+ * Дата и время по Ташкенту. Пояс задан явно: компонент рендерится и на
+ * сервере (UTC), и в браузере, и без него время разошлось бы при гидратации.
+ */
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tashkent",
   });
 }
 
@@ -203,6 +218,121 @@ export function AdminView({
           </div>
         ))}
       </dl>
+      )}
+
+      {section === "overview" && (
+        <section className="mt-10" aria-labelledby="flagged-heading">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2
+              id="flagged-heading"
+              className="font-display text-2xl font-medium text-ink"
+            >
+              Подозрительная активность
+            </h2>
+            {data.stats.flagged > data.flagged.length && (
+              <p className="text-sm text-ink-soft">
+                Показаны последние {data.flagged.length} из {data.stats.flagged}
+              </p>
+            )}
+          </div>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-soft">
+            Аккаунты, которые за 24 часа открыли {data.unlockDailyCap}{" "}
+            {pluralRu(
+              data.unlockDailyCap,
+              "новый контакт",
+              "новых контакта",
+              "новых контактов"
+            )}{" "}
+            — это суточный лимит. Сюда может попасть и семья с большим
+            поиском: смотрите на дату регистрации и число открытий. Новые
+            контакты аккаунт откроет, когда старые открытия выйдут из 24-часового
+            окна; уже открытые остаются у него в любом случае.
+          </p>
+          {data.flagged.length === 0 ? (
+            <p className="mt-5 border border-line bg-paper px-5 py-8 text-sm text-ink-soft">
+              Лимит открытий контактов никто не исчерпал.
+            </p>
+          ) : (
+            <ul className="mt-5 divide-y divide-line border border-line bg-paper">
+              {data.flagged.map((f) => {
+                const busy = busyId === f.id || pending;
+                const canBlock = f.role !== "admin" && f.id !== currentUserId;
+                return (
+                  <li
+                    key={f.id}
+                    className="flex flex-wrap items-center justify-between gap-4 px-5 py-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold break-all text-ink">
+                        {f.email}
+                      </p>
+                      <p className="mt-0.5 text-sm text-ink-soft">
+                        {ROLE_LABEL[f.role] ?? f.role}
+                        {f.name ? ` · ${f.name}` : ""} · регистрация{" "}
+                        {formatDate(f.createdAt)}
+                      </p>
+                      <p className="mt-1 text-xs text-ink-faint">
+                        За 24 часа: {f.unlocks24h} · всего открыто: {f.unlocksTotal}{" "}
+                        · отмечен {formatDateTime(f.flaggedAt)}
+                      </p>
+                      {f.banned && (
+                        <p className="mt-1 text-xs text-[#a5462f]">
+                          пользователь заблокирован
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          run(
+                            f.id,
+                            () => clearUserFlag({ userId: f.id }),
+                            `Отметка снята: ${f.email}`
+                          )
+                        }
+                        className={actionButton}
+                      >
+                        Разобрано
+                      </button>
+                      {canBlock && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            run(
+                              f.id,
+                              () =>
+                                setUserBlocked({
+                                  userId: f.id,
+                                  blocked: !f.banned,
+                                  reason: "Массовое открытие контактов",
+                                }),
+                              f.banned
+                                ? `${f.email} разблокирован`
+                                : `${f.email} заблокирован`
+                            )
+                          }
+                          className={f.banned ? actionButton : dangerButton}
+                        >
+                          {f.banned ? "Разблокировать" : "Заблокировать"}
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {data.flagged.length > 0 && (
+            <p className="mt-4 text-xs text-ink-soft">
+              «Разобрано» снимает отметку — если аккаунт снова упрётся в лимит,
+              он вернётся сюда. Блокировка закрывает вход, завершает активные
+              сессии и скрывает анкету специалиста из каталога.
+            </p>
+          )}
+        </section>
       )}
 
       {section === "overview" && (
@@ -495,6 +625,11 @@ export function AdminView({
                       }`}
                     >
                       {u.name}
+                      {u.flaggedAt && (
+                        <span className="mt-1 block text-xs font-normal text-[#a5462f] no-underline">
+                          лимит контактов · {formatDate(u.flaggedAt)}
+                        </span>
+                      )}
                       {u.banned && u.banReason && (
                         <span className="mt-1 block text-xs font-normal text-[#a5462f] no-underline">
                           {u.banReason}

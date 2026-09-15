@@ -431,3 +431,30 @@ export async function setUserBlocked(input: unknown): Promise<Result> {
   revalidatePath("/admin");
   return done();
 }
+
+/* ------------------ отметки для разбора ------------------ */
+
+const clearFlagSchema = z.object({ userId: z.string().min(1) });
+
+/**
+ * «Разобрано» в блоке «Подозрительная активность»: снимает отметку, которую
+ * ставит лимит открытий контактов. Блокировка — отдельная кнопка
+ * (`setUserBlocked`). Если аккаунт снова упрётся в лимит, отметка и
+ * уведомление появятся заново.
+ */
+export async function clearUserFlag(input: unknown): Promise<Result> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return fail(guard.error);
+  const parsed = clearFlagSchema.safeParse(input);
+  if (!parsed.success) return fail("invalid");
+
+  const rows = await db
+    .update(user)
+    .set({ flaggedAt: null, flagReason: null })
+    .where(eq(user.id, parsed.data.userId))
+    .returning({ id: user.id });
+  if (rows.length === 0) return fail("not_found");
+
+  revalidatePath("/admin");
+  return done();
+}

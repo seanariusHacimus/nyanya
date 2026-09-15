@@ -14,9 +14,10 @@ import {
 } from "@phosphor-icons/react";
 import { unlockContacts } from "@/lib/actions/unlock-contacts";
 import { toggleFavoriteAction } from "@/lib/actions/favorites";
-import type { Gender, SpecialistContacts } from "@/lib/specialists-shared";
+import { pluralRu, type Gender, type SpecialistContacts } from "@/lib/specialists-shared";
 import { SpecialistAvatar } from "@/components/specialist-avatar";
 import { easeOutQuart } from "@/lib/motion";
+import { formatRetryAfter } from "@/lib/unlock-limits";
 
 type PanelSpecialist = {
   slug: string;
@@ -38,6 +39,14 @@ type PanelProps = {
 /**
  * §5 P3 — панель контактов. Открытие бесплатное, но после входа: гостю —
  * окно с предложением зарегистрироваться, вошедшему — кнопка открытия.
+ *
+ * Действие может отказать по лимиту (`lib/unlock-limits.ts`): `too_fast` —
+ * пауза между новыми открытиями, `daily_limit` — суточный лимит. Текст
+ * говорит, когда можно попробовать снова, и что уже открытые контакты никуда
+ * не делись; об оплате и «подозрительности» — ни слова. На телефоне кнопка
+ * живёт в липкой полосе внизу, а панель с `role="alert"` может быть выше
+ * экрана, поэтому текст ошибки повторяется и в полосе (для скринридера —
+ * скрыт, его объявляет панель).
  */
 export function UnlockPanel({
   s,
@@ -81,6 +90,16 @@ export function UnlockPanel({
         setGuestModal(true);
       } else if (result.error === "no_contacts") {
         setError("У специалиста не указан телефон — контакты недоступны.");
+      } else if (result.error === "too_fast") {
+        setError(
+          `Слишком быстро. Попробуйте ещё раз ${formatRetryAfter(result.retryAfterSec)}.`
+        );
+      } else if (result.error === "daily_limit") {
+        setError(
+          `За 24 часа можно открыть не больше ${result.cap} ${pluralRu(result.cap, "нового контакта", "новых контактов", "новых контактов")}. ` +
+            "Контакты, которые вы уже открыли, остаются доступны, а новые можно " +
+            `будет открыть ${formatRetryAfter(result.retryAfterSec)}.`
+        );
       } else {
         setError("Не удалось открыть контакты. Попробуйте ещё раз.");
       }
@@ -174,25 +193,43 @@ export function UnlockPanel({
       </aside>
 
       {/* P8 — липкая мобильная панель */}
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-4 border-t border-line bg-cream/95 px-5 py-3 backdrop-blur-md lg:hidden">
-        <p className="text-sm font-semibold text-ink">{s.priceLabel}</p>
-        {unlocked ? (
-          <a
-            href={contacts.phoneHref}
-            className="label-caps inline-flex min-h-11 shrink-0 items-center bg-ink px-5 text-cream active:translate-y-px"
-          >
-            Позвонить
-          </a>
-        ) : (
-          <button
-            type="button"
-            onClick={open}
-            disabled={pending}
-            className="label-caps inline-flex min-h-11 shrink-0 items-center bg-ink px-5 text-cream active:translate-y-px disabled:opacity-70"
-          >
-            Открыть контакты
-          </button>
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-cream/95 backdrop-blur-md lg:hidden">
+        {error && !unlocked && (
+          <div className="flex items-start gap-3 border-b border-line px-5 pt-3 pb-2">
+            {/* объявляет панель выше (role="alert"), здесь — только глазам */}
+            <p aria-hidden="true" className="flex-1 text-sm leading-snug text-[#a5462f]">
+              {error}
+            </p>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              aria-label="Скрыть сообщение"
+              className="-mt-1.5 -mr-2 flex size-9 shrink-0 items-center justify-center text-ink-soft hover:text-ink"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
         )}
+        <div className="flex items-center justify-between gap-4 px-5 py-3">
+          <p className="text-sm font-semibold text-ink">{s.priceLabel}</p>
+          {unlocked ? (
+            <a
+              href={contacts.phoneHref}
+              className="label-caps inline-flex min-h-11 shrink-0 items-center bg-ink px-5 text-cream active:translate-y-px"
+            >
+              Позвонить
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={open}
+              disabled={pending}
+              className="label-caps inline-flex min-h-11 shrink-0 items-center bg-ink px-5 text-cream active:translate-y-px disabled:opacity-70"
+            >
+              Открыть контакты
+            </button>
+          )}
+        </div>
       </div>
 
       {/* модальное окно для гостя (решение владельца, 2026-07-27) */}
