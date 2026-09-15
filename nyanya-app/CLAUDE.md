@@ -355,7 +355,10 @@ badge and on `/account`.
   past moderation: do not run it on production.
 - Public copy says reviews appear after the moderator's check (`/faq`, `/how-it-works`, the home
   page's «Отзывы семей», `/become-specialist`) and names no hour count — the exact rule is shown on
-  the profile page, computed from `REVIEW_POLICY`.
+  the profile page, computed from `REVIEW_POLICY`. The profile's empty state is «Пока нет
+  опубликованных отзывов» (it used to promise the first review from a family that «уже работала»
+  with the specialist — nothing checks that, only the opened contacts), and the specialist's
+  `new_review` notification says «Оценка N из 5», not «Семья поставила», because any role may review.
 
 ## Roles and access
 

@@ -226,7 +226,8 @@ export async function moderateReview(
           userId: profile.userId,
           type: "new_review",
           title: "Отзыв о вас опубликован",
-          body: `Семья поставила оценку ${row.rating} из 5. Отзыв виден в вашей анкете.`,
+          // не «семья»: отзыв может оставить любой, кто открыл контакты
+          body: `Оценка ${row.rating} из 5. Отзыв виден в вашей анкете.`,
         });
       }
     }

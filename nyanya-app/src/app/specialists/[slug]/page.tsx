@@ -267,8 +267,7 @@ export default async function SpecialistPage({
                 </ul>
               ) : (
                 <p className="mt-6 text-base text-ink-soft">
-                  Пока нет отзывов. Первый оставит семья, которая уже работала
-                  с этим специалистом.
+                  Пока нет опубликованных отзывов.
                 </p>
               )}
 
