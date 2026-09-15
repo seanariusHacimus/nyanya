@@ -13,11 +13,24 @@ import type { DbExecutor } from "@/db";
  * Строка анкеты обновляется, только если числа изменились: `updated_at` уходит
  * в `lastModified` карты сайта, а новый отзыв на проверке анкету для семей не
  * меняет. Округление — как в миграции 0012 и `scripts/delete-accounts.mjs`.
+ *
+ * Сначала строка анкеты блокируется отдельным запросом, и только потом
+ * считается среднее. В одном `UPDATE … FROM (select avg …)` снимок для
+ * среднего берётся до ожидания блокировки: если модератор публикует или
+ * скрывает один отзыв анкеты, пока автор другого сохраняет правку, второй
+ * `UPDATE` дожидается первого и записывает среднее, не видя его решения
+ * (проверено локально 2026-09-16: 0 опубликованных отзывов, а в анкете
+ * 5.00 и 1 отзыв). В READ COMMITTED следующий запрос берёт новый снимок —
+ * уже после блокировки. `FOR NO KEY UPDATE`, а не `FOR UPDATE`: не мешает
+ * вставкам со ссылкой на анкету (открытия контактов, новые отзывы).
  */
 export async function recalcRating(
   exec: DbExecutor,
   profileId: string
 ): Promise<void> {
+  await exec.execute(
+    sql`select 1 from specialist_profiles where id = ${profileId} for no key update`
+  );
   await exec.execute(sql`
     update specialist_profiles p
     set rating_avg = a.avg_rating, review_count = a.n, updated_at = now()

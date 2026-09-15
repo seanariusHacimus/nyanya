@@ -346,7 +346,11 @@ badge and on `/account`.
 - **`rating_avg` / `review_count` count `visible` reviews only** and are recomputed by
   `recalcRating(tx, profileId)` (`lib/rating.ts`) inside the same transaction as every write and
   decision. It updates the profile row only when the numbers change, so a pending review does not
-  move the sitemap's `lastModified`. It used to be exported from the `"use server"` file — a public
+  move the sitemap's `lastModified`. **It locks the profile row (`FOR NO KEY UPDATE`) in its own
+  statement before computing the average** — a single `UPDATE … FROM (select avg …)` takes its
+  snapshot before waiting for the row lock, so a moderator's decision and another author's save on
+  the same profile at the same moment left a stale average (checked locally 2026-09-16: 0 published
+  reviews, the profile showed 5.00 from 1 review; with the lock first, 0.00 and 0). It used to be exported from the `"use server"` file — a public
   endpoint. `scripts/db-seed-upgrade.mjs` still writes `rating_avg` as a constant and inserts reviews
   past moderation: do not run it on production.
 - Public copy says reviews appear after the moderator's check (`/faq`, `/how-it-works`, the home
