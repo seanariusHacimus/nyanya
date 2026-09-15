@@ -19,7 +19,10 @@ and **one new open per 3 s** per account, overridable by `CONTACT_UNLOCK_DAILY_C
 `CONTACT_UNLOCK_MIN_INTERVAL_SEC` (parsed by `parseUnlockLimits` in `lib/unlock-limits.ts`: an
 empty, non-integer or zero cap falls back to 20; the interval accepts 0 and has no upper bound, so a
 typo like 3600 means one open an hour — a restart applies a new value). **Every role is limited
-except `admin`**; specialists may open contacts too (owner decision — not forbidden). A contact the
+except `admin`**, and that `admin` is read from the database (`getSessionUncached`), not from the
+session cookie cache — the exemption lifts the cap, the pause and the flagging, so a role taken
+away must stop working at once, not in five minutes; the extra query runs only when the cookie
+already claims `admin`. Specialists may open contacts too (owner decision — not forbidden). A contact the
 account already opened never counts and is never refused — that check comes first, before the lock. Check and
 insert run in one transaction under `pg_try_advisory_xact_lock(hashtextextended('contact-unlock:' ||
 user_id, 0))`, so simultaneous requests of one account cannot all see the same count. **The lock

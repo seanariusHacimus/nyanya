@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import { auth, getSessionUncached } from "@/lib/auth";
 import { db, type DbExecutor } from "@/db";
 import {
   specialistProfiles,
@@ -30,7 +30,8 @@ const schema = z.object({ slug: z.string().trim().min(1).max(120) });
  *
  * **Лимиты** (2026-09-16, `lib/unlock-limits.ts`): не больше `dailyCap` новых
  * контактов за скользящие 24 часа и не чаще одного нового открытия в
- * `minIntervalSec` секунд. Касаются всех ролей, кроме admin. Проверка и
+ * `minIntervalSec` секунд. Касаются всех ролей, кроме admin, и сама роль admin
+ * подтверждается запросом в базу, а не кэшем сессии в куке. Проверка и
  * вставка идут в одной транзакции под advisory-блокировкой на аккаунт:
  * без неё пачка одновременных запросов видела бы один и тот же счёт и
  * проходила вся — и мимо паузы, и мимо суточного лимита.
@@ -90,7 +91,18 @@ export async function unlockContacts(input: unknown) {
   /** Сколько новых контактов аккаунт открыл за 24 часа, если это открытие исчерпало лимит. */
   let reachedCapAt: number | null = null;
 
-  if (session.user.role === "admin") {
+  /**
+   * Роль admin снимает и суточный лимит, и паузу, и отметку для разбора,
+   * поэтому она подтверждается запросом в базу. Кэш сессии в куке отстаёт до
+   * пяти минут: снятая роль (или блокировка) ровно столько же открывала бы
+   * контакты без ограничений. Запрос делается только там, где кука уже
+   * назвалась администратором, — семьи лишнего похода в базу не платят.
+   */
+  const isAdmin =
+    session.user.role === "admin" &&
+    (await getSessionUncached(await headers()))?.user.role === "admin";
+
+  if (isAdmin) {
     // администратор лимитом не ограничен
     await db.transaction(async (tx) => {
       const added = await tx
