@@ -55,6 +55,9 @@ export function AccountView({
           type="button"
           onClick={() => {
             void authClient.signOut().then(() => {
+              // Полная перезагрузка намеренна: router.push оставил бы в кэше
+              // клиента страницы, отрендеренные для вошедшего пользователя.
+              // eslint-disable-next-line @next/next/no-location-assign-relative-destination
               window.location.href = "/";
             });
           }}

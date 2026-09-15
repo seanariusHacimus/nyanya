@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   LockKeyOpen,
@@ -44,6 +45,7 @@ export function UnlockPanel({
   initialContacts,
   initialFavorite = false,
 }: PanelProps) {
+  const router = useRouter();
   const reduce = useReducedMotion();
   const [contacts, setContacts] = useState<SpecialistContacts | null>(
     initialContacts
@@ -90,7 +92,7 @@ export function UnlockPanel({
       type="button"
       onClick={() => {
         if (!initialAuthed) {
-          window.location.href = `/login?next=${encodeURIComponent(profileHref)}`;
+          router.push(`/login?next=${encodeURIComponent(profileHref)}`);
           return;
         }
         const next = !favorite;

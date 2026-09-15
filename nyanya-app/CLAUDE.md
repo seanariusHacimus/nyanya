@@ -24,6 +24,11 @@ Interface language is **Russian only**. There is no `next-intl` and no `[locale]
 - `docker compose up -d` (from the repository root) — local Postgres on host port **5434**
 - `npm run db:generate` · `npm run db:migrate` · `npm run db:studio`
 - `npm run lint` · `npx tsc --noEmit`
+- `npm audit --omit=dev` — run on the first working day of each month. Fix with `npm audit fix`
+  (never `--force`: it proposes downgrading drizzle-kit to 0.18). Bump `next` and
+  `eslint-config-next` together, exact versions, within the major. Accepted residual: `esbuild`
+  via drizzle-kit (moderate) — it only affects esbuild's dev server on a developer machine;
+  production migrations run through drizzle-orm's migrator, not drizzle-kit.
 
 There is **no test suite** — no `npm run test`, no Vitest. Verification is typecheck + lint +
 `npm run build`.
