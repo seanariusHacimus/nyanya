@@ -228,8 +228,10 @@ the redirects Next answers from its own config — the 307 from `redirects()` (`
 that strips a trailing slash (`/catalog/`): they go out without `headers()` values and have no body.
 
 **State (2026-09-15): CSP is `Content-Security-Policy-Report-Only` — it blocks nothing.** HSTS is
-`max-age=31536000` **without `includeSubDomains` and without `preload`** (owner decision: the apex
-still resolves to an old host for some resolvers, so no promise for every subdomain). Framing is
+`max-age=86400` (one day) **without `includeSubDomains` and without `preload`**: the apex still
+resolves to an old host for some resolvers, and a year-long HSTS would turn that DNS glitch into an
+error the browser does not let people click past. Raise it to `31536000` once the owner confirms the
+apex points at Railway everywhere; `includeSubDomains`/`preload` stay out until then too. Framing is
 blocked today by `X-Frame-Options: DENY`; `frame-ancestors 'none'` only starts blocking once the
 CSP is enforced. The next step is renaming the key to `Content-Security-Policy` after a week of
 clean `[csp]` log lines — update the marker comment in `next.config.ts` and this paragraph then.

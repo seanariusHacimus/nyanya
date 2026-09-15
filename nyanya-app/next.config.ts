@@ -67,7 +67,16 @@ const CONTENT_SECURITY_POLICY = [
 ].join("; ");
 
 const SECURITY_HEADERS = [
-  { key: "Strict-Transport-Security", value: "max-age=31536000" },
+  /**
+   * HSTS пока на сутки, а не на год. Апекс nyanya.uz у части провайдеров
+   * ещё указывает на старый хостинг (CLAUDE.md, раздел Pre-launch): кто
+   * получил годовой HSTS на Railway, а потом попал на старый хост с
+   * негодным сертификатом, увидит ошибку, которую браузер не даёт обойти.
+   * Сутки защищают от перехвата первого захода так же, но ошибка DNS
+   * проходит сама на следующий день. Поднять до 31536000, когда владелец
+   * подтвердит, что апекс везде ведёт на Railway.
+   */
+  { key: "Strict-Transport-Security", value: "max-age=86400" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
