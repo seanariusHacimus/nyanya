@@ -309,7 +309,13 @@ specialist sees in their cabinet.
   thresholds only in `LOGIN_THROTTLE` (`src/lib/login-throttle.ts`): **per address + client IP** —
   5 wrong passwords within 15 min lock that pair for 15 min; **per address across all IPs** (row
   with `ip = '*'`) — 30 within 60 min lock the account everywhere for 60 min. One attacker who
-  knows the owner's address locks only their own IP; a botnet hits the account ceiling. Windows
+  knows the owner's address locks only their own IP; a botnet hits the account limit. **The limit is
+  not strict under concurrency**: the lock is checked in `hooks.before`, before the password, and the
+  failure is recorded in `hooks.after`, so requests already past the check when the limit-reaching
+  failure lands are still verified and counted — a synchronised burst from N IPs gets up to ~3·N
+  guesses beyond the threshold per lock (locally, 60 simultaneous wrong passwords from 20 IPs at 29
+  failures got 32 password checks instead of one; from one IP it is at most 2 extra). A strict limit
+  needs counting before the password check and undoing on success — not done. Windows
   are fixed, start at the first failure and, on a lock, move to the lock's end, so a failure soon
   after a lock expires locks again at once. Each tier is one atomic `INSERT … ON CONFLICT DO
   UPDATE`; all time arithmetic happens in the database (`timestamptz`, `now()`). Only a 401
@@ -332,9 +338,11 @@ specialist sees in their cabinet.
   that runs on a password sign-in attempt at most once per 10 min per process — so a row can
   outlive 24 h until the next attempt. `/privacy` does not mention this yet (owner's call).
   Unlocking one person without a deploy is `delete from login_attempts where email = '<address>'`
-  (a production write — owner approval first). Locally the limits run only under
-  `NODE_ENV=production` (`next start`); curl tests need a distinct `x-forwarded-for` per sequence
-  and at most 3 sign-ins per IP per 10 s, and Node `fetch` also needs an `Origin` header (curl does not).
+  (a production write — owner approval first). The account throttle runs in every environment,
+  `npm run dev` included (there `getIp` falls back to `127.0.0.1`, so every local request shares one
+  IP); only Better Auth's IP limit is off outside `NODE_ENV=production` (`next start`). curl tests
+  against `next start` need a distinct `x-forwarded-for` per sequence and at most 3 sign-ins per IP
+  per 10 s, and Node `fetch` also needs an `Origin` header (curl does not).
 - **Password recovery is `/reset-password`** (added 2026-09-01): address → code from the email →
   new password → automatic sign-in. It runs on the `emailOTP` plugin's own endpoints, so the code
   lives under a different key than the sign-in code and the two cannot be swapped. The request
