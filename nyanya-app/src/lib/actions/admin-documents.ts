@@ -4,15 +4,10 @@ import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getSessionUncached } from "@/lib/auth";
-import { db, type DbExecutor } from "@/db";
-import type { CategoryKey } from "@/lib/specialists-shared";
+import { db } from "@/db";
 import { documents, notifications, specialistProfiles } from "@/db/schema";
 import { stepByKey } from "@/content/verification-steps";
-import {
-  deriveVerificationLevel,
-  summarizeDocuments,
-  type DocumentStatus,
-} from "@/lib/verification";
+import { levelForProfile } from "@/lib/document-level";
 import {
   MAX_FILE_BYTES,
   isAllowedMime,
@@ -139,7 +134,7 @@ export async function adminUploadDocument(formData: FormData): Promise<Result> {
     await tx
       .update(specialistProfiles)
       .set({
-        verificationLevel: await levelFor(tx, profile.id, profile.category),
+        verificationLevel: await levelForProfile(tx, profile.id, profile.category),
         // фотография сразу становится фотографией анкеты
         ...(step.key === "profile_photo"
           ? { photoKey: `/api/documents/${key}` }
@@ -165,27 +160,6 @@ export async function adminUploadDocument(formData: FormData): Promise<Result> {
   revalidatePath("/catalog");
   if (profile.slug) revalidatePath(`/specialists/${profile.slug}`);
   return { ok: true, step: step.key, fileKey: key, fileName: file.name };
-}
-
-/**
- * Уровень по фактическому состоянию документов анкеты. Исполнитель передаётся
- * явно: внутри транзакции считать надо по её незакоммиченным строкам.
- */
-async function levelFor(
-  executor: DbExecutor,
-  profileId: string,
-  category: CategoryKey
-) {
-  const rows = await executor
-    .select({ type: documents.type, status: documents.status })
-    .from(documents)
-    .where(eq(documents.specialistId, profileId));
-  return deriveVerificationLevel(
-    summarizeDocuments(
-      rows.map((r) => ({ type: r.type, status: r.status as DocumentStatus })),
-      category
-    )
-  );
 }
 
 /**
@@ -246,7 +220,7 @@ export async function adminDeleteDocument(input: {
     await tx
       .update(specialistProfiles)
       .set({
-        verificationLevel: await levelFor(tx, input.profileId, profile.category),
+        verificationLevel: await levelForProfile(tx, input.profileId, profile.category),
         ...(step.key === "profile_photo" ? { photoKey: null } : {}),
         updatedAt: new Date(),
       })

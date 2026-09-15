@@ -16,6 +16,7 @@ import {
 import {
   stepByKey,
 } from "@/content/verification-steps";
+import { levelForProfile } from "@/lib/document-level";
 import { detectMime, matchesDeclaredMime } from "@/lib/file-type";
 import { sendProfileSubmittedEmail } from "@/lib/email";
 
@@ -287,16 +288,34 @@ export async function deleteVerificationDocument(input: unknown) {
     .limit(1);
 
   if (rows[0]) {
-    // строка и ссылка на фотографию исчезают вместе: анкета с photo_key на
-    // удалённый документ показывала бы семье битую картинку
+    /**
+     * Строка, уровень анкеты и ссылка на фотографию исчезают вместе.
+     *
+     * Уровень пересчитывается обязательно, а не только для фотографии: без
+     * этого анкета сохраняла значок, который обещает семье проверку уже
+     * удалённого документа. Специалист удалял принятую фотографию — в
+     * каталоге оставался «Стандартный профиль» (он утверждает снимок,
+     * принятый модератором), а удалив принятую справку с премиум-анкеты, он
+     * оставлял «Премиум-профиль» и место в начале каталога, который сортирует
+     * по этой колонке. Админское удаление (`admin-documents.ts`) считало
+     * уровень с самого начала — расходиться этим двум путям нельзя.
+     */
     await db.transaction(async (tx) => {
       await tx.delete(documents).where(eq(documents.id, rows[0].id));
-      if (parsed.data.step === "profile_photo") {
-        await tx
-          .update(specialistProfiles)
-          .set({ photoKey: null, updatedAt: new Date() })
-          .where(eq(specialistProfiles.id, profile.id));
-      }
+      await tx
+        .update(specialistProfiles)
+        .set({
+          verificationLevel: await levelForProfile(
+            tx,
+            profile.id,
+            profile.category
+          ),
+          // анкета с photo_key на удалённый документ показывала бы семье
+          // битую картинку
+          ...(parsed.data.step === "profile_photo" ? { photoKey: null } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(specialistProfiles.id, profile.id));
     });
     // файл — после коммита: при откате строка снова ссылается на него
     await removeDocument(rows[0].fileKey);
