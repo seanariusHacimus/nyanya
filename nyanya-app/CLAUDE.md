@@ -132,7 +132,14 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   the cabinet checklist, so the specialist is sent back to the photo screen. The catalogue shows
   a face (or the avatar), district, price and the person's own words. A profile with every step
   approved, recommended included, becomes «Премиум-профиль».
-  `deriveVerificationLevel` computes the badge — it is never set by hand.
+  `deriveVerificationLevel` computes the badge — it is never set by hand, and
+  **every path that changes a document recomputes it, deletions included**: the shared
+  `levelForProfile` (`lib/document-level.ts`, deliberately not a `"use server"` file, so the
+  export is not a public endpoint) is called inside the same transaction by both document
+  deletions and the admin upload. Until 2026-09-16 the cabinet's own delete skipped it, and a
+  specialist who removed an approved photo kept «Стандартный профиль» — a badge that asserts a
+  photo the moderator accepted — while removing an approved certificate kept «Премиум-профиль»
+  and the head of the catalogue, which orders by that column.
   Documents were paused 2026-08-10 (photo only) and re-enabled 2026-08-12;
   `ACTIVE_STEP_KEYS` in that file is the single switch — shorten the list to pause again.
 - **An administrator can create a profile and upload documents for a specialist**
