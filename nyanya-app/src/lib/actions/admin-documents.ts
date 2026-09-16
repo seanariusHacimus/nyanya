@@ -3,6 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { revalidateCatalog } from "@/lib/catalog-cache";
 import { getSessionUncached } from "@/lib/auth";
 import { db } from "@/db";
 import { documents, notifications, specialistProfiles } from "@/db/schema";
@@ -157,8 +158,7 @@ export async function adminUploadDocument(formData: FormData): Promise<Result> {
 
   revalidatePath("/admin");
   revalidatePath("/specialist");
-  revalidatePath("/catalog");
-  if (profile.slug) revalidatePath(`/specialists/${profile.slug}`);
+  revalidateCatalog(profile.slug);
   return { ok: true, step: step.key, fileKey: key, fileName: file.name };
 }
 
@@ -231,7 +231,6 @@ export async function adminDeleteDocument(input: {
 
   revalidatePath("/admin");
   revalidatePath("/specialist");
-  revalidatePath("/catalog");
-  if (profile.slug) revalidatePath(`/specialists/${profile.slug}`);
+  revalidateCatalog(profile.slug);
   return { ok: true };
 }

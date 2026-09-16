@@ -14,7 +14,7 @@ import {
   GraduationCap,
   EnvelopeSimple,
 } from "@phosphor-icons/react/dist/ssr";
-import { getActiveSpecialists } from "@/lib/queries/specialists";
+import { getFeaturedSpecialist } from "@/lib/queries/specialists";
 import { SpecialistCard } from "@/components/specialist-card";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Accordion } from "@/components/ui/accordion";
@@ -134,7 +134,7 @@ const faq = [
 export default async function BecomeSpecialistPage() {
   // показываем настоящую опубликованную анкету, а не заранее выбранную:
   // пока каталог пуст, блок «Так выглядит ваша анкета» просто не выводится
-  const [example] = await getActiveSpecialists();
+  const example = await getFeaturedSpecialist();
 
   return (
     <main className="flex-1">

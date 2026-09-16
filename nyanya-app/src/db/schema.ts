@@ -207,6 +207,31 @@ export const specialistProfiles = pgTable(
     index("specialist_category_idx").on(t.category),
     index("specialist_status_idx").on(t.status),
     index("specialist_city_idx").on(t.cityId),
+    // Каталог: предикат listedInCatalog + порядок по умолчанию (CATALOG_ORDER)
+    // целиком — список и «Найдено» идут по индексу, а не полным сканом.
+    //
+    // nullsFirst() обязателен: `order by x desc` в Postgres означает NULLS
+    // FIRST, а индекс по умолчанию строится DESC NULLS LAST. Порядок в индексе
+    // и в запросе обязаны совпасть посимвольно, иначе планировщик индекс для
+    // сортировки не возьмёт (published_at — единственная nullable колонка тут,
+    // но сравниваются все).
+    index("specialist_catalog_order_idx")
+      .on(
+        t.verificationLevel.desc().nullsFirst(),
+        t.ratingAvg.desc().nullsFirst(),
+        t.reviewCount.desc().nullsFirst(),
+        t.publishedAt.desc().nullsFirst(),
+        t.id,
+      )
+      .where(
+        sql`${t.status} = 'active' AND ${t.employed} = false AND ${t.slug} IS NOT NULL`,
+      ),
+    // Самые частые фильтры каталога — категория и район.
+    index("specialist_catalog_filter_idx")
+      .on(t.category, t.districtId)
+      .where(
+        sql`${t.status} = 'active' AND ${t.employed} = false AND ${t.slug} IS NOT NULL`,
+      ),
   ],
 );
 

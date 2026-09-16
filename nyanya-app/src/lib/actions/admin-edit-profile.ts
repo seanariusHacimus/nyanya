@@ -4,6 +4,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { revalidateCatalog } from "@/lib/catalog-cache";
 import { getSessionUncached } from "@/lib/auth";
 import { db } from "@/db";
 import { documents, specialistProfiles } from "@/db/schema";
@@ -153,8 +154,7 @@ export async function adminUpdateProfile(
 
   revalidatePath("/admin");
   revalidatePath(`/admin/profiles/${current.id}`);
-  revalidatePath("/catalog");
-  if (current.slug) revalidatePath(`/specialists/${current.slug}`);
+  revalidateCatalog(current.slug);
 
   return { ok: true, levelChanged: nextLevel !== current.verificationLevel };
 }

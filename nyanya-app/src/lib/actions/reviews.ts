@@ -4,6 +4,7 @@ import { z } from "zod";
 import { and, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { revalidateCatalog } from "@/lib/catalog-cache";
 import { auth, getSessionUncached } from "@/lib/auth";
 import { db } from "@/db";
 import { notifications, reviews, specialistProfiles, user } from "@/db/schema";
@@ -150,8 +151,7 @@ export async function createReview(input: unknown): Promise<ReviewResult> {
   }
 
   // правка опубликованного отзыва снимает его с анкеты, главной и среднего в каталоге
-  revalidatePath(`/specialists/${slug}`);
-  revalidatePath("/catalog");
+  revalidateCatalog(slug);
   revalidatePath("/");
   revalidatePath("/admin/reviews");
   return { ok: true, replaced: outcome.replaced };
@@ -246,8 +246,7 @@ export async function moderateReview(
   revalidatePath("/admin");
   revalidatePath("/admin/reviews");
   revalidatePath(`/admin/profiles/${out.specialistId}`);
-  revalidatePath("/catalog");
+  revalidateCatalog(out.slug);
   revalidatePath("/");
-  if (out.slug) revalidatePath(`/specialists/${out.slug}`);
   return { ok: true };
 }

@@ -29,3 +29,31 @@ export async function getDistrictOptions(): Promise<DistrictOption[]> {
     .where(eq(districts.cityId, TASHKENT_CITY_ID))
     .orderBy(asc(districts.nameRu));
 }
+
+/**
+ * Районы для фильтра каталога: к названию добавляется латинский токен для
+ * адреса. Русское название в URL превращается в `%D0%A7%D0%B8…`, и такой
+ * ссылкой неудобно делиться, поэтому в адресе живёт `name_en` строчными с
+ * дефисом вместо пробела: chilanzar, mirzo-ulugbek, shaykhantakhur.
+ *
+ * Список приходит из базы, а не из массива в клиентском компоненте: тот
+ * дублировал справочник и молча расходился с ним.
+ */
+export type CatalogDistrict = { id: number; name: string; token: string };
+
+export async function getCatalogDistricts(): Promise<CatalogDistrict[]> {
+  const rows = await db
+    .select({
+      id: districts.id,
+      name: districts.nameRu,
+      nameEn: districts.nameEn,
+    })
+    .from(districts)
+    .where(eq(districts.cityId, TASHKENT_CITY_ID))
+    .orderBy(asc(districts.nameRu));
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    token: r.nameEn.toLowerCase().replace(/\s+/g, "-"),
+  }));
+}

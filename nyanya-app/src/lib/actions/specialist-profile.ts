@@ -4,6 +4,7 @@ import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { revalidateCatalog } from "@/lib/catalog-cache";
 import { auth, getSessionUncached } from "@/lib/auth";
 import { db } from "@/db";
 import { specialistProfiles, documents, notifications, user } from "@/db/schema";
@@ -249,10 +250,7 @@ export async function uploadVerificationDocument(formData: FormData) {
   // всё ещё ссылается строка документа
   if (replacedKey) await removeDocument(replacedKey);
 
-  if (wasActive) {
-    revalidatePath("/catalog");
-    if (profile.slug) revalidatePath(`/specialists/${profile.slug}`);
-  }
+  if (wasActive) revalidateCatalog(profile.slug);
 
   revalidatePath("/specialist");
   // возвращаем данные, чтобы интерфейс обновился мгновенно, без перезагрузки
@@ -363,8 +361,7 @@ export async function setAvailability(input: unknown) {
     .where(eq(specialistProfiles.id, profile.id));
 
   revalidatePath("/specialist");
-  revalidatePath("/catalog");
-  if (profile.slug) revalidatePath(`/specialists/${profile.slug}`);
+  revalidateCatalog(profile.slug);
 
   return { ok: true as const, available: parsed.data.available };
 }

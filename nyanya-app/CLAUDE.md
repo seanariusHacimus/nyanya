@@ -217,6 +217,13 @@ unique index from 0012 — and `contact_unlocks(parent_id, unlocked_at)`, added 
 Migration 0014 (2026-09-16) added the admin panel's two: `user_email_lower_idx` on
 `lower(email) text_pattern_ops` and the partial `documents_pending_created_idx` on
 `(created_at) WHERE status = 'pending'` — see «Admin panel» below.
+Migration 0015 (2026-09-16) added the catalogue's two, both partial on the `listedInCatalog`
+predicate (`status = 'active' AND employed = false AND slug IS NOT NULL`):
+`specialist_catalog_order_idx` on `(verification_level DESC, rating_avg DESC, review_count DESC,
+published_at DESC, id)` and `specialist_catalog_filter_idx` on `(category, district_id)` — see
+«Catalogue» below. **The DESC columns are declared `NULLS FIRST`**, because `order by x desc` in
+Postgres means NULLS FIRST while drizzle's `.desc()` writes `NULLS LAST` into an index: with the
+default the planner would not use the index for the ordering at all.
 
 - **Never put `CREATE INDEX CONCURRENTLY` in a migration**: the migrator runs every pending file in
   one transaction, where it is illegal. A plain `CREATE INDEX` takes a SHARE lock (reads pass,
@@ -367,12 +374,69 @@ families as text (owner decision, 2026-09-12): it only drives the avatar and is 
 
 `PREMIUM_BENEFITS` (`lib/specialists-shared.ts`) is the only place the premium pitch is worded;
 the cabinet card, `/specialist/premium` and the emails render it. **Every entry must be true in
-code**: the catalogue orders by `verification_level` before rating (all three `orderBy` sites in
-`queries/specialists.ts` and the client default sort in `catalog-view.tsx`), the «Только
-премиум-профили» toggle exists, and the seal badge is premium-only. Do not add a benefit here
+code**: the catalogue orders by `verification_level` before rating (the single `CATALOG_ORDER` in
+`queries/specialists.ts` — the client does not sort any more), the «Только премиум-профили»
+toggle exists, and the seal badge is premium-only. Do not add a benefit here
 without implementing it — that is exactly how the old «documents checked before publication» lie
 came about. The card shows after submission and only while `tier !== "premium_verified"`;
 `/specialist/premium` lists the category's documents (never the photo) with upload cards.
+
+## Catalogue — the URL is the state, the page is one screen of rows
+
+Rewritten 2026-09-16 (migration 0015). Until then `/catalog` read **every** published profile with
+one unbounded query and shipped the lot to the browser, which filtered, sorted and paged it in
+`useState`; `/about` pulled the same list to print one number and `/become-specialist` to show one
+card. Measured locally: with 10 000 published profiles the catalogue page was **8 864 096 bytes**
+and 272 ms, now **121 784 bytes** and 11–14 ms — and the page no longer grows with the catalogue
+(121 757 bytes at 1 000 profiles, 121 784 at 10 000).
+
+- **Filtering, sorting and paging happen in SQL** (`getCatalogPage` in `queries/specialists.ts`),
+  and `«Найдено»` is a separate `count()` over the same `where`. `catalog-view.tsx` is a renderer:
+  it holds no list state, only the mobile panel and the two text-field drafts. **Do not put a
+  filter back into the browser** — it would silently disagree with the counter and bring back the
+  whole-catalogue download.
+- **The state lives in the address**, parsed and built in one client-safe module,
+  `src/lib/catalog-params.ts` (hand-written, no zod — the client component imports it, and zod
+  would ride along into the browser). Keys: `category`, `district`, `lang`, `price`, `exp`, the six
+  toggles as `=1`, `sort`, `page`. Rubbish becomes the default, never a 400. Only non-default keys
+  are written, so a clean `/catalog` stays clean. The controls call `router.replace` inside
+  `startTransition` with `scroll: false`: a checkbox click is not a history entry and the page does
+  not jump; the grid dims (`aria-busy`) instead of being replaced by `loading.tsx` (checked
+  locally: the skeleton never appears during a filter change).
+- **`«Показать ещё»` stays accumulative**: `page=N` renders the first N×9 cards, so a shared
+  `?page=3` reproduces the same 27 cards after a reload. The cap is 50 pages (450 cards); past it
+  the button is replaced by «Показаны первые 450 анкет — уточните фильтры». `CATALOG_ORDER` ends
+  with `asc(id)` for exactly this reason: without a deterministic tail Postgres may order ties
+  differently between `page=1` and `page=2`, and a card would vanish or double.
+- **Districts come from the database** (`getCatalogDistricts`), and the address carries a latin
+  token built from `districts.name_en` (chilanzar, mirzo-ulugbek, shaykhantakhur…) — a Cyrillic
+  name in a URL turns into `%D0%A7%D0%B8…` and is unpleasant to share. An unknown token means «all
+  districts», silently. The hardcoded list that used to live in `catalog-view.tsx` is gone.
+- **Filter semantics are unchanged from the browser version**, including that «Цена до» compares
+  the raw amount regardless of the unit (сум/час against сум/месяц) — the hint under the field says
+  so, and splitting the filter by unit is a product decision nobody has taken.
+- **The two marketing pages ask for what they show**: `/about` calls `countActiveSpecialists()`,
+  `/become-specialist` calls `getFeaturedSpecialist()` (one row, first by `CATALOG_ORDER`).
+  `getActiveSpecialists()` is deleted — an unbounded read must not sit in the module «just in case».
+- **The catalogue read is cached for 60 s with the tag `catalog`** (`unstable_cache`, keyed by the
+  filter object) and every server action that touches profile state resets it through
+  `revalidateCatalog()` (`lib/catalog-cache.ts`) — checked locally: hiding a profile in `/admin`
+  and publishing it back changed `/catalog` on the very next request, and publishing a review moved
+  the card's rating at once. **`updateTag` may only be called from a server action**; from a route
+  handler it throws, and such a caller would need `revalidateTag(CATALOG_TAG, { expire: 0 })`.
+  The price of the cache: a change made **outside** the actions (`scripts/*.mjs`, hand-written SQL)
+  shows up in the catalogue up to 60 s later. `use cache` is not an option here — in Next 16.3.5 it
+  and `cacheTag` require `cacheComponents: true`, which changes the rendering model of the whole
+  application.
+- **Favourites and the session stay outside the cache** (the page reads them per request), so a
+  cached page never leaks one family's hearts to another.
+- **The tab title does not depend on the filters.** `generateMetadata` sets a fixed «Каталог
+  специалистов» plus `canonical = <SITE_URL>/catalog`, so thousands of filter combinations are not
+  indexed as separate pages. A category-dependent title was tried and dropped: in Next 16.3.5 a
+  navigation inside the same route (only the query string changes) does not update
+  `document.title` — checked locally 2026-09-16, it kept the previous category and once showed a
+  third one from a prefetched route. The category name is in the `H1`, which is computed on the
+  server and is always right.
 
 ## Specialist availability
 

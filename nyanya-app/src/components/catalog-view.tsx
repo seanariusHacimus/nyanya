@@ -1,227 +1,227 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Funnel, X, MagnifyingGlass } from "@phosphor-icons/react";
 import {
   categories,
-  type CategoryKey,
   type UiSpecialist,
   yearsLabel,
 } from "@/lib/specialists-shared";
+import {
+  CATALOG_LANGS,
+  CATALOG_MAX_CARDS,
+  CATALOG_MAX_PAGE,
+  CATALOG_SORTS,
+  CATALOG_TOGGLES,
+  catalogHasFilters,
+  catalogQueryString,
+  type CatalogLang,
+  type CatalogQuery,
+  type CatalogSort,
+  type CatalogToggle,
+} from "@/lib/catalog-params";
+import type { CatalogDistrict } from "@/lib/queries/districts";
 import { SpecialistCard } from "@/components/specialist-card";
 import { ButtonLink } from "@/components/ui/button-link";
 
 /**
- * Районы Ташкента для фильтра. Здесь список, а не запрос к базе, потому что
- * компонент клиентский; порядок и состав должны совпадать с тем, что
- * предлагает форма анкеты (lib/queries/districts.ts).
+ * Каталог рисует то, что отобрала база, и больше ничего не решает: фильтры,
+ * сортировка и страница живут в адресе, а элементы управления только меняют
+ * адрес. Раньше сюда приезжали все опубликованные анкеты целиком, и браузер
+ * фильтровал их сам — при 10 000 анкет это 8,9 МБ разметки на первый экран.
+ *
+ * Не заводите здесь фильтр «в браузере» снова: он молча разойдётся с тем, что
+ * считает «Найдено», и вернёт страницу к выгрузке всего каталога.
  */
-const districts = [
-  "Алмазарский",
-  "Бектемирский",
-  "Мирабадский",
-  "Мирзо-Улугбекский",
-  "Сергелийский",
-  "Учтепинский",
-  "Чиланзарский",
-  "Шайхантахурский",
-  "Юнусабадский",
-  "Яккасарайский",
-  "Янгихаётский",
-  "Яшнабадский",
-] as const;
-
-const PAGE_SIZE = 9; // D9: «Показать ещё»
-
-const languages = ["Любой", "Русский", "Узбекский", "Английский"] as const;
 
 /**
- * Прежняя сортировка «по доверию» опиралась на индекс, который никогда не
- * вычислялся: у всех стоял ноль, и порядок выходил случайным. Теперь по
- * умолчанию наверх поднимаются те, у кого выше оценка семей, а при равной
- * оценке — те, у кого отзывов больше.
+ * Пауза после последнего нажатия клавиши в «Цена до» и «Опыт от». Без неё
+ * каждая цифра была бы отдельным запросом к серверу.
  */
-const sorts = {
-  rating: "Премиум и оценки",
-  priceAsc: "Сначала дешевле",
-  priceDesc: "Сначала дороже",
-  experience: "По опыту",
-} as const;
-
-type SortKey = keyof typeof sorts;
-
-type Toggles = {
-  premium: boolean;
-  english: boolean;
-  car: boolean;
-  liveIn: boolean;
-  night: boolean;
-  newborn: boolean;
-};
-
-const toggleDefs: { key: keyof Toggles; label: string }[] = [
-  { key: "premium", label: "Только премиум-профили" },
-  { key: "english", label: "Знание английского" },
-  { key: "car", label: "Наличие автомобиля" },
-  { key: "liveIn", label: "С проживанием" },
-  { key: "night", label: "Ночная няня" },
-  { key: "newborn", label: "Для новорождённых" },
-];
+const TEXT_FIELD_DELAY_MS = 400;
 
 const selectClass =
   "min-h-12 w-full appearance-none border border-line bg-paper px-4 text-base text-ink focus:border-ink";
 const inputClass =
   "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
 
+/**
+ * Текстовое поле фильтра: черновик в браузере, адрес — через 400 мс после
+ * остановки ввода.
+ *
+ * `sent` хранит значение, которое поле само отправило в адрес. Без него
+ * вернувшийся адрес затирал бы то, что человек успел дописать за время
+ * перехода. Значение, пришедшее снаружи (чип, «Сбросить фильтры», кнопка
+ * «назад»), черновик, наоборот, обязан показать.
+ */
+function useDebouncedNumberField(
+  urlValue: number | undefined,
+  submit: (value: number | undefined) => void
+) {
+  const asText = (value: number | undefined) =>
+    value === undefined ? "" : String(value);
+  const [draft, setDraft] = useState(() => asText(urlValue));
+  const [seen, setSeen] = useState(urlValue);
+  const [sent, setSent] = useState(urlValue);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancel = () => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  };
+
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    []
+  );
+
+  // Значение в адресе изменилось. Своё собственное, только что отправленное,
+  // черновик не трогает — иначе адрес затирал бы дописанные за время перехода
+  // цифры. Чужое (чип, «Сбросить фильтры», кнопка «назад») поле обязано
+  // показать.
+  if (urlValue !== seen) {
+    setSeen(urlValue);
+    if (urlValue !== sent) {
+      setSent(urlValue);
+      setDraft(asText(urlValue));
+    }
+  }
+
+  const change = (value: string) => {
+    setDraft(value);
+    cancel();
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      const text = value.trim();
+      const next = /^\d{1,9}$/.test(text)
+        ? Number.parseInt(text, 10)
+        : undefined;
+      setSent(next);
+      submit(next);
+    }, TEXT_FIELD_DELAY_MS);
+  };
+
+  /** Поле очистили не из него самого: отменяем отложенную отправку. */
+  const clear = () => {
+    cancel();
+    setSent(undefined);
+    setDraft("");
+  };
+
+  return { draft, change, clear };
+}
+
 export function CatalogView({
-  specialists,
+  query,
+  items,
+  total,
+  catalogEmpty,
+  districts,
   favoriteSlugs = [],
   authed = false,
 }: {
-  specialists: UiSpecialist[];
+  query: CatalogQuery;
+  items: UiSpecialist[];
+  total: number;
+  catalogEmpty: boolean;
+  districts: CatalogDistrict[];
   favoriteSlugs?: string[];
   authed?: boolean;
 }) {
   const favorites = new Set(favoriteSlugs);
-  const params = useSearchParams();
-  const paramCategory = params.get("category");
-  const initialCategory: CategoryKey | "all" =
-    paramCategory && paramCategory in categories
-      ? (paramCategory as CategoryKey)
-      : "all";
-
-  const [category, setCategory] = useState<CategoryKey | "all">(initialCategory);
-  const [district, setDistrict] = useState<string>("all");
-  const [language, setLanguage] = useState<string>("Любой");
-  const [maxPrice, setMaxPrice] = useState<string>("");
-  const [minExp, setMinExp] = useState<string>("");
-  const [toggles, setToggles] = useState<Toggles>({
-    premium: false,
-    english: false,
-    car: false,
-    liveIn: false,
-    night: false,
-    newborn: false,
-  });
-  const [sort, setSort] = useState<SortKey>("rating");
-  const [shown, setShown] = useState(PAGE_SIZE);
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Категория из URL (клик по навигации, когда каталог уже открыт).
-  // Синхронизация при рендере, а не в эффекте: эффект отрисовывал сначала
-  // старую категорию и только потом новую — лишний каскадный ререндер.
-  const [urlCategory, setUrlCategory] = useState(paramCategory);
-  if (paramCategory !== urlCategory) {
-    setUrlCategory(paramCategory);
-    setCategory(initialCategory);
-    setShown(PAGE_SIZE);
-  }
-
-  const filtered = useMemo(() => {
-    let list = specialists.filter((s) => {
-      if (category !== "all" && s.category !== category) return false;
-      if (district !== "all" && s.district !== district) return false;
-      if (language !== "Любой" && !s.languages.includes(language)) return false;
-      const price = Number(maxPrice);
-      if (maxPrice && !Number.isNaN(price) && s.priceFrom > price) return false;
-      const exp = Number(minExp);
-      if (minExp && !Number.isNaN(exp) && s.experienceYears < exp) return false;
-      if (toggles.premium && s.verification !== "premium") return false;
-      if (toggles.english && s.english === "Нет") return false;
-      if (toggles.car && !s.attributes.includes("Свой автомобиль")) return false;
-      if (toggles.liveIn && !s.attributes.includes("С проживанием")) return false;
-      if (
-        toggles.night && !s.attributes.includes("Ночные смены")
-      )
-        return false;
-      if (
-        toggles.newborn && !s.attributes.includes("Опыт с новорождёнными")
-      )
-        return false;
-      return true;
+  const go = (next: CatalogQuery) => {
+    const qs = catalogQueryString(next);
+    startTransition(() => {
+      // replace, а не push: каждый щелчок по чекбоксу не должен становиться
+      // записью в истории. scroll: false — страница не прыгает вверх.
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     });
-
-    switch (sort) {
-      case "priceAsc":
-        list = [...list].sort((a, b) => a.priceFrom - b.priceFrom);
-        break;
-      case "priceDesc":
-        list = [...list].sort((a, b) => b.priceFrom - a.priceFrom);
-        break;
-      case "experience":
-        list = [...list].sort((a, b) => b.experienceYears - a.experienceYears);
-        break;
-      default:
-        // премиум идёт первым — это обещано на плашке в кабинете (PREMIUM_BENEFITS);
-        // внутри уровня — оценка семей, затем число отзывов
-        list = [...list].sort(
-          (a, b) =>
-            Number(b.verification === "premium") - Number(a.verification === "premium") ||
-            b.rating - a.rating ||
-            b.reviewCount - a.reviewCount
-        );
-    }
-    return list;
-  }, [specialists, category, district, language, maxPrice, minExp, toggles, sort]);
-
-  const reset = () => {
-    setCategory("all");
-    setDistrict("all");
-    setLanguage("Любой");
-    setMaxPrice("");
-    setMinExp("");
-    setToggles({
-      premium: false,
-      english: false,
-      car: false,
-      liveIn: false,
-      night: false,
-      newborn: false,
-    });
-    setShown(PAGE_SIZE);
   };
 
-  // D10 — динамический H1
-  const onlyCategoryActive =
-    category !== "all" &&
-    district === "all" &&
-    language === "Любой" &&
-    !maxPrice &&
-    !minExp &&
-    !Object.values(toggles).some(Boolean);
+  /** Любой фильтр возвращает к первой странице; «Показать ещё» передаёт page сам. */
+  const apply = (patch: Partial<CatalogQuery>) =>
+    go({ ...query, page: 1, ...patch });
+
+  const applyToggle = (key: CatalogToggle, value: boolean) => {
+    const next: CatalogQuery = { ...query, page: 1 };
+    next[key] = value;
+    go(next);
+  };
+
+  const price = useDebouncedNumberField(query.price, (value) =>
+    apply({ price: value })
+  );
+  const experience = useDebouncedNumberField(query.exp, (value) =>
+    apply({ exp: value })
+  );
+
+  const reset = () => {
+    price.clear();
+    experience.clear();
+    startTransition(() => router.replace(pathname, { scroll: false }));
+  };
+
+  const selectedDistrict = districts.find((d) => d.token === query.district);
+
+  // D10 — динамический H1: только категория и ничего больше
+  const onlyCategory =
+    Boolean(query.category) &&
+    !catalogHasFilters({ ...query, category: undefined });
   const h1 =
-    category !== "all" && onlyCategoryActive
-      ? categories[category].catalogH1
+    query.category && onlyCategory
+      ? categories[query.category].catalogH1
       : "Каталог специалистов";
 
-  // чипы активных фильтров (C2, new)
+  // чипы активных фильтров (C2)
   const chips: { label: string; clear: () => void }[] = [];
-  if (category !== "all")
+  if (query.category)
     chips.push({
-      label: categories[category].plural,
-      clear: () => setCategory("all"),
+      label: categories[query.category].plural,
+      clear: () => apply({ category: undefined }),
     });
-  if (district !== "all")
-    chips.push({ label: `${district} район`, clear: () => setDistrict("all") });
-  if (language !== "Любой")
-    chips.push({ label: language, clear: () => setLanguage("Любой") });
-  if (maxPrice)
+  if (selectedDistrict)
     chips.push({
-      label: `до ${Number(maxPrice).toLocaleString("ru-RU")} сум`,
-      clear: () => setMaxPrice(""),
+      label: `${selectedDistrict.name} район`,
+      clear: () => apply({ district: undefined }),
     });
-  if (minExp)
-    chips.push({ label: `опыт от ${yearsLabel(Number(minExp))}`, clear: () => setMinExp("") });
-  toggleDefs.forEach((t) => {
-    if (toggles[t.key])
+  if (query.lang)
+    chips.push({
+      label: CATALOG_LANGS[query.lang],
+      clear: () => apply({ lang: undefined }),
+    });
+  if (query.price !== undefined)
+    chips.push({
+      label: `до ${query.price.toLocaleString("ru-RU")} сум`,
+      clear: () => {
+        price.clear();
+        apply({ price: undefined });
+      },
+    });
+  if (query.exp !== undefined)
+    chips.push({
+      label: `опыт от ${yearsLabel(query.exp)}`,
+      clear: () => {
+        experience.clear();
+        apply({ exp: undefined });
+      },
+    });
+  for (const toggle of CATALOG_TOGGLES) {
+    if (query[toggle.key])
       chips.push({
-        label: t.label,
-        clear: () => setToggles((v) => ({ ...v, [t.key]: false })),
+        label: toggle.label,
+        clear: () => applyToggle(toggle.key, false),
       });
-  });
-
-  const visible = filtered.slice(0, shown);
+  }
 
   const filterPanel = (
     <div className="space-y-5">
@@ -231,11 +231,15 @@ export function CatalogView({
         </label>
         <select
           id="f-category"
-          value={category}
-          onChange={(e) => {
-            setCategory(e.target.value as CategoryKey | "all");
-            setShown(PAGE_SIZE);
-          }}
+          value={query.category ?? "all"}
+          onChange={(e) =>
+            apply({
+              category:
+                e.target.value === "all"
+                  ? undefined
+                  : (e.target.value as NonNullable<CatalogQuery["category"]>),
+            })
+          }
           className={selectClass}
         >
           <option value="all">Все</option>
@@ -253,17 +257,18 @@ export function CatalogView({
         </label>
         <select
           id="f-district"
-          value={district}
-          onChange={(e) => {
-            setDistrict(e.target.value);
-            setShown(PAGE_SIZE);
-          }}
+          value={selectedDistrict?.token ?? "all"}
+          onChange={(e) =>
+            apply({
+              district: e.target.value === "all" ? undefined : e.target.value,
+            })
+          }
           className={selectClass}
         >
           <option value="all">Все</option>
           {districts.map((d) => (
-            <option key={d} value={d}>
-              {d}
+            <option key={d.token} value={d.token}>
+              {d.name}
             </option>
           ))}
         </select>
@@ -275,16 +280,21 @@ export function CatalogView({
         </label>
         <select
           id="f-language"
-          value={language}
-          onChange={(e) => {
-            setLanguage(e.target.value);
-            setShown(PAGE_SIZE);
-          }}
+          value={query.lang ?? "any"}
+          onChange={(e) =>
+            apply({
+              lang:
+                e.target.value === "any"
+                  ? undefined
+                  : (e.target.value as CatalogLang),
+            })
+          }
           className={selectClass}
         >
-          {languages.map((l) => (
-            <option key={l} value={l}>
-              {l}
+          <option value="any">Любой</option>
+          {Object.entries(CATALOG_LANGS).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
             </option>
           ))}
         </select>
@@ -300,11 +310,8 @@ export function CatalogView({
           inputMode="numeric"
           min={0}
           step={5000}
-          value={maxPrice}
-          onChange={(e) => {
-            setMaxPrice(e.target.value);
-            setShown(PAGE_SIZE);
-          }}
+          value={price.draft}
+          onChange={(e) => price.change(e.target.value)}
           placeholder="50 000"
           className={inputClass}
         />
@@ -320,11 +327,8 @@ export function CatalogView({
           type="number"
           inputMode="numeric"
           min={0}
-          value={minExp}
-          onChange={(e) => {
-            setMinExp(e.target.value);
-            setShown(PAGE_SIZE);
-          }}
+          value={experience.draft}
+          onChange={(e) => experience.change(e.target.value)}
           placeholder="5"
           className={inputClass}
         />
@@ -332,18 +336,15 @@ export function CatalogView({
 
       <fieldset className="space-y-3 border-t border-line pt-5">
         <legend className="sr-only">Дополнительные условия</legend>
-        {toggleDefs.map((t) => (
+        {CATALOG_TOGGLES.map((t) => (
           <label
             key={t.key}
             className="flex min-h-6 cursor-pointer items-center gap-3 text-sm text-ink-soft"
           >
             <input
               type="checkbox"
-              checked={toggles[t.key]}
-              onChange={(e) => {
-                setToggles((v) => ({ ...v, [t.key]: e.target.checked }));
-                setShown(PAGE_SIZE);
-              }}
+              checked={query[t.key]}
+              onChange={(e) => applyToggle(t.key, e.target.checked)}
               className="size-4 accent-[#96733a]"
             />
             {t.label}
@@ -368,7 +369,7 @@ export function CatalogView({
         <h1 className="font-display text-4xl leading-[1.08] font-medium tracking-[-0.01em] text-ink sm:text-5xl lg:text-6xl">
           {h1}
         </h1>
-        <p className="mt-4 text-base text-ink-soft">Найдено: {filtered.length}</p>
+        <p className="mt-4 text-base text-ink-soft">Найдено: {total}</p>
       </div>
 
       <div className="grid gap-10 pb-20 lg:grid-cols-[280px_1fr] lg:gap-14 lg:pb-28">
@@ -414,11 +415,17 @@ export function CatalogView({
               </label>
               <select
                 id="f-sort"
-                value={sort}
-                onChange={(e) => setSort(e.target.value as SortKey)}
+                value={query.sort}
+                onChange={(e) =>
+                  // сортировка не сбрасывает накопленные страницы — как было
+                  apply({
+                    sort: e.target.value as CatalogSort,
+                    page: query.page,
+                  })
+                }
                 className="min-h-11 appearance-none border border-line bg-paper px-4 pr-8 text-sm text-ink focus:border-ink"
               >
-                {Object.entries(sorts).map(([key, label]) => (
+                {Object.entries(CATALOG_SORTS).map(([key, label]) => (
                   <option key={key} value={key}>
                     {label}
                   </option>
@@ -427,10 +434,15 @@ export function CatalogView({
             </div>
           </div>
 
-          {visible.length > 0 ? (
+          {items.length > 0 ? (
             <>
-              <ul className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                {visible.map((s) => (
+              <ul
+                aria-busy={isPending}
+                className={`mt-8 grid gap-6 transition-opacity duration-200 sm:grid-cols-2 xl:grid-cols-3 ${
+                  isPending ? "opacity-60" : ""
+                }`}
+              >
+                {items.map((s) => (
                   <li key={s.slug}>
                     <SpecialistCard
                       specialist={s}
@@ -440,17 +452,25 @@ export function CatalogView({
                   </li>
                 ))}
               </ul>
-              {filtered.length > shown && (
-                <div className="mt-12 text-center">
-                  <button
-                    type="button"
-                    onClick={() => setShown((v) => v + PAGE_SIZE)}
-                    className="label-caps min-h-12 border border-ink px-8 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream"
-                  >
-                    Показать ещё
-                  </button>
-                </div>
-              )}
+              {items.length < total &&
+                (query.page < CATALOG_MAX_PAGE ? (
+                  <div className="mt-12 text-center">
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => apply({ page: query.page + 1 })}
+                      className="label-caps min-h-12 border border-ink px-8 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream disabled:opacity-50"
+                    >
+                      Показать ещё
+                    </button>
+                  </div>
+                ) : (
+                  /* Потолок накопительного показа: честно говорим, что список
+                     обрезан, вместо кнопки, которая ничего не добавит. */
+                  <p className="mt-12 text-center text-sm text-ink-soft">
+                    Показаны первые {CATALOG_MAX_CARDS} анкет — уточните фильтры.
+                  </p>
+                ))}
             </>
           ) : (
             /* C5 — пустое состояние. Пустой каталог и пустая выборка — разные
@@ -459,11 +479,11 @@ export function CatalogView({
             <div className="mt-8 flex flex-col items-center border border-line bg-paper px-8 py-20 text-center">
               <MagnifyingGlass size={36} weight="thin" className="text-bronze" />
               <p className="mt-6 max-w-sm text-base text-ink-soft">
-                {specialists.length === 0
+                {catalogEmpty
                   ? "Каталог пока пуст: анкеты появятся здесь сразу после проверки документов."
                   : "По вашему запросу специалистов не найдено. Попробуйте изменить фильтры."}
               </p>
-              {specialists.length === 0 ? (
+              {catalogEmpty ? (
                 <ButtonLink href="/become-specialist" className="mt-8">
                   Разместить анкету
                 </ButtonLink>

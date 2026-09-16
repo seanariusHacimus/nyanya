@@ -6,7 +6,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import { trustFeatures } from "@/content/home";
 import { districts } from "@/content/specialists";
-import { getActiveSpecialists } from "@/lib/queries/specialists";
+import { countActiveSpecialists } from "@/lib/queries/specialists";
 import { PageHero } from "@/components/ui/page-hero";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Reveal } from "@/components/reveal";
@@ -33,13 +33,12 @@ const icons = {
  * две цифры вместо трёх, а не ноль.
  */
 async function realNumbers() {
-  const active = await getActiveSpecialists();
+  // считаем анкеты, а не читаем их: странице нужно одно число
+  const total = await countActiveSpecialists();
   return [
     { value: "4", label: "категории специалистов" },
     { value: String(districts.length), label: "районов Ташкента" },
-    ...(active.length
-      ? [{ value: String(active.length), label: "анкет в каталоге" }]
-      : []),
+    ...(total ? [{ value: String(total), label: "анкет в каталоге" }] : []),
   ];
 }
 

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { and, eq, ne } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { revalidateCatalog } from "@/lib/catalog-cache";
 import { auth, getSessionUncached, type Session } from "@/lib/auth";
 import { db, type DbExecutor } from "@/db";
 import {
@@ -74,11 +75,10 @@ const fail = (error: string, detail?: string): Result => ({
 });
 const done = (): Result => ({ ok: true });
 
-/** Страницы, которые зависят от состояния анкет. */
-function revalidateCatalog(slug?: string | null) {
+/** Решение модератора по анкете: админка, каталог и сама анкета. */
+function revalidateModeration(slug?: string | null) {
   revalidatePath("/admin");
-  revalidatePath("/catalog");
-  if (slug) revalidatePath(`/specialists/${slug}`);
+  revalidateCatalog(slug);
 }
 
 /* --------------------- модерация анкет --------------------- */
@@ -203,7 +203,7 @@ export async function moderateProfile(input: unknown): Promise<Result> {
       );
     }
 
-    revalidateCatalog(slug);
+    revalidateModeration(slug);
     return done();
   }
 
@@ -222,7 +222,7 @@ export async function moderateProfile(input: unknown): Promise<Result> {
       });
     });
 
-    revalidateCatalog(profile.slug);
+    revalidateModeration(profile.slug);
     return done();
   }
 
@@ -247,7 +247,7 @@ export async function moderateProfile(input: unknown): Promise<Result> {
     });
   });
 
-  revalidateCatalog(profile.slug);
+  revalidateModeration(profile.slug);
   return done();
 }
 
