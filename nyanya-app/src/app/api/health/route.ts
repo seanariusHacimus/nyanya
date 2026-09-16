@@ -81,7 +81,13 @@ export async function GET() {
   return Response.json(body, { status: ok ? 200 : 503, headers: NO_STORE });
 }
 
-/** Часть мониторов проверяет адрес методом HEAD; без этого Next ответил бы 405. */
+/**
+ * Часть мониторов проверяет адрес методом HEAD. Без этого экспорта 405 не было бы:
+ * Next подставляет на HEAD сам обработчик GET, когда тот есть
+ * (server/route-modules/app-route/helpers/auto-implement-methods.js) — но тогда
+ * на каждую проверку собиралось бы и выбрасывалось тело JSON. Здесь мы считаем
+ * только статус.
+ */
 export async function HEAD() {
   const { ok } = await probe();
   return new Response(null, { status: ok ? 200 : 503, headers: NO_STORE });
