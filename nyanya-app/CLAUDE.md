@@ -121,7 +121,15 @@ Resend (email) · `@aws-sdk/client-s3` (documents) · `sharp` (profile photos).
   browsers and intermediaries keep an already optimized variant. It is safe only because a photo's
   address is never reused — every upload writes a new UUID key and `photo_key` is repointed at it,
   so «the same URL, new picture» is a case the code does not have. Do not add a path that
-  overwrites a key in place without changing this number back.
+  overwrites a key in place without changing this number back. **What it does cost**, honestly:
+  Next 16's own default is 14 400 s (4 h), the optimized answer's max-age is the larger of that and
+  the upstream `Cache-Control` (`/api/documents` sends `public, max-age=3600`), so a variant a
+  browser already fetched used to go stale in 4 hours and now goes stale in 31 days — checked
+  locally: `/_next/image?url=%2Fapi%2Fdocuments%2F…` answers `public, max-age=2678400,
+  must-revalidate`. If a moderator later rejects that photo and `/api/documents` starts answering
+  403, whoever holds the optimized URL keeps seeing the picture for up to a month (and the
+  optimizer's own disk cache does the same for everyone until the next deploy — the «Known gap»
+  above). A photo that must disappear now needs a deploy, not a wait.
 - **The profile photo is resized on upload, verification documents are not** (2026-09-16).
   `prepareDocumentUpload` (`src/lib/images/profile-photo.ts`) is called by **both** upload actions
   (`specialist-profile.ts`, `admin-documents.ts`) and touches the `profile_photo` step only: EXIF
@@ -131,8 +139,9 @@ Resend (email) · `@aws-sdk/client-s3` (documents) · `sharp` (profile photos).
   bytes change, the `documents` row records the **stored** file (`payload.fileName` with a `.webp`
   extension — `extensionFor` in `storage/index.ts` takes the extension from the name, so without it
   WebP bytes would land under a `.jpg` key — plus `payload.mimeType` and `payload.buffer.byteLength`),
-  never `file.name` / `file.size`. Measured locally: 3 620 341 bytes 4000×2986 → 140 460 bytes
-  1600×1195, ~250 ms.
+  never `file.name` / `file.size`. Measured locally (re-checked 2026-09-16): 3 620 341 bytes
+  4000×2986 → 140 056 bytes 1600×1194 in ~230 ms; the portrait test shot with EXIF orientation 6,
+  514 278 bytes and 2400×1792 pixels, → 140 460 bytes 1195×1600, the rotation baked in.
   **The photo step accepts JPG, PNG and WEBP only** (`PHOTO_MIME` in `storage/limits.ts`; the other
   steps keep JPG/PNG/WEBP/HEIC/PDF). HEIC is out because neither the shipped `sharp` build decodes
   it (its heif input lists `.avif` alone) nor does the Next image optimizer — such a photo used to
@@ -265,7 +274,10 @@ library, and they are text that gzips.
   zoom. Such a block simply keeps its server-rendered visible state; visible content beats an
   animation. With `prefers-reduced-motion` it does nothing at all.
 - **The hero is a server component** (`components/sections/hero.tsx`) with a CSS entrance
-  (`.enter`, 0.8 s, `backwards` so a delayed element does not flash in its final state first) and
+  (`.enter`, 0.8 s, `backwards` so a delayed element does not flash in its final state first; the
+  picture has its own `.enter-image`, 1.1 s after 0.12 s, and the seal `.enter-seal`, 0.9 s after
+  0.55 s — measured 2026-09-16, the picture's fade costs nothing in LCP: 1 308 ms with it and
+  1 308 ms with it switched off) and
   `preload` on the image — in Next 16 `preload` is what replaced the deprecated `priority`
   (`node_modules/next/dist/docs/01-app/03-api-reference/02-components/image.md`). If anything
   client-side is ever added inside it, the build fails rather than production.
