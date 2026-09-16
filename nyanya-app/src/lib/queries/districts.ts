@@ -41,6 +41,30 @@ export async function getDistrictOptions(): Promise<DistrictOption[]> {
  */
 export type CatalogDistrict = { id: number; name: string; token: string };
 
+/**
+ * Токен обязан пройти разбор в `parseCatalogQuery` (`^[a-z0-9-]{2,32}$`).
+ * Иначе фильтр района молча перестаёт работать: список предложит район, адрес
+ * запишет его токен, разбор выбросит непонятное значение — и выборка не
+ * изменится, а селект вернётся в «Все районы», будто по нему не щёлкали.
+ *
+ * `name_en` заполняют руками, и «Mirzo Ulug'bek» или «Yakkasaroy (Yakkasaray)»
+ * — совершенно обычное написание, поэтому всё, что не латинская буква и не
+ * цифра, превращается в дефис, а не полагается на то, что в колонке окажутся
+ * только буквы и пробелы. Если пригодного не осталось или такой токен уже
+ * занят соседним районом, берём номер строки: некрасиво, зато работает и ни с
+ * чем не совпадает.
+ */
+function districtToken(nameEn: string, id: number, taken: Set<string>): string {
+  const base = nameEn
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, 32)
+    .replace(/^-+|-+$/g, "");
+  const token = base.length >= 2 && !taken.has(base) ? base : `rayon-${id}`;
+  taken.add(token);
+  return token;
+}
+
 export async function getCatalogDistricts(): Promise<CatalogDistrict[]> {
   const rows = await db
     .select({
@@ -51,9 +75,10 @@ export async function getCatalogDistricts(): Promise<CatalogDistrict[]> {
     .from(districts)
     .where(eq(districts.cityId, TASHKENT_CITY_ID))
     .orderBy(asc(districts.nameRu));
+  const taken = new Set<string>();
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
-    token: r.nameEn.toLowerCase().replace(/\s+/g, "-"),
+    token: districtToken(r.nameEn, r.id, taken),
   }));
 }

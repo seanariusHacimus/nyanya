@@ -102,8 +102,11 @@ export function parseCatalogQuery(sp: CatalogSearchParams): CatalogQuery {
 
   return {
     category: category in categories ? (category as CategoryKey) : undefined,
-    // токен района — только латиница и дефис; неизвестный токен значит «все районы»
-    district: /^[a-z-]{2,32}$/.test(district) ? district : undefined,
+    // Токен района — латиница, цифры и дефис; неизвестный токен значит «все
+    // районы». Форма токена задаётся в `getCatalogDistricts` и обязана сюда
+    // проходить, иначе фильтр молча перестанет работать — цифры разрешены
+    // ради запасного `rayon-<id>` для района с непригодным `name_en`.
+    district: /^[a-z0-9-]{2,32}$/.test(district) ? district : undefined,
     lang: lang in CATALOG_LANGS ? (lang as CatalogLang) : undefined,
     price: parseCount(first(sp.price), 999_999_999),
     exp: parseCount(first(sp.exp), 100),
