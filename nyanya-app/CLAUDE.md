@@ -71,6 +71,9 @@ Interface language is **Russian only**. There is no `next-intl` and no `[locale]
 - `npm run lint` · `npx tsc --noEmit`
 - `node scripts/db-cleanup.mjs` — посчитать мусорные строки; `--apply` — удалить (см. «Database
   hygiene» ниже)
+- `curl -s http://localhost:3111/api/health` — проверка живости, та же, что опрашивает Railway
+  при деплое (см. «Railway — deploy, liveness, service scripts» ниже; действия владельца в
+  панели — `../docs/operations/railway-runbook.md`)
 - `npm audit --omit=dev` — run on the first working day of each month. Fix with `npm audit fix`
   (never `--force`: it proposes downgrading drizzle-kit to 0.18). Bump `next` and
   `eslint-config-next` together, exact versions, within the major. Accepted residual: `esbuild`
@@ -429,8 +432,7 @@ badge and on `/account`.
   snapshot before waiting for the row lock, so a moderator's decision and another author's save on
   the same profile at the same moment left a stale average (checked locally 2026-09-16: 0 published
   reviews, the profile showed 5.00 from 1 review; with the lock first, 0.00 and 0). It used to be exported from the `"use server"` file — a public
-  endpoint. `scripts/db-seed-upgrade.mjs` still writes `rating_avg` as a constant and inserts reviews
-  past moderation: do not run it on production.
+  endpoint.
 - Public copy says reviews appear after the moderator's check (`/faq`, `/how-it-works`, the home
   page's «Отзывы семей», `/become-specialist`) and names no hour count — the exact rule is shown on
   the profile page, computed from `REVIEW_POLICY`. The profile's empty state is «Пока нет
@@ -629,6 +631,55 @@ specialist sees in their cabinet.
   else, and `curl` will not reveal it because it sends no `Origin` header.
 - SMS is mocked; the Uzbekistan data-residency requirement for biometric/medical documents is
   unaddressed and remains the launch gate.
+
+## Railway — deploy, liveness, service scripts
+
+Railway deploys this directory (`/nyanya-app`) from `master`. What the repository controls lives
+in `railway.json`; everything else — backups, monitoring, the region, the Postgres CA — is the
+owner's work and is written down step by step in **`../docs/operations/railway-runbook.md`**
+(Russian, with the dashboard clicks, the CLI commands and what each thing costs). **None of it
+is done yet**: there is no confirmed backup, no external monitor, no restore drill.
+
+- **`/api/health` (`src/app/api/health/route.ts`)** answers `{"status":"ok","db":"ok","ms":N}`
+  with 200, or the same shape with `"error"` and **503** when a `select 1` fails or takes longer
+  than 3 s. No session, no role, no writes; GET and HEAD (a monitor may use either). The body
+  carries nothing else — no error text, no database address, no env — because the address is
+  public; the details go to the service log as `[health] база недоступна`. `Cache-Control:
+  no-store` is set by the handler and survives, because `headers()` in `next.config.ts` does not
+  set that key (a key it does set cannot be overridden by a handler — see «Security headers»).
+  `src/proxy.ts` matches only `/account`, `/specialist`, `/admin`, so nothing redirects this
+  route. Checked locally 2026-09-16: 200 with the database up; with `nyanya-postgres` stopped,
+  503 in ~10 ms; against a TCP port that accepts and never answers, 503 after 3005 ms (the
+  timeout, not a hang) — and the pending query is left to settle on its own.
+- **`railway.json`**: `healthcheckPath: "/api/health"`, `healthcheckTimeout: 120`,
+  `restartPolicyType: "ON_FAILURE"`, `restartPolicyMaxRetries: 10`. Railway queries the path
+  **only during a deploy** — a container that starts but cannot see the database never receives
+  traffic, the previous release keeps serving — and **never afterwards**: continuous monitoring
+  is an external service, which the owner has not set up. The timeout is 120 s (Railway's default
+  is 300) because pre-deploy migrations are not counted in it and `next start` boots in seconds.
+  `ALWAYS` is deliberately not used: it is unavailable on the free and trial plans, while
+  `ON_FAILURE` ×10 is Railway's own default and valid everywhere (it used to be ×3 — three
+  restarts burn out in a minute).
+- **Config as Code is deprecated: Railway stops reading `railway.json` on 2026-12-01.** Until the
+  repository moves to `.railway/railway.ts` (runbook §7, do it by mid-November), the same five
+  values must also be set by hand in the dashboard — otherwise pre-deploy migrations and the
+  healthcheck disappear silently on that date.
+- **Service scripts connect with `ssl: "require"`, which encrypts but does not verify the
+  certificate.** In postgres 3.4.9 `require`, `allow` and `prefer` all set
+  `rejectUnauthorized = false` (`node_modules/postgres/src/connection.js`), so all four scripts
+  that reach production through the public proxy — `delete-accounts.mjs`, `set-password.mjs`,
+  `set-gender.mjs`, `purge-orphan-files.mjs` — are equally unverified; `delete-accounts.mjs` used
+  to say `{ rejectUnauthorized: false }`, which was the same thing spelled out. Real verification
+  (verify-ca) needs the root certificate the Railway Postgres image generates on its own volume;
+  only the owner can download it (`railway volume files download`, runbook §6), and the code that
+  would use it is not written. Do not claim these scripts verify anything.
+- **`scripts/purge-demo-accounts.mjs` and `scripts/db-seed-upgrade.mjs` are deleted** (2026-09-16).
+  The first deleted every account *not* listed in `--keep` and had a `--force-active` flag that
+  bypassed its only guard; the second overwrote profiles by slug, wrote `rating_avg` as a constant
+  and replaced the reviews table with invented ones. The demo data they served was cleaned out
+  2026-08-11; git history keeps both files. `delete-accounts.mjs` (deletes only the listed
+  addresses, dry run by default, JSON dump before `--apply`) is the one account-removal script,
+  and a script that deletes "everyone except" must not come back.
 
 ## Plan
 

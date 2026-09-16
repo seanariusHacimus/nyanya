@@ -11,7 +11,7 @@
 |---|---|
 | `nyanya-app/` | **The current app.** Deployed to Railway (service `nyanya`, root directory `/nyanya-app`). |
 | `src/`, `messages/`, `drizzle/`, `public/` in this root | **Legacy build** — the older application from the `main` branch, kept for reference. Not deployed, not maintained. |
-| `docs/` | `ARCHITECTURE.md`, `BACKEND-PLAN.md` (the phase plan being executed), `changes/` |
+| `docs/` | `ARCHITECTURE.md`, `BACKEND-PLAN.md` (the phase plan being executed), `operations/railway-runbook.md` (what the owner must do in the Railway dashboard: backups, monitor, region, the 2026-12-01 config deadline), `changes/` |
 | `design-system/MASTER.md` | Visual language reference |
 | `assets-source/` | Source images for generated media |
 

@@ -42,6 +42,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# дампы одноразовой чистки демо-аккаунтов — содержат персональные данные
-purge-backup-*.json
+# дампы служебных скриптов (delete-accounts пишет delete-backup-*.json) и списки ключей
+# хранилища — содержат персональные данные, в репозиторий не попадают
+*-backup-*.json
 purge-orphan-keys.txt

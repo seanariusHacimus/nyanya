@@ -1,9 +1,9 @@
 /**
  * Полное удаление перечисленных аккаунтов и всего, что за ними тянется.
  *
- * В отличие от purge-demo-accounts (который оставляет перечисленных и удаляет
- * ВСЕХ остальных), этот скрипт удаляет только перечисленных — ошибка в списке
- * стоит одного аккаунта, а не базы.
+ * Удаляются только адреса из --emails и никто больше: ошибка в списке стоит
+ * одного аккаунта, а не базы. Скриптов, которые удаляют «всех, кроме
+ * перечисленных», в репозитории намеренно нет.
  *
  * Удаляет: анкету, документы (и файлы в хранилище), отзывы (написанные и
  * полученные), открытые контакты (в обе стороны), избранное, уведомления,
@@ -16,6 +16,19 @@
  *
  *   DATABASE_PUBLIC_URL=... BACKUP_DIR=... node scripts/delete-accounts.mjs \
  *     --emails a@b.com,c@d.com [--apply]
+ *
+ * TLS. Соединение шифруется (`ssl: "require"` — так же, как в set-password,
+ * set-gender и purge-orphan-files), но сертификат сервера при этом НЕ
+ * проверяется: в postgres-js 3.4.9 значения "require", "allow" и "prefer"
+ * ставят rejectUnauthorized = false (node_modules/postgres/src/connection.js,
+ * строка 282). Значит, трафик не прочитать со стороны, но узел на пути к
+ * публичному прокси базы в принципе может представиться сервером. Раньше здесь
+ * стояло `ssl: { rejectUnauthorized: false }` — то же самое, только другими
+ * словами. Настоящая проверка (verify-ca) требует корневого сертификата
+ * Railway Postgres: он лежит на томе базы, достать его может только владелец —
+ * см. docs/operations/railway-runbook.md, раздел «Сертификат боевой базы».
+ * Локальный Postgres в докере TLS не умеет, поэтому на адресе localhost
+ * шифрование выключается.
  */
 import { writeFileSync } from "node:fs";
 import path from "node:path";
@@ -31,7 +44,9 @@ if (!args.includes("--emails") || emails.length === 0) {
 }
 const url = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
 if (!url) { console.error("DATABASE_URL не задан"); process.exit(1); }
-const sql = postgres(url, { ssl: { rejectUnauthorized: false }, max: 1 });
+// см. «TLS» в шапке файла: require шифрует, но сертификат не проверяет
+const isLocal = /(^|@|\/\/)(localhost|127\.0\.0\.1)/.test(url);
+const sql = postgres(url, { ssl: isLocal ? false : "require", max: 1 });
 
 const users = await sql`select id, email, name, role from "user" where lower(email) in ${sql(emails)}`;
 const missing = emails.filter((e) => !users.some((u) => u.email.toLowerCase() === e));
