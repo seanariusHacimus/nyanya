@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Funnel, X, MagnifyingGlass } from "@phosphor-icons/react";
 import {
@@ -16,6 +22,7 @@ import {
   CATALOG_TOGGLES,
   catalogHasFilters,
   catalogQueryString,
+  parseCatalogQuery,
   type CatalogLang,
   type CatalogQuery,
   type CatalogSort,
@@ -41,6 +48,9 @@ import { ButtonLink } from "@/components/ui/button-link";
  */
 const TEXT_FIELD_DELAY_MS = 400;
 
+/** Пустой набор фильтров — то же, что даёт чистый адрес `/catalog`. */
+const EMPTY_QUERY = parseCatalogQuery({});
+
 const selectClass =
   "min-h-12 w-full appearance-none border border-line bg-paper px-4 text-base text-ink focus:border-ink";
 const inputClass =
@@ -65,8 +75,11 @@ function useDebouncedNumberField(
   const [seen, setSeen] = useState(urlValue);
   const [sent, setSent] = useState(urlValue);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Значение, которое отправится, когда истечёт пауза. */
+  const pending = useRef<{ value: number | undefined } | null>(null);
 
   const cancel = () => {
+    pending.current = null;
     if (timer.current) {
       clearTimeout(timer.current);
       timer.current = null;
@@ -95,15 +108,31 @@ function useDebouncedNumberField(
   const change = (value: string) => {
     setDraft(value);
     cancel();
+    const text = value.trim();
+    const next = /^\d{1,9}$/.test(text) ? Number.parseInt(text, 10) : undefined;
+    pending.current = { value: next };
     timer.current = setTimeout(() => {
       timer.current = null;
-      const text = value.trim();
-      const next = /^\d{1,9}$/.test(text)
-        ? Number.parseInt(text, 10)
-        : undefined;
+      pending.current = null;
       setSent(next);
       submit(next);
     }, TEXT_FIELD_DELAY_MS);
+  };
+
+  /**
+   * Отдать отложенное значение прямо сейчас, если оно есть.
+   *
+   * Его забирает любой соседний фильтр: человек набирает цену и, не дождавшись
+   * паузы, щёлкает район — набранное должно уехать вместе с районом, а не
+   * прилететь через 400 мс отдельным переходом, собранным из уже устаревшего
+   * состояния (тогда район молча снимался бы).
+   */
+  const flush = () => {
+    const value = pending.current;
+    if (!value) return null;
+    cancel();
+    setSent(value.value);
+    return value;
   };
 
   /** Поле очистили не из него самого: отменяем отложенную отправку. */
@@ -113,7 +142,7 @@ function useDebouncedNumberField(
     setDraft("");
   };
 
-  return { draft, change, clear };
+  return { draft, change, clear, flush };
 }
 
 export function CatalogView({
@@ -139,54 +168,85 @@ export function CatalogView({
   const [isPending, startTransition] = useTransition();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  /**
+   * Что показывают элементы управления, пока сервер готовит новую выборку.
+   *
+   * Без этого щелчок отменял сам себя: `query` приходит с сервера, и до конца
+   * перехода флажок рисовался прежним значением — человек ставил галочку,
+   * она снималась и возвращалась только с ответом. На быстром localhost это
+   * один кадр, а на телефоне с ответом в 900 мс (проверено с задержкой
+   * запроса) — почти секунда, за которую кажется, что нажатие не сработало.
+   */
+  const [shownQuery, setShownQuery] = useOptimistic(query);
+
   const go = (next: CatalogQuery) => {
     const qs = catalogQueryString(next);
     startTransition(() => {
+      // элементы управления показывают новое состояние сразу, не дожидаясь
+      // ответа сервера — иначе второй щелчок собрал бы адрес без первого
+      setShownQuery(next);
       // replace, а не push: каждый щелчок по чекбоксу не должен становиться
       // записью в истории. scroll: false — страница не прыгает вверх.
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     });
   };
 
-  /** Любой фильтр возвращает к первой странице; «Показать ещё» передаёт page сам. */
-  const apply = (patch: Partial<CatalogQuery>) =>
-    go({ ...query, page: 1, ...patch });
+  const price = useDebouncedNumberField(shownQuery.price, (value) =>
+    apply({ price: value })
+  );
+  const experience = useDebouncedNumberField(shownQuery.exp, (value) =>
+    apply({ exp: value })
+  );
+
+  /**
+   * Следующий набор фильтров: показанный сейчас плюс то, что человек уже
+   * набрал в текстовых полях, но пауза ещё не истекла, плюс сама правка.
+   * Любой фильтр возвращает к первой странице; «Показать ещё» и сортировка
+   * передают `page` явно.
+   */
+  const nextQuery = (patch: Partial<CatalogQuery>): CatalogQuery => {
+    const next: CatalogQuery = { ...shownQuery, page: 1 };
+    const pendingPrice = price.flush();
+    if (pendingPrice) next.price = pendingPrice.value;
+    const pendingExp = experience.flush();
+    if (pendingExp) next.exp = pendingExp.value;
+    return { ...next, ...patch };
+  };
+
+  function apply(patch: Partial<CatalogQuery>) {
+    go(nextQuery(patch));
+  }
 
   const applyToggle = (key: CatalogToggle, value: boolean) => {
-    const next: CatalogQuery = { ...query, page: 1 };
+    const next = nextQuery({});
     next[key] = value;
     go(next);
   };
 
-  const price = useDebouncedNumberField(query.price, (value) =>
-    apply({ price: value })
-  );
-  const experience = useDebouncedNumberField(query.exp, (value) =>
-    apply({ exp: value })
-  );
-
   const reset = () => {
     price.clear();
     experience.clear();
-    startTransition(() => router.replace(pathname, { scroll: false }));
+    go(EMPTY_QUERY);
   };
 
-  const selectedDistrict = districts.find((d) => d.token === query.district);
+  const selectedDistrict = districts.find(
+    (d) => d.token === shownQuery.district
+  );
 
   // D10 — динамический H1: только категория и ничего больше
   const onlyCategory =
-    Boolean(query.category) &&
-    !catalogHasFilters({ ...query, category: undefined });
+    Boolean(shownQuery.category) &&
+    !catalogHasFilters({ ...shownQuery, category: undefined });
   const h1 =
-    query.category && onlyCategory
-      ? categories[query.category].catalogH1
+    shownQuery.category && onlyCategory
+      ? categories[shownQuery.category].catalogH1
       : "Каталог специалистов";
 
   // чипы активных фильтров (C2)
   const chips: { label: string; clear: () => void }[] = [];
-  if (query.category)
+  if (shownQuery.category)
     chips.push({
-      label: categories[query.category].plural,
+      label: categories[shownQuery.category].plural,
       clear: () => apply({ category: undefined }),
     });
   if (selectedDistrict)
@@ -194,29 +254,29 @@ export function CatalogView({
       label: `${selectedDistrict.name} район`,
       clear: () => apply({ district: undefined }),
     });
-  if (query.lang)
+  if (shownQuery.lang)
     chips.push({
-      label: CATALOG_LANGS[query.lang],
+      label: CATALOG_LANGS[shownQuery.lang],
       clear: () => apply({ lang: undefined }),
     });
-  if (query.price !== undefined)
+  if (shownQuery.price !== undefined)
     chips.push({
-      label: `до ${query.price.toLocaleString("ru-RU")} сум`,
+      label: `до ${shownQuery.price.toLocaleString("ru-RU")} сум`,
       clear: () => {
         price.clear();
         apply({ price: undefined });
       },
     });
-  if (query.exp !== undefined)
+  if (shownQuery.exp !== undefined)
     chips.push({
-      label: `опыт от ${yearsLabel(query.exp)}`,
+      label: `опыт от ${yearsLabel(shownQuery.exp)}`,
       clear: () => {
         experience.clear();
         apply({ exp: undefined });
       },
     });
   for (const toggle of CATALOG_TOGGLES) {
-    if (query[toggle.key])
+    if (shownQuery[toggle.key])
       chips.push({
         label: toggle.label,
         clear: () => applyToggle(toggle.key, false),
@@ -231,7 +291,7 @@ export function CatalogView({
         </label>
         <select
           id="f-category"
-          value={query.category ?? "all"}
+          value={shownQuery.category ?? "all"}
           onChange={(e) =>
             apply({
               category:
@@ -280,7 +340,7 @@ export function CatalogView({
         </label>
         <select
           id="f-language"
-          value={query.lang ?? "any"}
+          value={shownQuery.lang ?? "any"}
           onChange={(e) =>
             apply({
               lang:
@@ -343,7 +403,7 @@ export function CatalogView({
           >
             <input
               type="checkbox"
-              checked={query[t.key]}
+              checked={shownQuery[t.key]}
               onChange={(e) => applyToggle(t.key, e.target.checked)}
               className="size-4 accent-[#96733a]"
             />
@@ -415,12 +475,12 @@ export function CatalogView({
               </label>
               <select
                 id="f-sort"
-                value={query.sort}
+                value={shownQuery.sort}
                 onChange={(e) =>
                   // сортировка не сбрасывает накопленные страницы — как было
                   apply({
                     sort: e.target.value as CatalogSort,
-                    page: query.page,
+                    page: shownQuery.page,
                   })
                 }
                 className="min-h-11 appearance-none border border-line bg-paper px-4 pr-8 text-sm text-ink focus:border-ink"
@@ -453,12 +513,12 @@ export function CatalogView({
                 ))}
               </ul>
               {items.length < total &&
-                (query.page < CATALOG_MAX_PAGE ? (
+                (shownQuery.page < CATALOG_MAX_PAGE ? (
                   <div className="mt-12 text-center">
                     <button
                       type="button"
                       disabled={isPending}
-                      onClick={() => apply({ page: query.page + 1 })}
+                      onClick={() => apply({ page: shownQuery.page + 1 })}
                       className="label-caps min-h-12 border border-ink px-8 text-ink transition-colors duration-300 hover:bg-ink hover:text-cream disabled:opacity-50"
                     >
                       Показать ещё

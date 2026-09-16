@@ -403,6 +403,18 @@ and 272 ms, now **121 784 bytes** and 11–14 ms — and the page no longer grow
   `startTransition` with `scroll: false`: a checkbox click is not a history entry and the page does
   not jump; the grid dims (`aria-busy`) instead of being replaced by `loading.tsx` (checked
   locally: the skeleton never appears during a filter change).
+- **The controls draw themselves from `useOptimistic`, not from the prop, and the next address is
+  built from that same value** (2026-09-16). The prop arrives with the server's answer, so until
+  the transition ends it still describes the *previous* filters — and a control bound to it undoes
+  the click that started the transition. Checked locally with a 900 ms delay on the RSC request
+  (Playwright route): the ticked checkbox sat unticked for the whole 900 ms and the district select
+  snapped back to «Все», and a second filter ticked 300 ms after the first replaced it instead of
+  adding to it (`?car=1` + «С проживанием» → `?livein=1`, the first silently dropped). The same
+  staleness reached the debounced text fields from the other side: their 400 ms timer closes over
+  the render that typed, so a district chosen in between was wiped by «Цена до». Hence
+  `nextQuery()` — the shown query, plus any value a text field has not sent yet (`flush()`), plus
+  the change itself, in one navigation. **Do not bind a control back to `query`**, and do not let a
+  filter change bypass `nextQuery()`.
 - **`«Показать ещё»` stays accumulative**: `page=N` renders the first N×9 cards, so a shared
   `?page=3` reproduces the same 27 cards after a reload. The cap is 50 pages (450 cards); past it
   the button is replaced by «Показаны первые 450 анкет — уточните фильтры». `CATALOG_ORDER` ends
