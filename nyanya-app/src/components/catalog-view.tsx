@@ -480,7 +480,7 @@ export function CatalogView({
               <MagnifyingGlass size={36} weight="thin" className="text-bronze" />
               <p className="mt-6 max-w-sm text-base text-ink-soft">
                 {catalogEmpty
-                  ? "Каталог пока пуст: анкеты появятся здесь сразу после проверки документов."
+                  ? "Каталог пока пуст: анкеты появятся здесь сразу после модерации."
                   : "По вашему запросу специалистов не найдено. Попробуйте изменить фильтры."}
               </p>
               {catalogEmpty ? (
