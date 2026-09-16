@@ -424,10 +424,20 @@ and 272 ms, now **121 784 bytes** and 11–14 ms — and the page no longer grow
   and publishing it back changed `/catalog` on the very next request, and publishing a review moved
   the card's rating at once. **`updateTag` may only be called from a server action**; from a route
   handler it throws, and such a caller would need `revalidateTag(CATALOG_TAG, { expire: 0 })`.
+  **«Every action» is the whole list, and it is easy to shorten by accident**: besides the obvious
+  moderator paths, the cabinet's own `saveSpecialistProfile` and `deleteVerificationDocument` reset
+  it too (both `specialist-profile.ts`, only when the profile is `active`), and `reviewDocument`
+  resets it on **any** document decision, not only on the photo — `verification_level` drives the
+  badge, the default order and the «Только премиум-профили» filter. Without those three the
+  catalogue kept a deleted photo's `photo_key` (a broken image), the old price and the old badge for
+  up to a minute. **A new write to `specialist_profiles` outside this list is a stale catalogue.**
   The price of the cache: a change made **outside** the actions (`scripts/*.mjs`, hand-written SQL)
-  shows up in the catalogue up to 60 s later. `use cache` is not an option here — in Next 16.3.5 it
-  and `cacheTag` require `cacheComponents: true`, which changes the rendering model of the whole
-  application.
+  shows up in the catalogue up to 60 s later — and one request later still, because `unstable_cache`
+  serves the expired entry once while it refreshes in the background (checked locally 2026-09-16:
+  after the TTL the first request still showed the old «Найдено», the next one the new). `updateTag`
+  has no such gap: it drops the entry, so the next request waits for fresh data. `use cache` is not
+  an option here — in Next 16.3.5 it and `cacheTag` require `cacheComponents: true`, which changes
+  the rendering model of the whole application.
 - **Favourites and the session stay outside the cache** (the page reads them per request), so a
   cached page never leaks one family's hearts to another.
 - **The tab title does not depend on the filters.** `generateMetadata` sets a fixed «Каталог

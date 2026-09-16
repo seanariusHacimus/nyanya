@@ -386,7 +386,12 @@ export async function reviewDocument(input: unknown): Promise<Result> {
     await sendDocumentsApprovedEmail(doc.ownerEmail, doc.ownerName);
   }
 
-  if (photoApproved || photoRejected) revalidateCatalog(doc.profileSlug);
+  // Сбрасываем кэш каталога на любом решении по документу, не только по
+  // фотографии: `verification_level` пересчитан выше, а каталог по нему
+  // сортирует (премиум впереди), фильтрует («Только премиум-профили») и рисует
+  // значок. С прежним условием принятая справка минуту не поднимала анкету и
+  // не попадала в премиум-выборку.
+  if (doc.profileStatus === "active") revalidateCatalog(doc.profileSlug);
 
   revalidatePath("/admin");
   revalidatePath("/specialist");

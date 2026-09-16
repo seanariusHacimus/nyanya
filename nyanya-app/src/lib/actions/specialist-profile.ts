@@ -125,6 +125,12 @@ export async function saveSpecialistProfile(input: unknown) {
   }
 
   revalidatePath("/specialist");
+  // Опубликованная анкета правится на месте (`saveSpecialistProfile` не
+  // отправляет её на повторную модерацию), а выдача каталога закэширована на
+  // минуту: без сброса тега семья ещё минуту видела бы прежние имя, район,
+  // цену и категорию — и анкета оставалась бы в той выборке, из которой
+  // только что вышла. Условие то же, что у `wasActive` ниже.
+  if (profile.status === "active") revalidateCatalog(profile.slug);
   return { ok: true as const };
 }
 
@@ -320,6 +326,11 @@ export async function deleteVerificationDocument(input: unknown) {
   }
 
   revalidatePath("/specialist");
+  // Файла уже нет в хранилище, а закэшированная карточка каталога минуту
+  // держала бы `photo_key` на него — ровно та битая картинка, ради которой
+  // столбец и обнуляется выше. Уровень анкеты тоже пересчитан, а каталог по
+  // нему сортирует и рисует значок.
+  if (profile.status === "active") revalidateCatalog(profile.slug);
   return { ok: true as const };
 }
 
