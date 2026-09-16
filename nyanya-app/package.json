@@ -19,12 +19,12 @@
     "@phosphor-icons/react": "^2.1.10",
     "better-auth": "^1.6.25",
     "drizzle-orm": "^0.45.2",
-    "motion": "^12.42.2",
     "next": "16.3.5",
     "postgres": "^3.4.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.18.0",
+    "sharp": "^0.35.4",
     "zod": "^4.4.3"
   },
   "devDependencies": {

@@ -19,7 +19,11 @@ import { reviewDocument } from "@/lib/actions/admin";
 import {
   MAX_FILE_BYTES,
   MAX_FILE_LABEL,
+  PHOTO_FORMATS_HINT,
+  PHOTO_MIME,
+  PHOTO_UNREADABLE_HINT,
   isAllowedMime,
+  isPhotoMime,
 } from "@/lib/storage/limits";
 
 /**
@@ -65,6 +69,7 @@ export function AdminDocumentRow({
   const [error, setError] = useState<string | null>(null);
   const info = meta[state.status];
   const Icon = info.icon;
+  const isPhoto = step.key === "profile_photo";
 
   const upload = (file: File) => {
     setError(null);
@@ -74,6 +79,11 @@ export function AdminDocumentRow({
     }
     if (file.type && !isAllowedMime(file.type)) {
       setError("Подходят JPG, PNG, WEBP, HEIC или PDF.");
+      return;
+    }
+    // у фотографии список короче остальных документов — см. PHOTO_MIME
+    if (isPhoto && file.type && !isPhotoMime(file.type)) {
+      setError(PHOTO_FORMATS_HINT);
       return;
     }
     const data = new FormData();
@@ -86,9 +96,13 @@ export function AdminDocumentRow({
         setError(
           result.error === "too_large"
             ? `Файл больше ${MAX_FILE_LABEL}.`
-            : result.error === "bad_type"
-              ? "Формат не подходит или содержимое не совпадает с расширением."
-              : "Не удалось загрузить файл."
+            : result.error === "photo_format"
+              ? PHOTO_FORMATS_HINT
+              : result.error === "photo_unreadable"
+                ? PHOTO_UNREADABLE_HINT
+                : result.error === "bad_type"
+                  ? "Формат не подходит или содержимое не совпадает с расширением."
+                  : "Не удалось загрузить файл."
         );
         return;
       }
@@ -141,7 +155,11 @@ export function AdminDocumentRow({
         <input
           ref={inputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
+          accept={
+            isPhoto
+              ? PHOTO_MIME.join(",")
+              : "image/jpeg,image/png,image/webp,image/heic,application/pdf"
+          }
           className="sr-only"
           onChange={(e) => {
             const file = e.target.files?.[0];

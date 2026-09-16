@@ -27,5 +27,29 @@ export function isAllowedMime(mime: string): boolean {
   return (ALLOWED_MIME as readonly string[]).includes(mime);
 }
 
+/**
+ * Фотография анкеты — более короткий список, чем у остальных документов.
+ *
+ * PDF отпадает потому, что карточку каталога им не наполнить, а HEIC — потому,
+ * что его не декодирует ни собранный `sharp` (в сборке есть только AVIF), ни
+ * оптимизатор картинок Next: такой снимок и раньше лежал в базе битой
+ * картинкой. Честнее отказать сразу и подсказать, что делать (см.
+ * `PHOTO_FORMATS_HINT`), чем принять файл, который никто не увидит.
+ * Уменьшение и перекодирование — `lib/images/profile-photo.ts`.
+ */
+export const PHOTO_MIME = ["image/jpeg", "image/png", "image/webp"] as const;
+
+export function isPhotoMime(mime: string): boolean {
+  return (PHOTO_MIME as readonly string[]).includes(mime);
+}
+
+/** Один текст на все места, где фотография отвергнута по формату. */
+export const PHOTO_FORMATS_HINT =
+  "Для фотографии подходят JPG, PNG или WEBP. На iPhone выберите «Наиболее совместимые» в Настройках → Камера → Форматы или сохраните снимок в JPEG.";
+
+/** Файл вроде бы картинка, но прочитать её не удалось. */
+export const PHOTO_UNREADABLE_HINT =
+  "Не удалось прочитать это изображение — возможно, файл повреждён. Попробуйте другой снимок в JPG, PNG или WEBP.";
+
 /** «10 МБ» — для сообщений пользователю, чтобы число не разъезжалось с кодом. */
 export const MAX_FILE_LABEL = `${Math.round(MAX_FILE_BYTES / 1024 / 1024)} МБ`;

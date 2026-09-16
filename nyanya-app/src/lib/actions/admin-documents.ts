@@ -16,6 +16,7 @@ import {
   saveDocument,
 } from "@/lib/storage";
 import { detectMime, matchesDeclaredMime } from "@/lib/file-type";
+import { isPhotoMime, prepareDocumentUpload } from "@/lib/images/profile-photo";
 
 /**
  * Загрузка документа администратором за специалиста.
@@ -74,11 +75,25 @@ export async function adminUploadDocument(formData: FormData): Promise<Result> {
   if (!detected || !matchesDeclaredMime(detected, file.type))
     return { ok: false, error: "bad_type" };
 
-  const key = await saveDocument(profile.id, {
-    buffer,
+  /**
+   * Фотография анкеты — только картинка, которую умеют и sharp, и каталог:
+   * HEIC не декодирует ни собранный sharp, ни оптимизатор Next, а PDF в
+   * карточке не показать. Остальные шаги свой список форматов сохраняют.
+   */
+  if (step.key === "profile_photo" && !isPhotoMime(detected))
+    return { ok: false, error: "photo_format" };
+
+  // фотография уменьшается и перекодируется, документы идут как есть
+  const prepared = await prepareDocumentUpload({
+    stepKey: step.key,
     fileName: file.name,
     mimeType: detected,
+    buffer,
   });
+  if (!prepared.ok) return { ok: false, error: prepared.error };
+  const payload = prepared.payload;
+
+  const key = await saveDocument(profile.id, payload);
 
   /**
    * Строка документа, уровень анкеты и уведомление — в одной транзакции.
@@ -99,9 +114,9 @@ export async function adminUploadDocument(formData: FormData): Promise<Result> {
         .update(documents)
         .set({
           fileKey: key,
-          fileName: file.name,
-          mimeType: detected,
-          fileSize: file.size,
+          fileName: payload.fileName,
+          mimeType: payload.mimeType,
+          fileSize: payload.buffer.byteLength,
           status: "approved",
           reviewNote: null,
           reviewedBy: session.user.id,
@@ -114,9 +129,9 @@ export async function adminUploadDocument(formData: FormData): Promise<Result> {
         specialistId: profile.id,
         type: step.key,
         fileKey: key,
-        fileName: file.name,
-        mimeType: detected,
-        fileSize: file.size,
+        fileName: payload.fileName,
+        mimeType: payload.mimeType,
+        fileSize: payload.buffer.byteLength,
         status: "approved",
         reviewedBy: session.user.id,
         reviewedAt: new Date(),
@@ -159,7 +174,7 @@ export async function adminUploadDocument(formData: FormData): Promise<Result> {
   revalidatePath("/admin");
   revalidatePath("/specialist");
   revalidateCatalog(profile.slug);
-  return { ok: true, step: step.key, fileKey: key, fileName: file.name };
+  return { ok: true, step: step.key, fileKey: key, fileName: payload.fileName };
 }
 
 /**

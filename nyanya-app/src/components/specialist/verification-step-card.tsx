@@ -21,7 +21,11 @@ import { PhotoGuidelinesDialog } from "@/components/specialist/photo-guidelines-
 import {
   MAX_FILE_BYTES,
   MAX_FILE_LABEL,
+  PHOTO_FORMATS_HINT,
+  PHOTO_MIME,
+  PHOTO_UNREADABLE_HINT,
   isAllowedMime,
+  isPhotoMime,
 } from "@/lib/storage/limits";
 
 export type StepState = {
@@ -85,6 +89,7 @@ export function VerificationStepCard({
   const [error, setError] = useState<string | null>(null);
   const meta = statusMeta[state.status];
   const StatusIcon = meta.icon;
+  const isPhoto = step.key === "profile_photo";
 
   const upload = (file: File) => {
     setError(null);
@@ -109,6 +114,12 @@ export function VerificationStepCard({
       toast.error(message);
       return;
     }
+    // у фотографии список короче остальных документов — см. PHOTO_MIME
+    if (isPhoto && file.type && !isPhotoMime(file.type)) {
+      setError(PHOTO_FORMATS_HINT);
+      toast.error(PHOTO_FORMATS_HINT);
+      return;
+    }
 
     const data = new FormData();
     data.set("step", step.key);
@@ -130,9 +141,13 @@ export function VerificationStepCard({
         const message =
           result.error === "too_large"
             ? `Файл больше ${MAX_FILE_LABEL} — сожмите его или сфотографируйте с меньшим разрешением.`
-            : result.error === "bad_type"
-              ? "Подходят JPG, PNG, WEBP, HEIC или PDF — и содержимое файла должно соответствовать формату."
-              : "Не удалось загрузить файл. Попробуйте ещё раз.";
+            : result.error === "photo_format"
+              ? PHOTO_FORMATS_HINT
+              : result.error === "photo_unreadable"
+                ? PHOTO_UNREADABLE_HINT
+                : result.error === "bad_type"
+                  ? "Подходят JPG, PNG, WEBP, HEIC или PDF — и содержимое файла должно соответствовать формату."
+                  : "Не удалось загрузить файл. Попробуйте ещё раз.";
         setError(message);
         toast.error(message);
       }
@@ -203,9 +218,10 @@ export function VerificationStepCard({
           ref={inputRef}
           type="file"
           accept={
-            // фотография — только изображение: PDF в каталоге не показать
-            step.key === "profile_photo"
-              ? "image/jpeg,image/png,image/webp,image/heic"
+            // у фотографии свой список (PHOTO_MIME): PDF в каталоге не
+            // показать, а HEIC не умеют ни sharp, ни оптимизатор картинок
+            isPhoto
+              ? PHOTO_MIME.join(",")
               : "image/jpeg,image/png,image/webp,image/heic,application/pdf"
           }
           className="sr-only"

@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { motion, useReducedMotion } from "motion/react";
 import { ArrowLeft, ArrowRight, X } from "@phosphor-icons/react";
-import { easeOutQuart } from "@/lib/motion";
 
 /**
  * Оболочка одного экрана мастера.
@@ -53,7 +51,6 @@ export function WizardShell({
   busy?: boolean;
   children: ReactNode;
 }) {
-  const reduce = useReducedMotion();
   const percent = Math.round((step / total) * 100);
 
   // страница под мастером не должна прокручиваться «сквозь» него
@@ -109,17 +106,15 @@ export function WizardShell({
         </div>
       </header>
 
-      {/* вопрос */}
-      <motion.main
+      {/*
+        Вопрос. Смена `key` перемонтирует элемент, и CSS-анимация `slide-in`
+        (globals.css) проигрывается заново — ровно то, что раньше делал
+        motion, только без библиотеки. `motion-reduce:animate-none` выключает
+        движение при системной настройке «уменьшить движение».
+      */}
+      <main
         key={step}
-        {...(reduce
-          ? {}
-          : {
-              initial: { opacity: 0, x: 24 },
-              animate: { opacity: 1, x: 0 },
-              transition: { duration: 0.35, ease: easeOutQuart },
-            })}
-        className="flex flex-1 flex-col overflow-y-auto px-5 py-8 sm:px-8"
+        className="flex flex-1 flex-col overflow-y-auto px-5 py-8 sm:px-8 animate-[slide-in_0.35s_var(--ease-out-quart)] motion-reduce:animate-none"
       >
         <div className="mx-auto flex w-full max-w-[560px] flex-1 flex-col justify-center">
           <h1 className="font-display text-3xl leading-[1.12] font-medium text-ink sm:text-4xl">
@@ -132,7 +127,7 @@ export function WizardShell({
           )}
           <div className="mt-8">{children}</div>
         </div>
-      </motion.main>
+      </main>
 
       {/* кнопки */}
       <footer className="shrink-0 border-t border-line bg-paper px-5 py-4 sm:px-8">

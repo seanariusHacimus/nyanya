@@ -1,25 +1,26 @@
-"use client";
-
 import Image from "next/image";
-import { motion, useReducedMotion } from "motion/react";
-import { ArrowRight } from "@phosphor-icons/react";
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
 import { hero } from "@/content/home";
-import { easeOutQuart } from "@/lib/motion";
 import { ButtonLink } from "@/components/ui/button-link";
 import { TrustSeal } from "@/components/trust-seal";
 
+/**
+ * Первый экран. **Серверный компонент**: ни одна его часть не ждёт
+ * JavaScript.
+ *
+ * Раньше вход был на `motion`, и начальное состояние `opacity: 0` уезжало в
+ * серверный HTML — главная картинка (она же LCP) появлялась не раньше, чем
+ * браузер скачает и выполнит все скрипты страницы. Теперь вход — CSS-анимация
+ * (`.enter`, 0.8 с, класс из globals.css): она начинается на первом кадре, в
+ * разметке нет ни одного `opacity:0`, а при «уменьшить движение» просто
+ * выключается.
+ *
+ * `preload` у картинки — это то, чем в Next 16 заменили устаревший `priority`
+ * (node_modules/next/dist/docs/01-app/03-api-reference/02-components/image.md):
+ * в `<head>` добавляется `<link rel="preload">`, и снимок начинает грузиться
+ * до разбора разметки.
+ */
 export function Hero() {
-  const reduce = useReducedMotion();
-
-  const item = (delay: number) =>
-    reduce
-      ? {}
-      : {
-          initial: { opacity: 0, y: 24 },
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.8, delay, ease: easeOutQuart },
-        };
-
   return (
     <section className="mx-auto max-w-[1400px] px-5 sm:px-8">
       <div className="grid items-center gap-12 pt-10 pb-16 lg:grid-cols-2 lg:gap-10 lg:pt-20 lg:pb-28">
@@ -33,35 +34,23 @@ export function Hero() {
             страница снова начинается с заголовка первого уровня, как и нужно
             поиску и экранным дикторам.
           */}
-          <motion.h1
-            {...item(0)}
-            className="max-w-lg font-display text-3xl leading-[1.16] font-medium tracking-[-0.01em] text-ink sm:text-4xl xl:text-[2.75rem]"
-          >
+          <h1 className="enter max-w-lg font-display text-3xl leading-[1.16] font-medium tracking-[-0.01em] text-ink sm:text-4xl xl:text-[2.75rem]">
             {hero.eyebrow}
-          </motion.h1>
-          <motion.span
-            {...item(0.06)}
+          </h1>
+          <span
             aria-hidden="true"
-            className="mt-8 block h-px w-24 bg-bronze"
+            style={{ animationDelay: "0.06s" }}
+            className="enter mt-8 block h-px w-24 bg-bronze"
           />
-          <motion.div {...item(0.2)} className="mt-10">
+          <div style={{ animationDelay: "0.2s" }} className="enter mt-10">
             <ButtonLink href={hero.primary.href} className="gap-4">
               {hero.primary.label}
               <ArrowRight size={18} aria-hidden="true" />
             </ButtonLink>
-          </motion.div>
+          </div>
         </div>
 
-        <motion.div
-          className="relative mx-auto w-full max-w-[420px] sm:max-w-[500px] lg:max-w-none"
-          {...(reduce
-            ? {}
-            : {
-                initial: { opacity: 0, scale: 0.985 },
-                animate: { opacity: 1, scale: 1 },
-                transition: { duration: 1.1, delay: 0.12, ease: easeOutQuart },
-              })}
-        >
+        <div className="enter-image relative mx-auto w-full max-w-[420px] sm:max-w-[500px] lg:max-w-none">
           <Image
             src={hero.image.src}
             alt={hero.image.alt}
@@ -70,21 +59,12 @@ export function Hero() {
             sizes="(max-width: 1024px) 92vw, 46vw"
             className="hero-mask h-auto w-full"
           />
-          <motion.div
-            className="absolute bottom-[7%] right-2 size-32 sm:right-0 sm:size-36 xl:-right-4 xl:size-44"
-            {...(reduce
-              ? {}
-              : {
-                  initial: { opacity: 0, scale: 0.8 },
-                  animate: { opacity: 1, scale: 1 },
-                  transition: { duration: 0.9, delay: 0.55, ease: easeOutQuart },
-                })}
-          >
+          <div className="enter-seal absolute bottom-[7%] right-2 size-32 sm:right-0 sm:size-36 xl:-right-4 xl:size-44">
             <div className="relative size-full">
               <TrustSeal words={hero.seal} className="relative block size-full" />
             </div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
     </section>
   );

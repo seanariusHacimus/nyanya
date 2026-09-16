@@ -46,3 +46,6 @@ next-env.d.ts
 # хранилища — содержат персональные данные, в репозиторий не попадают
 *-backup-*.json
 purge-orphan-keys.txt
+# backfill-photos.mjs дописывает сюда ключи заменённых оригиналов — список для
+# последующей чистки через purge-orphan-files.mjs, не часть кода
+backfill-photos-originals.txt

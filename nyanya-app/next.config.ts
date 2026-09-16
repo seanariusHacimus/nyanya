@@ -42,7 +42,7 @@ const CONTENT_SECURITY_POLICY = [
   // делает статические страницы динамическими — это решение не принято.
   // 'unsafe-eval' нужен только `next dev`: React восстанавливает стеки через eval.
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  // атрибуты style="…" у next/image и motion
+  // атрибуты style="…" у next/image и у задержек анимации (hero, Reveal)
   "style-src 'self' 'unsafe-inline'",
   // data: — размытые заглушки next/image (placeholder="blur": data:image/svg+xml
   // с вложенным data:image/jpeg); blob: — запас под превью выбранного файла
@@ -147,6 +147,18 @@ const nextConfig: NextConfig = {
       { pathname: "/images/**", search: "" },
       { pathname: "/api/documents/**", search: "" },
     ],
+    /**
+     * Сколько браузеры и посредники держат уже сжатый вариант картинки —
+     * 31 день (решение владельца). Безопасно, потому что адрес фотографии
+     * анкеты никогда не переиспользуется: каждый новый файл кладётся под
+     * новый UUID, а `photo_key` переписывается на него, поэтому «обновлённое
+     * фото под старым адресом» — случай, которого в коде нет.
+     * Значение — то же, что в примере документации Next
+     * (03-api-reference/05-config/01-next-config-js/images.md, minimumCacheTTL).
+     * На дисковый кэш оптимизатора внутри контейнера это не влияет: он живёт
+     * до следующего деплоя.
+     */
+    minimumCacheTTL: 2678400,
   },
 
   /**

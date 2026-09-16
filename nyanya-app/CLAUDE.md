@@ -71,6 +71,8 @@ Interface language is **Russian only**. There is no `next-intl` and no `[locale]
 - `npm run lint` · `npx tsc --noEmit`
 - `node scripts/db-cleanup.mjs` — посчитать мусорные строки; `--apply` — удалить (см. «Database
   hygiene» ниже)
+- `node scripts/backfill-photos.mjs` — разовый перевод уже загруженных фотографий анкет в
+  ≤1600 px WebP; сухой прогон по умолчанию, `--apply` пишет, `--restore <бэкап>` возвращает
 - `curl -s http://localhost:3111/api/health` — проверка живости, та же, что опрашивает Railway
   при деплое (см. «Railway — deploy, liveness, service scripts» ниже; действия владельца в
   панели — `../docs/operations/railway-runbook.md`)
@@ -87,8 +89,9 @@ There is **no test suite** — no `npm run test`, no Vitest. Verification is typ
 ## Stack
 
 Next.js 16 (App Router, RSC + Server Actions, Turbopack) · React 19 · TypeScript ·
-PostgreSQL + Drizzle · Better Auth · Tailwind v4 · `@phosphor-icons/react` · `motion` ·
-Resend (email) · `@aws-sdk/client-s3` (documents).
+PostgreSQL + Drizzle · Better Auth · Tailwind v4 · `@phosphor-icons/react` ·
+Resend (email) · `@aws-sdk/client-s3` (documents) · `sharp` (profile photos).
+**There is no animation library** — `motion` was removed 2026-09-16 (see «Motion is CSS» below).
 
 ## Conventions
 
@@ -114,6 +117,33 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   and then replaced or deleted stays reachable at its old `/_next/image?url=…` address until the
   cache is cleared — a new deploy starts with an empty one. `images.minimumCacheTTL` does not
   shorten this. A pending photo never reaches that cache (the optimizer gets 403 and caches nothing).
+- **`images.minimumCacheTTL` is 31 days** (`2678400`, owner decision 2026-09-16): that is how long
+  browsers and intermediaries keep an already optimized variant. It is safe only because a photo's
+  address is never reused — every upload writes a new UUID key and `photo_key` is repointed at it,
+  so «the same URL, new picture» is a case the code does not have. Do not add a path that
+  overwrites a key in place without changing this number back.
+- **The profile photo is resized on upload, verification documents are not** (2026-09-16).
+  `prepareDocumentUpload` (`src/lib/images/profile-photo.ts`) is called by **both** upload actions
+  (`specialist-profile.ts`, `admin-documents.ts`) and touches the `profile_photo` step only: EXIF
+  rotation baked into the pixels, at most **1600 px** on the long side, **WebP q85**, metadata
+  dropped — a phone photo carries GPS coordinates and the profile photo is public. A passport or a
+  certificate stays the bytes the person sent: the moderator must see the real file. Because the
+  bytes change, the `documents` row records the **stored** file (`payload.fileName` with a `.webp`
+  extension — `extensionFor` in `storage/index.ts` takes the extension from the name, so without it
+  WebP bytes would land under a `.jpg` key — plus `payload.mimeType` and `payload.buffer.byteLength`),
+  never `file.name` / `file.size`. Measured locally: 3 620 341 bytes 4000×2986 → 140 460 bytes
+  1600×1195, ~250 ms.
+  **The photo step accepts JPG, PNG and WEBP only** (`PHOTO_MIME` in `storage/limits.ts`; the other
+  steps keep JPG/PNG/WEBP/HEIC/PDF). HEIC is out because neither the shipped `sharp` build decodes
+  it (its heif input lists `.avif` alone) nor does the Next image optimizer — such a photo used to
+  sit in the database as a broken picture. The refusal is honest and says what to do
+  (`PHOTO_FORMATS_HINT`), the action answers `photo_format`, and an image `sharp` cannot read is
+  refused as `photo_unreadable` (`PHOTO_UNREADABLE_HINT`) instead of being stored broken. The one
+  case where the original is kept is `sharp` failing to load at all: that is logged as
+  `[photo] sharp недоступен` and the upload keeps working.
+  `scripts/backfill-photos.mjs` does the same to photos uploaded earlier — dry run by default,
+  `--apply` writes, `--restore <backup>` puts the rows back, originals are never deleted (their
+  keys go to `backfill-photos-originals.txt` for `purge-orphan-files.mjs`). The owner runs it.
 - **Uploads**: `MAX_FILE_BYTES` (10 МБ) is checked in the browser before sending and again inside
   both upload actions before `file.arrayBuffer()`; the platform caps the raw body at 11 МБ
   (`serverActions.bodySizeLimit`, `proxyClientMaxBodySize`). Checked 2026-09-16 with real JPEGs: a
@@ -204,6 +234,45 @@ Resend (email) · `@aws-sdk/client-s3` (documents).
   `contact:ip:<ip>`); `/privacy` does not mention this yet (owner's call). Locally, counters survive
   a restart of `next start` now — clear them with `delete from rate_limit; delete from
   app_rate_limits;` (local database only).
+
+## Motion is CSS, and the server HTML is visible
+
+Rewritten 2026-09-16. The `motion` library is **gone from the project** — `package.json`,
+`package-lock.json` and `src/lib/motion.ts` — and nothing may bring an animation library back
+without a measurement that justifies it. It used to sit in `SiteHeader`, which lives in
+`src/app/layout.tsx`, so every visitor downloaded it on the login page and on static texts alike.
+Measured locally on this machine, before → after (script bytes referenced by the served HTML,
+modern browsers, the `noModule` polyfill excluded): `/` 685 813 → 536 188 raw (213 203 → 163 057
+gzip), `/catalog` 724 068 → 585 302 (226 015 → 179 454), a profile page 724 071 → 585 366
+(224 472 → 177 961) — about −140 КБ raw and −47 КБ gzip on every page. The HTML itself grew a
+little (`/` 139 701 → 147 040 bytes): the class names that carry the animation are cheaper than the
+library, and they are text that gzips.
+
+- **Nothing above the fold waits for JavaScript, and no `opacity:0` may reach the served HTML.**
+  `curl -s localhost:3111/ | grep -c 'opacity:0'` was 22 and must stay 0 (`/about` 4, `/how-it-works`
+  8, `/verification` 7, `/become-specialist` 11, `/blog` 6 — all 0 now). A page whose content is
+  invisible until the scripts run is a page a slow connection, a crawler and a link preview see
+  empty.
+- **`Reveal` (`components/reveal.tsx`) renders its children visible.** After hydration it hides
+  **only** a block that is entirely below the window (`getBoundingClientRect().top <
+  window.innerHeight` → leave alone, or it would blink), adds `reveal-pending` (instant, `transition:
+  none`) and an IntersectionObserver, and drops the class when the block comes into view — the
+  transition then comes from `.reveal`. A block taller than the window can never reach ratio 0.25,
+  so the observer also accepts «a quarter of the window is covered»; without that such a block would
+  stay hidden for good. With `prefers-reduced-motion` it does nothing at all.
+- **The hero is a server component** (`components/sections/hero.tsx`) with a CSS entrance
+  (`.enter`, 0.8 s, `backwards` so a delayed element does not flash in its final state first) and
+  `preload` on the image — in Next 16 `preload` is what replaced the deprecated `priority`
+  (`node_modules/next/dist/docs/01-app/03-api-reference/02-components/image.md`). If anything
+  client-side is ever added inside it, the build fails rather than production.
+- **The mobile menu stays mounted** and opens by transitioning a grid row from `0fr` to `1fr`;
+  closed, it carries `inert`, so its links take no focus and no screen reader reads them — the same
+  as when `AnimatePresence` unmounted it.
+- The remaining pieces are plain CSS in `globals.css`: `slide-in` for the wizard screen (changing
+  `key` remounts `<main>` and replays the animation), `dialog-backdrop` / `dialog-panel` for the
+  two modals (**appearance only — closing is instant**, the trade for not shipping a library), and
+  the long-standing `seal-rotate` of the trust seal. Every one of them has a
+  `prefers-reduced-motion` branch that turns the movement off **without hiding anything**.
 
 ## Database hygiene — indexes, transactions, cleanup
 
@@ -665,8 +734,8 @@ clean `[csp]` log lines — update the marker comment in `next.config.ts` and th
 
 - `script-src` keeps `'unsafe-inline'` because Next ships hydration data as inline scripts; the
   only way out is a per-request nonce, which turns the static pages dynamic — not done.
-  `style-src 'unsafe-inline'` is for the `style=` attributes of next/image and motion; `img-src
-  data:` is the blur placeholders. Everything else is `'self'` — fonts are self-hosted by next/font.
+  `style-src 'unsafe-inline'` is for the `style=` attributes of next/image and of the animation
+  delays (hero, `Reveal`); `img-src data:` is the blur placeholders. Everything else is `'self'` — fonts are self-hosted by next/font.
 - **A new external source (analytics, chat widget, image CDN) goes into the policy first**, or it
   breaks the day the CSP is enforced.
 - `Permissions-Policy` must not deny `clipboard-write`: «Поделиться» (`share-button.tsx`) copies the link.

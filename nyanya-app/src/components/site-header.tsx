@@ -3,16 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { List, X, CaretDown } from "@phosphor-icons/react";
 import { nav, slogan } from "@/content/home";
-import { easeOutQuart } from "@/lib/motion";
 import { ButtonLink } from "@/components/ui/button-link";
 import { authClient, useSession } from "@/lib/auth-client";
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const reduce = useReducedMotion();
   const router = useRouter();
   const pathname = usePathname();
   const langRef = useRef<HTMLDetailsElement>(null);
@@ -203,16 +200,25 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.nav
-            aria-label="Мобильная навигация"
-            initial={reduce ? false : { opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={reduce ? undefined : { opacity: 0, height: 0 }}
-            transition={{ duration: 0.35, ease: easeOutQuart }}
-            className="max-h-[calc(100dvh-4.5rem)] overflow-y-auto border-t border-line bg-cream lg:hidden"
-          >
+      {/*
+        Мобильное меню всегда в разметке, а открывается переходом строки
+        grid-шаблона с 0fr на 1fr — так высота анимируется без JavaScript
+        (раньше это делал AnimatePresence из motion, ради которого библиотека
+        ехала на каждую страницу сайта: шапка стоит в корневой раскладке).
+        Закрытое меню помечено `inert`: его ссылки не получают фокус с
+        клавиатуры и не читаются экранным диктором, как и раньше, когда оно
+        размонтировалось. При «уменьшить движение» переход выключается —
+        motion-reduce:transition-none.
+      */}
+      <nav
+        aria-label="Мобильная навигация"
+        inert={!menuOpen}
+        className={`grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-out-quart motion-reduce:transition-none lg:hidden ${
+          menuOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="max-h-[calc(100dvh-4.5rem)] overflow-y-auto border-t border-line bg-cream">
             <ul className="flex flex-col px-5 py-4 sm:px-8">
               {topLinks.map((link) => (
                 <li key={link.href} className="border-b border-line/70">
@@ -296,9 +302,9 @@ export function SiteHeader() {
                 </li>
               )}
             </ul>
-          </motion.nav>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      </nav>
     </header>
   );
 }

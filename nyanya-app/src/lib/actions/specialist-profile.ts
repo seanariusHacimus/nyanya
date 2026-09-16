@@ -19,6 +19,7 @@ import {
 } from "@/content/verification-steps";
 import { levelForProfile } from "@/lib/document-level";
 import { detectMime, matchesDeclaredMime } from "@/lib/file-type";
+import { isPhotoMime, prepareDocumentUpload } from "@/lib/images/profile-photo";
 import { sendProfileSubmittedEmail } from "@/lib/email";
 
 /* ------------------------- вспомогательное ------------------------- */
@@ -165,12 +166,26 @@ export async function uploadVerificationDocument(formData: FormData) {
   if (!detected || !matchesDeclaredMime(detected, file.type))
     return { ok: false as const, error: "bad_type" as const };
 
-  const key = await saveDocument(profile.id, {
-    buffer,
+  /**
+   * Фотография анкеты — только картинка, которую умеют и sharp, и каталог:
+   * HEIC не декодирует ни собранный sharp, ни оптимизатор Next, а PDF в
+   * карточке не показать. Остальные шаги свой список форматов сохраняют.
+   */
+  if (step.key === "profile_photo" && !isPhotoMime(detected))
+    return { ok: false as const, error: "photo_format" as const };
+
+  // фотография уменьшается и перекодируется, документы идут как есть
+  const prepared = await prepareDocumentUpload({
+    stepKey: step.key,
     fileName: file.name,
     // сохраняем распознанный тип, а не присланный
     mimeType: detected,
+    buffer,
   });
+  if (!prepared.ok) return { ok: false as const, error: prepared.error };
+  const payload = prepared.payload;
+
+  const key = await saveDocument(profile.id, payload);
 
   // Новый файл не проверен, поэтому полный комплект больше не собран (D27).
   // Опубликованная анкета уходит на повторную модерацию — иначе замена
@@ -199,9 +214,9 @@ export async function uploadVerificationDocument(formData: FormData) {
         .update(documents)
         .set({
           fileKey: key,
-          fileName: file.name,
-          mimeType: detected,
-          fileSize: file.size,
+          fileName: payload.fileName,
+          mimeType: payload.mimeType,
+          fileSize: payload.buffer.byteLength,
           status: "pending",
           reviewNote: null,
           reviewedBy: null,
@@ -214,9 +229,9 @@ export async function uploadVerificationDocument(formData: FormData) {
         specialistId: profile.id,
         type: step.key,
         fileKey: key,
-        fileName: file.name,
-        mimeType: detected,
-        fileSize: file.size,
+        fileName: payload.fileName,
+        mimeType: payload.mimeType,
+        fileSize: payload.buffer.byteLength,
         status: "pending",
       });
     }
@@ -264,7 +279,7 @@ export async function uploadVerificationDocument(formData: FormData) {
     ok: true as const,
     step: step.key,
     fileKey: key,
-    fileName: file.name,
+    fileName: payload.fileName,
   };
 }
 

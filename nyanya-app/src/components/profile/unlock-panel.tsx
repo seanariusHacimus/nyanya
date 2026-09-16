@@ -4,7 +4,6 @@ import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   LockKeyOpen,
   Heart,
@@ -16,7 +15,6 @@ import { unlockContacts } from "@/lib/actions/unlock-contacts";
 import { toggleFavoriteAction } from "@/lib/actions/favorites";
 import { pluralRu, type Gender, type SpecialistContacts } from "@/lib/specialists-shared";
 import { SpecialistAvatar } from "@/components/specialist-avatar";
-import { easeOutQuart } from "@/lib/motion";
 import { formatRetryAfter } from "@/lib/unlock-limits";
 
 type PanelSpecialist = {
@@ -55,7 +53,6 @@ export function UnlockPanel({
   initialFavorite = false,
 }: PanelProps) {
   const router = useRouter();
-  const reduce = useReducedMotion();
   const [contacts, setContacts] = useState<SpecialistContacts | null>(
     initialContacts
   );
@@ -232,90 +229,85 @@ export function UnlockPanel({
         </div>
       </div>
 
-      {/* модальное окно для гостя (решение владельца, 2026-07-27) */}
-      <AnimatePresence>
-        {guestModal && (
-          <motion.div
-            initial={reduce ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={reduce ? undefined : { opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-charcoal-deep/60 p-0 sm:items-center sm:p-6"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setGuestModal(false);
-            }}
+      {/*
+        Модальное окно для гостя (решение владельца, 2026-07-27). Появление —
+        CSS-классы `dialog-backdrop` / `dialog-panel` (globals.css), закрытие
+        мгновенное: ради анимации исчезновения библиотека анимаций ехала бы в
+        браузер каждому, кто открыл анкету.
+      */}
+      {guestModal && (
+        <div
+          className="dialog-backdrop fixed inset-0 z-50 flex items-end justify-center bg-charcoal-deep/60 p-0 sm:items-center sm:p-6"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setGuestModal(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Регистрация для доступа к контактам"
+            className="dialog-panel w-full max-w-md bg-cream p-8 sm:rounded-[2px]"
           >
-            <motion.div
-              role="dialog"
-              aria-modal="true"
-              aria-label="Регистрация для доступа к контактам"
-              initial={reduce ? false : { opacity: 0, y: 32 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduce ? undefined : { opacity: 0, y: 32 }}
-              transition={{ duration: 0.35, ease: easeOutQuart }}
-              className="w-full max-w-md bg-cream p-8 sm:rounded-[2px]"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <UserPlus size={30} weight="thin" className="text-bronze" />
-                <button
-                  type="button"
-                  onClick={() => setGuestModal(false)}
-                  aria-label="Закрыть"
-                  className="flex size-10 items-center justify-center text-ink-soft hover:text-ink"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+            <div className="flex items-start justify-between gap-4">
+              <UserPlus size={30} weight="thin" className="text-bronze" />
+              <button
+                type="button"
+                onClick={() => setGuestModal(false)}
+                aria-label="Закрыть"
+                className="flex size-10 items-center justify-center text-ink-soft hover:text-ink"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-              <h2 className="mt-4 font-display text-2xl leading-snug font-medium text-ink">
-                Для доступа к контактам нужно зарегистрироваться
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                Это бесплатно и занимает минуту: подтвердите почту кодом — и
-                контакты специалистов будут открываться в один клик.
-              </p>
+            <h2 className="mt-4 font-display text-2xl leading-snug font-medium text-ink">
+              Для доступа к контактам нужно зарегистрироваться
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+              Это бесплатно и занимает минуту: подтвердите почту кодом — и
+              контакты специалистов будут открываться в один клик.
+            </p>
 
-              <div className="mt-6 flex items-center gap-4 border border-line bg-paper p-4">
-                {s.photoUrl ? (
-                  <Image
-                    src={s.photoUrl}
-                    alt={`${s.name} — портрет`}
-                    width={56}
-                    height={70}
-                    className="h-[70px] w-14 rounded-[2px] object-cover object-top"
-                  />
-                ) : (
-                  <span className="relative block h-[70px] w-14 shrink-0 overflow-hidden rounded-[2px] bg-cream-deep">
-                    <SpecialistAvatar gender={s.gender} name={s.name} />
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-semibold text-ink">
-                    {s.name}
-                    {s.age !== null && `, ${s.age}`}
-                  </p>
-                  <p className="mt-0.5 text-sm text-ink-soft">{s.categoryLabel}</p>
-                </div>
+            <div className="mt-6 flex items-center gap-4 border border-line bg-paper p-4">
+              {s.photoUrl ? (
+                <Image
+                  src={s.photoUrl}
+                  alt={`${s.name} — портрет`}
+                  width={56}
+                  height={70}
+                  className="h-[70px] w-14 rounded-[2px] object-cover object-top"
+                />
+              ) : (
+                <span className="relative block h-[70px] w-14 shrink-0 overflow-hidden rounded-[2px] bg-cream-deep">
+                  <SpecialistAvatar gender={s.gender} name={s.name} />
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-semibold text-ink">
+                  {s.name}
+                  {s.age !== null && `, ${s.age}`}
+                </p>
+                <p className="mt-0.5 text-sm text-ink-soft">{s.categoryLabel}</p>
               </div>
+            </div>
 
-              <div className="mt-6 grid gap-3">
-                <Link
-                  href={`/register?next=${encodeURIComponent(profileHref)}`}
-                  className="label-caps inline-flex min-h-12 items-center justify-center bg-ink px-6 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px"
-                >
-                  Зарегистрироваться
-                </Link>
-                <Link
-                  href={`/login?next=${encodeURIComponent(profileHref)}`}
-                  className="label-caps inline-flex min-h-12 items-center justify-center border border-line px-6 text-ink transition-colors duration-300 hover:border-ink-faint"
-                >
-                  Войти
-                </Link>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <div className="mt-6 grid gap-3">
+              <Link
+                href={`/register?next=${encodeURIComponent(profileHref)}`}
+                className="label-caps inline-flex min-h-12 items-center justify-center bg-ink px-6 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px"
+              >
+                Зарегистрироваться
+              </Link>
+              <Link
+                href={`/login?next=${encodeURIComponent(profileHref)}`}
+                className="label-caps inline-flex min-h-12 items-center justify-center border border-line px-6 text-ink transition-colors duration-300 hover:border-ink-faint"
+              >
+                Войти
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
