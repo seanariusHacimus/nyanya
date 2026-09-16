@@ -83,6 +83,21 @@ function first(value: string | string[] | undefined): string {
 }
 
 /**
+ * Свой ли это ключ справочника.
+ *
+ * Именно `Object.hasOwn`, а не `key in obj`: `in` идёт по прототипу, поэтому
+ * `?category=toString` и `?lang=constructor` считались бы допустимыми. Дальше
+ * `toString` уезжал в SQL как значение перечисления и каталог отвечал пустой
+ * страницей с ошибкой в логе, а из `CATALOG_LANGS` приходила функция.
+ */
+function known<T extends object>(
+  dictionary: T,
+  key: string
+): key is string & keyof T {
+  return Object.hasOwn(dictionary, key);
+}
+
+/**
  * Целое из адреса. Пустое поле («Цена до» очистили) и мусор — это «фильтра
  * нет»; ноль допустим, потому что в браузере «0» тоже был фильтром.
  */
@@ -101,13 +116,13 @@ export function parseCatalogQuery(sp: CatalogSearchParams): CatalogQuery {
   const flag = (key: CatalogToggle) => first(sp[key]) === "1";
 
   return {
-    category: category in categories ? (category as CategoryKey) : undefined,
+    category: known(categories, category) ? category : undefined,
     // Токен района — латиница, цифры и дефис; неизвестный токен значит «все
     // районы». Форма токена задаётся в `getCatalogDistricts` и обязана сюда
     // проходить, иначе фильтр молча перестанет работать — цифры разрешены
     // ради запасного `rayon-<id>` для района с непригодным `name_en`.
     district: /^[a-z0-9-]{2,32}$/.test(district) ? district : undefined,
-    lang: lang in CATALOG_LANGS ? (lang as CatalogLang) : undefined,
+    lang: known(CATALOG_LANGS, lang) ? lang : undefined,
     price: parseCount(first(sp.price), 999_999_999),
     exp: parseCount(first(sp.exp), 100),
     premium: flag("premium"),
@@ -116,7 +131,7 @@ export function parseCatalogQuery(sp: CatalogSearchParams): CatalogQuery {
     livein: flag("livein"),
     night: flag("night"),
     newborn: flag("newborn"),
-    sort: sort in CATALOG_SORTS ? (sort as CatalogSort) : "rating",
+    sort: known(CATALOG_SORTS, sort) ? sort : "rating",
     page: page && page >= 1 ? page : 1,
   };
 }
