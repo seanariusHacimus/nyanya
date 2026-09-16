@@ -14,6 +14,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
  * Порядок работы после гидратации:
  *   • блок, который в момент монтирования хотя бы частично на экране, не
  *     трогаем вовсе — иначе он мигнёт (был виден → спрятали → показали);
+ *   • блок выше трёх окон тоже не трогаем — см. ниже, наблюдатель не смог бы
+ *     его показать;
  *   • остальные получают класс `reveal-pending` (мгновенное скрытие,
  *     `transition: none`) и IntersectionObserver с порогом 0.25 — тем же,
  *     что был у `viewport={{ amount: 0.25}}`;
@@ -40,8 +42,20 @@ export function Reveal({
     const el = ref.current;
     if (!el || !("IntersectionObserver" in window)) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const box = el.getBoundingClientRect();
     // уже на экране — прятать нельзя, мигнёт
-    if (el.getBoundingClientRect().top < window.innerHeight) return;
+    if (box.top < window.innerHeight) return;
+    /**
+     * Блок выше четырёх окон не прячем вовсе. Доля пересечения считается от
+     * площади самого блока, поэтому у такого блока она не доходит до 0.25
+     * никогда, а наблюдатель будит колбэк только на пересечении порога — то
+     * есть показать блок стало бы нечему, и он остался бы невидимым навсегда.
+     * Проверено: отзывы на главной (шесть карточек в столбик) при окне 360×400
+     * так и не появлялись, сколько ни прокручивай; то же самое происходит при
+     * увеличении страницы от 200 %. Запас берём втрое, а не вчетверо: блок
+     * может подрасти уже после гидратации. Видимое содержимое важнее анимации.
+     */
+    if (box.height > window.innerHeight * 3) return;
 
     setPending(true);
     const io = new IntersectionObserver(
@@ -49,11 +63,8 @@ export function Reveal({
         const shown = entries.some(
           (e) =>
             e.isIntersecting &&
-            /**
-             * Доля считается от размера самого блока, поэтому у блока выше
-             * окна она не дойдёт до 0.25 никогда — второе условие (четверть
-             * окна занята) не даёт такому блоку остаться невидимым навсегда.
-             */
+            // запасное условие на случай блока, подросшего после гидратации:
+            // четверть окна занята — значит блок уже прочитать можно
             (e.intersectionRatio >= 0.25 ||
               e.intersectionRect.height >= window.innerHeight * 0.25)
         );

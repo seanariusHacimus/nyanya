@@ -257,9 +257,13 @@ library, and they are text that gzips.
   **only** a block that is entirely below the window (`getBoundingClientRect().top <
   window.innerHeight` → leave alone, or it would blink), adds `reveal-pending` (instant, `transition:
   none`) and an IntersectionObserver, and drops the class when the block comes into view — the
-  transition then comes from `.reveal`. A block taller than the window can never reach ratio 0.25,
-  so the observer also accepts «a quarter of the window is covered»; without that such a block would
-  stay hidden for good. With `prefers-reduced-motion` it does nothing at all.
+  transition then comes from `.reveal`. **A block taller than three windows is not hidden either**
+  (2026-09-16): the intersection ratio is measured against the block's own area, so a block over
+  four windows tall never reaches 0.25, and an IntersectionObserver only wakes on a threshold
+  crossing — nothing would ever show it again. It was reproducible: the home page's six stacked
+  review cards stayed invisible for good in a 360×400 window, and the same happens at 200 % page
+  zoom. Such a block simply keeps its server-rendered visible state; visible content beats an
+  animation. With `prefers-reduced-motion` it does nothing at all.
 - **The hero is a server component** (`components/sections/hero.tsx`) with a CSS entrance
   (`.enter`, 0.8 s, `backwards` so a delayed element does not flash in its final state first) and
   `preload` on the image — in Next 16 `preload` is what replaced the deprecated `priority`
