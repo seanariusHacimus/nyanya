@@ -1,0 +1,153 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import { safeNext } from "@/lib/safe-next";
+import { PasswordInput } from "@/components/auth/password-input";
+
+const inputClass =
+  "min-h-12 w-full border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-faint focus:border-ink";
+
+/**
+ * §9 R1 — вход по почте и паролю.
+ *
+ * Кодом на почту здесь не входят: код нужен только при регистрации и при
+ * восстановлении пароля (`/reset-password`).
+ */
+export function LoginForm() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const next = safeNext(params.get("next"));
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+
+    const { error: signInError } = await authClient.signIn.email({
+      email,
+      password,
+    });
+
+    if (signInError) {
+      setBusy(false);
+      // заблокированному аккаунту Better Auth отвечает 403 (§9 R1);
+      // 429 — ограничение частоты: не выдавать его за неверный пароль,
+      // иначе человек начнёт перебирать правильный пароль и продлит блок.
+      // У 429 два источника: блокировка по адресу почты после серии неверных
+      // паролей (код TOO_MANY_LOGIN_ATTEMPTS и настоящий остаток времени,
+      // lib/login-throttle.ts) и лимит Better Auth по IP — 3 запроса за 10 секунд,
+      // без кода. Срок и совет про сброс пароля верны только для первого.
+      setError(
+        signInError.status === 403
+          ? "Аккаунт заблокирован. Свяжитесь с поддержкой."
+          : signInError.code === "TOO_MANY_LOGIN_ATTEMPTS"
+            ? lockedMessage(signInError)
+            : signInError.status === 429
+              ? "Слишком много попыток входа. Подождите немного и попробуйте снова."
+              : "Неверная почта или пароль."
+      );
+      return;
+    }
+
+    // роль — из свежей сессии: она определяет, куда вести после входа.
+    // Администратора раньше отправляло в /account, как родителя, и панель
+    // приходилось искать по прямому адресу.
+    const { data } = await authClient.getSession();
+    const role = data?.user.role;
+    const home =
+      role === "admin" ? "/admin" : role === "specialist" ? "/specialist" : "/account";
+    router.push(next ?? home);
+  };
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+      className="space-y-5"
+    >
+      <div className="grid gap-2">
+        <label htmlFor="login-email" className="text-sm font-semibold text-ink">
+          Email
+        </label>
+        <input
+          id="login-email"
+          type="email"
+          required
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={inputClass}
+          placeholder="you@example.com"
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <label
+          htmlFor="login-password"
+          className="text-sm font-semibold text-ink"
+        >
+          Пароль
+        </label>
+        <PasswordInput
+          id="login-password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+          required
+        />
+        <Link
+          href="/reset-password"
+          className="justify-self-start text-sm text-ink-soft transition-colors duration-300 hover:text-bronze-text"
+        >
+          Забыли пароль?
+        </Link>
+      </div>
+
+      {error && (
+        <p role="alert" className="text-sm text-[#a5462f]">
+          {error}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={busy}
+        className="label-caps inline-flex min-h-12 w-full items-center justify-center bg-ink px-8 text-cream transition-colors duration-300 hover:bg-charcoal active:translate-y-px disabled:opacity-70"
+      >
+        {busy ? "Входим…" : "Войти"}
+      </button>
+
+      <div className="border-t border-line pt-5">
+        <p className="text-center text-sm text-ink-soft">Нет аккаунта?</p>
+        <Link
+          href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}
+          className="label-caps mt-3 inline-flex min-h-12 w-full items-center justify-center border border-ink text-ink transition-colors duration-300 hover:bg-ink hover:text-cream"
+        >
+          Зарегистрироваться
+        </Link>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Текст блокировки по адресу почты. Сброс пароля по коду действительно снимает
+ * её сразу (hooks.after в lib/auth.ts), поэтому совет честный.
+ */
+function lockedMessage(error: object): string {
+  const minutes =
+    "retryAfterMinutes" in error && typeof error.retryAfterMinutes === "number"
+      ? error.retryAfterMinutes
+      : null;
+  const wait = minutes && minutes > 0 ? `Подождите ${minutes} мин` : "Подождите немного";
+  return `Слишком много неудачных попыток входа. ${wait} или задайте новый пароль через «Забыли пароль?».`;
+}

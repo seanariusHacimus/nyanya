@@ -1,0 +1,458 @@
+import {
+  pgTable,
+  pgEnum,
+  text,
+  integer,
+  boolean,
+  timestamp,
+  uuid,
+  serial,
+  date,
+  jsonb,
+  numeric,
+  primaryKey,
+  unique,
+  uniqueIndex,
+  index,
+} from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { user } from "./auth-schema";
+
+export * from "./auth-schema";
+
+/* ----------------------------- enums ----------------------------- */
+export const categoryEnum = pgEnum("category", [
+  "nanny",
+  "caregiver",
+  "tutor",
+  "driver",
+]);
+export const priceUnitEnum = pgEnum("price_unit", ["hour", "day", "month"]);
+export const englishLevelEnum = pgEnum("english_level", [
+  "none",
+  "basic",
+  "fluent",
+]);
+export const profileStatusEnum = pgEnum("profile_status", [
+  "draft",
+  "pending_review",
+  "active",
+  "hidden",
+  "rejected",
+]);
+/**
+ * Пол специалиста (решение владельца, 2026-09-11). Нужен семьям для выбора
+ * и аватарке-заглушке, когда фотографии нет. Колонка nullable: анкеты,
+ * созданные до появления поля, дозаполняет администратор.
+ */
+export const genderEnum = pgEnum("gender", ["female", "male"]);
+export const verificationLevelEnum = pgEnum("verification_level", [
+  "unverified",
+  "verified",
+  "premium_verified",
+]);
+export const documentTypeEnum = pgEnum("document_type", [
+  "passport",
+  "selfie",
+  "video_intro",
+  "profile_photo",
+  "recommendation",
+  "medical_general",
+  "medical_psychiatrist",
+  "medical_tb_aids",
+  "other",
+  // шаги верификации специалиста (2026-07)
+  "criminal_record",
+  "narcology",
+  // единый перечень документов (2026-08): ВИЧ, ЗППП и права водителя
+  "medical_hiv",
+  "medical_std",
+  "driver_license",
+]);
+export const documentStatusEnum = pgEnum("document_status", [
+  "pending",
+  "approved",
+  "rejected",
+]);
+export const paymentPurposeEnum = pgEnum("payment_purpose", [
+  "specialist_listing",
+  "contact_unlock",
+  "unlock_package",
+  "subscription",
+]);
+export const paymentProviderEnum = pgEnum("payment_provider", [
+  "mock",
+  "payme",
+  "click",
+  "uzum",
+]);
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "pending",
+  "paid",
+  "failed",
+  "refunded",
+]);
+export const complaintCategoryEnum = pgEnum("complaint_category", [
+  "fake_profile",
+  "fraud",
+  "spam",
+  "misconduct",
+  "other",
+]);
+export const complaintStatusEnum = pgEnum("complaint_status", [
+  "open",
+  "reviewing",
+  "resolved",
+  "dismissed",
+]);
+/**
+ * `pending` — отзыв ждёт модератора (добавлено 2026-09-16, миграция 0012): новый и
+ * изменённый отзыв семьям не виден, пока его не опубликуют в /admin/reviews.
+ */
+export const reviewStatusEnum = pgEnum("review_status", [
+  "pending",
+  "visible",
+  "hidden",
+]);
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "verification_status",
+  "new_review",
+  "contact_unlocked",
+  "listing_published",
+  "system",
+  // модерация анкеты (2026-07)
+  "profile_submitted",
+  "profile_rejected",
+]);
+
+/* ------------------------ reference data ------------------------ */
+export const cities = pgTable("cities", {
+  id: serial("id").primaryKey(),
+  nameRu: text("name_ru").notNull(),
+  nameUz: text("name_uz").notNull(),
+  nameEn: text("name_en").notNull(),
+});
+
+export const districts = pgTable("districts", {
+  id: serial("id").primaryKey(),
+  cityId: integer("city_id")
+    .notNull()
+    .references(() => cities.id, { onDelete: "cascade" }),
+  nameRu: text("name_ru").notNull(),
+  nameUz: text("name_uz").notNull(),
+  nameEn: text("name_en").notNull(),
+});
+
+/* ---------------------- specialist profiles --------------------- */
+export const specialistProfiles = pgTable(
+  "specialist_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" })
+      .unique(),
+    /** ЧПУ-адрес анкеты: /specialists/[slug]; null у неопубликованных черновиков */
+    slug: text("slug").unique(),
+    category: categoryEnum("category").notNull(),
+    fullName: text("full_name").notNull(),
+    fullNameLatin: text("full_name_latin"),
+    gender: genderEnum("gender"),
+    photoKey: text("photo_key"),
+    birthDate: date("birth_date"),
+    cityId: integer("city_id").references(() => cities.id),
+    districtId: integer("district_id").references(() => districts.id),
+    experienceYears: integer("experience_years").notNull().default(0),
+    education: text("education"),
+    educationUz: text("education_uz"),
+    educationEn: text("education_en"),
+    languages: text("languages").array().notNull().default([]),
+    priceAmount: integer("price_amount").notNull().default(0),
+    priceUnit: priceUnitEnum("price_unit").notNull().default("hour"),
+    description: text("description"),
+    descriptionUz: text("description_uz"),
+    descriptionEn: text("description_en"),
+    /**
+     * «Что ещё вы можете предложить» — свободным текстом, сверх фиксированных
+     * меток (автомобиль, проживание, ночные смены, новорождённые). Проходит
+     * модерацию вместе с анкетой; семье показывается в блоке навыков.
+     */
+    extraOffer: text("extra_offer"),
+    videoIntroKey: text("video_intro_key"),
+    hasCar: boolean("has_car").notNull().default(false),
+    liveIn: boolean("live_in").notNull().default(false),
+    nightAvailable: boolean("night_available").notNull().default(false),
+    newbornExp: boolean("newborn_exp").notNull().default(false),
+    englishLevel: englishLevelEnum("english_level").notNull().default("none"),
+    status: profileStatusEnum("status").notNull().default("draft"),
+    /** комментарий модератора при отклонении анкеты (§8.2 «Отклонена») */
+    moderationNote: text("moderation_note"),
+    submittedAt: timestamp("submitted_at"),
+    reviewedAt: timestamp("reviewed_at"),
+    verificationLevel: verificationLevelEnum("verification_level")
+      .notNull()
+      .default("unverified"),
+    trustScore: integer("trust_score").notNull().default(0),
+    employed: boolean("employed").notNull().default(false),
+    ratingAvg: numeric("rating_avg", { precision: 3, scale: 2 })
+      .notNull()
+      .default("0"),
+    reviewCount: integer("review_count").notNull().default(0),
+    unlockCount: integer("unlock_count").notNull().default(0),
+    publishedAt: timestamp("published_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("specialist_category_idx").on(t.category),
+    index("specialist_status_idx").on(t.status),
+    index("specialist_city_idx").on(t.cityId),
+    // Каталог: предикат listedInCatalog + порядок по умолчанию (CATALOG_ORDER)
+    // целиком — список и «Найдено» идут по индексу, а не полным сканом.
+    //
+    // nullsFirst() обязателен: `order by x desc` в Postgres означает NULLS
+    // FIRST, а индекс по умолчанию строится DESC NULLS LAST. Порядок в индексе
+    // и в запросе обязаны совпасть посимвольно, иначе планировщик индекс для
+    // сортировки не возьмёт (published_at — единственная nullable колонка тут,
+    // но сравниваются все).
+    index("specialist_catalog_order_idx")
+      .on(
+        t.verificationLevel.desc().nullsFirst(),
+        t.ratingAvg.desc().nullsFirst(),
+        t.reviewCount.desc().nullsFirst(),
+        t.publishedAt.desc().nullsFirst(),
+        t.id,
+      )
+      .where(
+        sql`${t.status} = 'active' AND ${t.employed} = false AND ${t.slug} IS NOT NULL`,
+      ),
+    // Самые частые фильтры каталога — категория и район.
+    index("specialist_catalog_filter_idx")
+      .on(t.category, t.districtId)
+      .where(
+        sql`${t.status} = 'active' AND ${t.employed} = false AND ${t.slug} IS NOT NULL`,
+      ),
+  ],
+);
+
+export const documents = pgTable(
+  "documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    specialistId: uuid("specialist_id")
+      .notNull()
+      .references(() => specialistProfiles.id, { onDelete: "cascade" }),
+    type: documentTypeEnum("type").notNull(),
+    fileKey: text("file_key").notNull(),
+    /** исходное имя файла и mime — для выдачи и превью в админке */
+    fileName: text("file_name"),
+    mimeType: text("mime_type"),
+    fileSize: integer("file_size"),
+    status: documentStatusEnum("status").notNull().default("pending"),
+    reviewedBy: text("reviewed_by").references(() => user.id),
+    reviewNote: text("review_note"),
+    reviewedAt: timestamp("reviewed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    // один актуальный файл на каждый шаг верификации
+    unique("uniq_specialist_document_type").on(t.specialistId, t.type),
+    index("documents_specialist_idx").on(t.specialistId),
+    // очередь модерации документов: where status = 'pending' order by created_at
+    index("documents_pending_created_idx")
+      .on(t.createdAt)
+      .where(sql`${t.status} = 'pending'`),
+  ],
+);
+
+export const payments = pgTable("payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  purpose: paymentPurposeEnum("purpose").notNull(),
+  amount: integer("amount").notNull(),
+  currency: text("currency").notNull().default("UZS"),
+  provider: paymentProviderEnum("provider").notNull().default("mock"),
+  providerTxnId: text("provider_txn_id"),
+  status: paymentStatusEnum("status").notNull().default("pending"),
+  relatedSpecialistId: uuid("related_specialist_id").references(
+    () => specialistProfiles.id,
+    { onDelete: "set null" },
+  ),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  paidAt: timestamp("paid_at"),
+  raw: jsonb("raw"),
+});
+
+export const contactUnlocks = pgTable(
+  "contact_unlocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    parentId: text("parent_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    specialistId: uuid("specialist_id")
+      .notNull()
+      .references(() => specialistProfiles.id, { onDelete: "cascade" }),
+    paymentId: uuid("payment_id").references(() => payments.id, {
+      onDelete: "set null",
+    }),
+    unlockedAt: timestamp("unlocked_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique("uniq_parent_specialist_unlock").on(t.parentId, t.specialistId),
+    // лимит открытий: сколько новых контактов аккаунт открыл за 24 часа
+    index("contact_unlocks_parent_unlocked_at_idx").on(t.parentId, t.unlockedAt),
+  ],
+);
+
+export const favorites = pgTable(
+  "favorites",
+  {
+    parentId: text("parent_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    specialistId: uuid("specialist_id")
+      .notNull()
+      .references(() => specialistProfiles.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.parentId, t.specialistId] })],
+);
+
+/**
+ * Отзывы семей (`lib/actions/reviews.ts`, правила — `lib/review-policy.ts`).
+ *
+ * Один отзыв на пару «специалист — автор» держит база (`uniq_review_specialist_parent`):
+ * повторная отправка — это `INSERT … ON CONFLICT DO UPDATE` той же строки.
+ * `created_at` — когда отзыв появился (по нему считается суточный лимит новых
+ * отзывов), `updated_at` — последняя правка автора.
+ *
+ * Default статуса намеренно остался `visible`: значение `pending` добавлено
+ * в той же миграции, а мигратор выполняет все новые миграции одной
+ * транзакцией, где новое значение enum использовать нельзя. Код пишет статус
+ * явно при каждой вставке и правке.
+ */
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    specialistId: uuid("specialist_id")
+      .notNull()
+      .references(() => specialistProfiles.id, { onDelete: "cascade" }),
+    authorParentId: text("author_parent_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    rating: integer("rating").notNull(),
+    text: text("text"),
+    textUz: text("text_uz"),
+    textEn: text("text_en"),
+    status: reviewStatusEnum("status").notNull().default("visible"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uniq_review_specialist_parent").on(t.specialistId, t.authorParentId),
+    // суточный лимит новых отзывов автора и очередь модератора
+    index("reviews_author_created_idx").on(t.authorParentId, t.createdAt),
+  ],
+);
+
+export const complaints = pgTable("complaints", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  reporterId: text("reporter_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  targetSpecialistId: uuid("target_specialist_id").references(
+    () => specialistProfiles.id,
+    { onDelete: "cascade" },
+  ),
+  category: complaintCategoryEnum("category").notNull(),
+  text: text("text"),
+  status: complaintStatusEnum("status").notNull().default("open"),
+  handledBy: text("handled_by").references(() => user.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    type: notificationTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    data: jsonb("data"),
+    readAt: timestamp("read_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    // лента кабинета: последние уведомления пользователя по дате
+    index("notifications_user_created_at_idx").on(t.userId, t.createdAt),
+    // значок непрочитанных в шапке (каждый переход) и markNotificationsRead
+    index("notifications_user_unread_idx")
+      .on(t.userId)
+      .where(sql`${t.readAt} is null`),
+  ],
+);
+
+/**
+ * Неудачные входы по паролю — защита от перебора (`src/lib/login-throttle.ts`).
+ *
+ * Строка на пару «адрес почты + IP клиента» и ещё одна строка на адрес с
+ * `ip = '*'` — общий счётчик со всех IP. Здесь лежат адреса, по которым
+ * пытались войти, в том числе незарегистрированные, поэтому строки старше суток
+ * удаляются. Время — с часовым поясом: окна считаются в самой базе через now().
+ */
+export const loginAttempts = pgTable(
+  "login_attempts",
+  {
+    email: text("email").notNull(), // всегда в нижнем регистре
+    ip: text("ip").notNull(),
+    failures: integer("failures").notNull(),
+    // начало окна подсчёта; при блокировке переносится на её конец
+    windowStartedAt: timestamp("window_started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastFailedAt: timestamp("last_failed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.email, t.ip] }),
+    index("login_attempts_last_failed_at_idx").on(t.lastFailedAt),
+  ],
+);
+
+/**
+ * Окна частоты собственных маршрутов (`src/lib/rate-limit.ts`): форма обратной
+ * связи — ключ `contact:ip:<IP>` и общий `contact:all`.
+ *
+ * Отдельно от `rate_limit` Better Auth: та таблица чистится самим Better Auth от
+ * строк старше минуты и стёрла бы окна в десять минут и в час. Одна строка на
+ * ключ, окно фиксированное: открывается первым запросом и заканчивается в
+ * `expires_at`. Ключ содержит IP, поэтому истёкшие строки удаляются попутно.
+ */
+export const appRateLimits = pgTable(
+  "app_rate_limits",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("app_rate_limits_expires_at_idx").on(t.expiresAt)],
+);
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull().unique(),
+  keys: jsonb("keys").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});

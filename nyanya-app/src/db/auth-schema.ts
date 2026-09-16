@@ -1,0 +1,114 @@
+import { pgTable, text, timestamp, boolean, integer, bigint, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+
+// Better Auth core + admin plugin + custom fields.
+// Column keys are camelCase so the Better Auth Drizzle adapter resolves them by key.
+
+export const user = pgTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  // admin plugin
+  role: text("role").notNull().default("parent"),
+  banned: boolean("banned").notNull().default(false),
+  banReason: text("ban_reason"),
+  banExpires: timestamp("ban_expires"),
+  // custom app fields
+  phone: text("phone"),
+  phoneVerified: boolean("phone_verified").notNull().default(false),
+  locale: text("locale").notNull().default("ru"),
+  /**
+   * Отметка для ручного разбора администратором — сейчас ставится, когда
+   * аккаунт исчерпал суточный лимит открытий контактов
+   * (`lib/actions/unlock-contacts.ts`), снимается кнопкой «Разобрано» на обзоре
+   * админки. Ничего не блокирует. В `additionalFields` Better Auth НЕ
+   * объявлять: адаптер отдаёт в `session.user` только поля своей схемы, так
+   * отметка не уходит в браузер и не пишется через эндпоинты Better Auth.
+   */
+  flaggedAt: timestamp("flagged_at", { withTimezone: true }),
+  flagReason: text("flag_reason"),
+}, (t) => [
+  /**
+   * Поиск людей в админке по началу адреса (`searchUsers`, запрос со знаком
+   * «@»): `lower(email) like 'q%'`. `text_pattern_ops` обязателен — коллация
+   * базы не «C», и обычный btree префиксный LIKE не обслуживает; уникальный
+   * индекс `user_email_unique` для этого бесполезен.
+   */
+  index("user_email_lower_idx").on(sql`lower(${t.email}) text_pattern_ops`),
+]);
+
+// Индексы по user_id и identifier (миграция 0013): Better Auth ищет по ним сессии
+// при блокировке и отзыве, аккаунт при входе по паролю, код подтверждения при вводе.
+export const session = pgTable(
+  "session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at").notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    impersonatedBy: text("impersonated_by"),
+  },
+  (t) => [index("session_user_id_idx").on(t.userId)],
+);
+
+export const account = pgTable(
+  "account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at"),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("account_user_id_idx").on(t.userId)],
+);
+
+export const verification = pgTable(
+  "verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("verification_identifier_idx").on(t.identifier)],
+);
+
+/**
+ * Счётчики ограничения частоты Better Auth — пишет и читает их
+ * `authRateLimitStorage` (`lib/rate-limit.ts`, `rateLimit.customStorage`), а не
+ * адаптер Better Auth.
+ *
+ * Поля повторяют модель `rateLimit` Better Auth: `key` вида `<ip>|<путь>`
+ * (уникален — на нём держится атомарный upsert), `count`, `lastRequest` —
+ * миллисекунды, поэтому bigint; `id` — случайный UUID. Строки без запросов
+ * дольше 10 минут удаляются попутной чисткой там же.
+ */
+export const rateLimit = pgTable("rate_limit", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+});
