@@ -70,6 +70,18 @@ export function AdminUsersTable({
           </button>
         </Form>
 
+        {/*
+          Семантика поиска написана рядом с полем, а не только в CLAUDE.md:
+          запрос со знаком @ ищет НАЧАЛО адреса (по индексу), поэтому «@mail.ru»
+          не находит никого. Без подписи модератор решил бы, что таких людей в
+          базе нет.
+        */}
+        <p className="mt-2 text-xs text-ink-soft">
+          Имя и адрес ищутся по любой части. Запрос со знаком @ считается
+          адресом и ищется с начала: «anna@» найдёт, «@mail.ru» — нет, домен
+          ищите без @.
+        </p>
+
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead>

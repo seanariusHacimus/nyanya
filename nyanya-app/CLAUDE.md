@@ -520,8 +520,11 @@ because the search filtered those 200 rows in the browser.
   be an address and matches the **start** of `lower(email)` through `user_email_lower_idx`
   (`text_pattern_ops`, because the database collation is not «C»); anything else matches a
   substring of name or email. So `?q=@nyanya.uz` finds nothing — a domain is not the start of an
-  address; search the domain without the «@». `%`, `_` and `\` are escaped (`escapeLike`), or
-  `?q=%` would return everyone.
+  address; search the domain without the «@». **That rule is printed under the search box**, not
+  only here: the field says «имя и адрес — по любой части, запрос со знаком @ — с начала адреса»,
+  because a placeholder promising «поиск по почте» and a silent «Никого не найдено» is a lie the
+  moderator cannot see through. `%`, `_` and `\` are escaped (`escapeLike`), or `?q=%` would
+  return everyone.
 - **Documents for the visible page only**: `documentsByProfile` reads them with one
   `inArray(...) GROUP BY` + `jsonb_agg` for the ≤50 profiles on screen, instead of reading the
   whole `documents` table to caption every row with «до премиума: x/y».
