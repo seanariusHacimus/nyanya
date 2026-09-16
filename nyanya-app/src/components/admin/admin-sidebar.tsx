@@ -10,6 +10,7 @@ import {
   Users,
   Plus,
 } from "@phosphor-icons/react";
+import type { AdminNavCounts } from "@/lib/queries/admin";
 
 /**
  * Навигация админки.
@@ -24,14 +25,6 @@ import {
  * «Подозрительная активность» с кнопками живёт там. У «Отзывов» — отзывы на
  * проверке: пока их не опубликуют, семьи их не видят.
  */
-
-export type AdminNavCounts = {
-  /** отмеченные лимитом открытий контактов — разбираются на обзоре */
-  flagged: number;
-  pendingProfiles: number;
-  pendingDocuments: number;
-  pendingReviews: number;
-};
 
 export function AdminSidebar({ counts }: { counts: AdminNavCounts }) {
   const pathname = usePathname();

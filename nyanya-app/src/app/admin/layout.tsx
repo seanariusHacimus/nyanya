@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getSessionUncached } from "@/lib/auth";
-import { getAdminStats } from "@/lib/queries/admin";
+import { getAdminNavCounts } from "@/lib/queries/admin";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 
 /**
@@ -13,8 +13,8 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
  * каждая страница раздела проверяет сессию и роль сама, и каждое серверное
  * действие тоже.
  *
- * Данных каркас берёт ровно столько, сколько показывает: четыре числа для
- * бейджей. Сводку он делит со страницей через React `cache` внутри одного
+ * Данных каркас берёт ровно столько, сколько показывает: четыре счётчика для
+ * бейджей. Их он делит со страницей раздела через React `cache` внутри одного
  * рендера — раньше и каркас, и страница вызывали общую `getAdminData`,
  * которая выгружала все анкеты и все документы, то есть дважды на запрос.
  */
@@ -29,21 +29,14 @@ export default async function AdminLayout({
   if (!session) redirect("/login?next=/admin");
   if (session.user.role !== "admin") notFound();
 
-  const stats = await getAdminStats();
+  const counts = await getAdminNavCounts();
 
   return (
     <main className="flex-1">
       <div className="mx-auto max-w-[1400px] px-5 pt-10 pb-24 sm:px-8 lg:pt-14">
         <p className="label-caps text-bronze-text">Админ-панель</p>
         <div className="mt-6 grid gap-8 lg:grid-cols-[220px_1fr] lg:gap-12">
-          <AdminSidebar
-            counts={{
-              flagged: stats.flagged,
-              pendingProfiles: stats.pendingProfiles,
-              pendingDocuments: stats.pendingDocuments,
-              pendingReviews: stats.pendingReviews,
-            }}
-          />
+          <AdminSidebar counts={counts} />
           <div className="min-w-0">{children}</div>
         </div>
       </div>

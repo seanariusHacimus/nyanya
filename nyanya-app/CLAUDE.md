@@ -50,8 +50,8 @@ pointing at the admin overview — once per flag (`UPDATE … WHERE flagged_at I
 transaction with the notifications). Flagging never throws: a failure is logged as
 `[contact-limits] flag failed` (driver cause only — Drizzle's text carries the email) and the family
 still gets the limit message. **No automatic ban and no email** (owner decision). The overview's
-«Подозрительная активность» block (`AdminData.flagged`, count in `stats.flagged`, badge on «Обзор»)
-lists flagged accounts with email, registration date, opens in the last 24 h and in total, with
+«Подозрительная активность» block (`getFlaggedUsers`, count in `getAdminNavCounts().flagged`, badge
+on «Обзор») lists flagged accounts with email, registration date, opens in the last 24 h and in total, with
 «Разобрано» (`clearUserFlag` — hitting the cap again re-flags and re-notifies) and the usual
 block/unblock. `/admin/users` only marks the name. The two columns are **not** in Better Auth's
 `additionalFields`, so they stay out of `session.user` (checked: `get-session` returns no flag key).
@@ -214,6 +214,9 @@ for the header's unread badge, `session(user_id)`, `account(user_id)` and `verif
 each of those tables had nothing but its primary key, and Better Auth searches them on every ban,
 sign-in and code entry. Deliberately not added: `reviews(specialist_id)` — the leading column of the
 unique index from 0012 — and `contact_unlocks(parent_id, unlocked_at)`, added by 0011.
+Migration 0014 (2026-09-16) added the admin panel's two: `user_email_lower_idx` on
+`lower(email) text_pattern_ops` and the partial `documents_pending_created_idx` on
+`(created_at) WHERE status = 'pending'` — see «Admin panel» below.
 
 - **Never put `CREATE INDEX CONCURRENTLY` in a migration**: the migrator runs every pending file in
   one transaction, where it is illegal. A plain `CREATE INDEX` takes a SHARE lock (reads pass,
@@ -488,6 +491,58 @@ configured), so the lag can never exceed `maxAge`.
 - To invalidate every cached session at once, add `version: "2"` to `cookieCache` and deploy; to
   turn the whole thing off, `enabled: false` — `session_token` keeps working and nobody has to
   sign in again.
+
+## Admin panel — every section loads only what it shows
+
+Rewritten 2026-09-16 (migration 0014). Until then one function, `getAdminData()`, ran thirteen
+queries and pulled **every** profile, **every** document and the 200 oldest accounts — and both
+`layout.tsx` (for two badges) and the section's own `page.tsx` called it, so every admin page cost
+that twice. Locally with 2 000 synthetic accounts and 2 000 profiles the HTML of `/admin/profiles`
+was 4.98 МБ; the moderator could not find anyone who registered after the two-hundredth account,
+because the search filtered those 200 rows in the browser.
+
+- **One query set per section** (`src/lib/queries/admin.ts`): `getAdminNavCounts` (the four sidebar
+  badges — and nothing else is what the layout loads), `getProfileTotals` («Опубликовано X из Y»),
+  `getAdminStats` (the overview tiles), `getModerationQueue` (overview «Не в каталоге»),
+  `getAdminProfilesPage`, `getDocumentQueue`, `searchUsers`, `getFlaggedUsers`,
+  `getAdminReviewQueue`. The counters that both a badge and a caption need come from **one**
+  `GROUP BY specialist_profiles.status`; `getAdminNavCounts`, `getProfileTotals`, `getAdminStats`
+  and `getPendingReviewCount` are wrapped in React `cache`, so the layout and the page share them
+  inside one render. That dedup lasts exactly one server render — a server action that calls them
+  again pays again, which is fine and intended.
+- **Page size is 50** (`PAGE_SIZE`), lists are paginated, and the list state lives in the URL —
+  `?page=`, `?q=`, `?status=` — parsed by `src/lib/admin-params.ts` (page 1…10 000, query trimmed
+  to 100 chars, unknown status → «все»). That is what makes `router.refresh()` after a decision
+  return the same screen instead of the top of the list, and a link to «всех, кто ждёт решения»
+  forwardable. `revalidatePath("/admin")` in the actions does nothing for these dynamic pages;
+  `useAdminAction`'s `router.refresh()` is what updates them.
+- **People are searched on the server** and sorted newest first. A query containing «@» is taken to
+  be an address and matches the **start** of `lower(email)` through `user_email_lower_idx`
+  (`text_pattern_ops`, because the database collation is not «C»); anything else matches a
+  substring of name or email. So `?q=@nyanya.uz` finds nothing — a domain is not the start of an
+  address; search the domain without the «@». `%`, `_` and `\` are escaped (`escapeLike`), or
+  `?q=%` would return everyone.
+- **Documents for the visible page only**: `documentsByProfile` reads them with one
+  `inArray(...) GROUP BY` + `jsonb_agg` for the ≤50 profiles on screen, instead of reading the
+  whole `documents` table to caption every row with «до премиума: x/y».
+- Migration 0014 adds `user_email_lower_idx` and the partial `documents_pending_created_idx`
+  (`(created_at) WHERE status = 'pending'`) — both `CREATE INDEX IF NOT EXISTS`, and the code works
+  without them. Checked locally with 2 000 synthetic accounts: the email search is a Bitmap Index
+  Scan on `user_email_lower_idx`, the document queue an Index Scan + incremental sort, and its
+  count an Index Only Scan.
+- **What is still a sequential scan**: the profile list orders by a `CASE` over `status`
+  (pending → draft → rejected → hidden → active), and no index serves that. At 2 000 profiles the
+  sort is invisible; at hundreds of thousands the list would need a different order or a
+  materialised sort key. `ilike '%…%'` over names is a scan too — `pg_trgm` is the way out, and the
+  owner's decision was **not** to add the extension now.
+- `src/components/admin/`: `admin-overview`, `admin-profiles-table`, `admin-document-queue`,
+  `admin-users-table` (one per route, markup carried over unchanged from the old `admin-view.tsx`),
+  plus `pager.tsx`, `admin-ui.tsx` (labels, date formatting, button classes) and
+  `use-admin-action.ts` (one moderator decision: busy row, human error text, refresh).
+- **Prefetch of an admin section costs no queries**: the sidebar's `<Link>`s and the search
+  `<Form action="/admin/users">` prefetch, but Next answers a prefetch of these dynamic routes with
+  a 319-byte shell and runs no page code (checked locally 2026-09-16 with `log_statement='all'`:
+  zero statements). Do not "optimise" that away with `prefetch={false}`.
 
 ## Security headers
 

@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { getSessionUncached } from "@/lib/auth";
-import { getAdminProfilesPage, getAdminStats } from "@/lib/queries/admin";
+import { getAdminProfilesPage, getProfileTotals } from "@/lib/queries/admin";
 import { parsePage, parseQuery, parseStatus } from "@/lib/admin-params";
 import { AdminProfilesTable } from "@/components/admin/admin-profiles-table";
 
@@ -30,12 +30,14 @@ export default async function AdminProfilesPage({
   const q = parseQuery(sp.q);
   const page = parsePage(sp.page);
 
-  const [stats, result] = await Promise.all([
-    getAdminStats(),
+  // totals — подпись «Опубликовано X из Y»; тот же GROUP BY, что уже посчитал
+  // бейдж «Анкеты» в сайдбаре, поэтому лишнего запроса не будет
+  const [totals, result] = await Promise.all([
+    getProfileTotals(),
     getAdminProfilesPage({ page, status, q }),
   ]);
 
   return (
-    <AdminProfilesTable result={result} stats={stats} status={status} q={q} />
+    <AdminProfilesTable result={result} totals={totals} status={status} q={q} />
   );
 }

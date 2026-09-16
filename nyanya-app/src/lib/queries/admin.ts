@@ -56,24 +56,30 @@ export type Page<T> = {
   pageSize: number;
 };
 
-export type AdminStats = {
-  parents: number;
-  specialists: number;
+/**
+ * Бейджи в сайдбаре — единственное, ради чего каркас админки (`layout.tsx`)
+ * ходит в базу. Четыре счётчика: где ждёт работа.
+ */
+export type AdminNavCounts = {
   pendingProfiles: number;
   pendingDocuments: number;
+  /** отзывы, которые ждут модератора в /admin/reviews */
+  pendingReviews: number;
+  /** аккаунты с отметкой для разбора (лимит открытий контактов) */
+  flagged: number;
+};
+
+/** Плитки обзора: бейджи плюс то, что считается только для /admin. */
+export type AdminStats = AdminNavCounts & {
+  parents: number;
+  specialists: number;
   unlocks: number;
   /** доля родителей, открывших хотя бы одни контакты, % */
   conversion: number;
-  /** аккаунты с отметкой для разбора (лимит открытий контактов) */
-  flagged: number;
-  /** отзывы, которые ждут модератора в /admin/reviews */
-  pendingReviews: number;
-  /** всего аккаунтов — подпись к поиску людей */
-  usersTotal: number;
-  /** всего анкет и сколько из них опубликовано — подпись к списку анкет */
-  profilesTotal: number;
-  profilesActive: number;
 };
+
+/** Всего анкет и сколько из них опубликовано — подпись над списком анкет. */
+export type ProfileTotals = { total: number; active: number };
 
 export type AdminProfileRow = {
   id: string;
@@ -162,53 +168,80 @@ function escapeLike(value: string): string {
 }
 
 /**
- * Сводка панели — четыре COUNT-запроса и ничего больше.
+ * Анкеты по статусам — один GROUP BY на весь рендер. Из него берут число и
+ * бейдж «Анкеты» в сайдбаре, и подпись «Опубликовано X из Y» над списком, и
+ * плитка обзора: три подписи, один запрос.
+ */
+const profilesByStatus = cache(async (): Promise<Map<string, number>> => {
+  const rows = await db
+    .select({ status: specialistProfiles.status, n: count() })
+    .from(specialistProfiles)
+    .groupBy(specialistProfiles.status);
+  return new Map<string, number>(rows.map((r) => [r.status, r.n]));
+});
+
+/**
+ * Счётчики для бейджей — всё, что грузит каркас админки.
  *
- * `cache` из React делит результат между каркасом (`layout.tsx`, бейджи в
- * сайдбаре) и самой страницей в пределах одного серверного рендера. Раньше
- * обе стороны вызывали одну общую `getAdminData`, которая выгружала все
- * анкеты, все документы и две сотни пользователей — дважды на каждый запрос.
+ * `cache` из React делит результат между каркасом (`layout.tsx`) и страницей
+ * раздела в пределах одного серверного рендера. Раньше обе стороны вызывали
+ * общую `getAdminData`, которая выгружала все анкеты, все документы и две
+ * сотни пользователей — дважды на каждый запрос.
+ */
+export const getAdminNavCounts = cache(async (): Promise<AdminNavCounts> => {
+  const [byStatus, docRows, pendingReviews, flaggedRows] = await Promise.all([
+    profilesByStatus(),
+    db
+      .select({ n: count() })
+      .from(documents)
+      .where(eq(documents.status, "pending")),
+    getPendingReviewCount(),
+    db.select({ n: count() }).from(user).where(isNotNull(user.flaggedAt)),
+  ]);
+
+  return {
+    pendingProfiles: byStatus.get("pending_review") ?? 0,
+    pendingDocuments: docRows[0]?.n ?? 0,
+    pendingReviews,
+    flagged: flaggedRows[0]?.n ?? 0,
+  };
+});
+
+/** Подпись «Опубликовано X из Y» — из того же GROUP BY, что и бейдж. */
+export const getProfileTotals = cache(async (): Promise<ProfileTotals> => {
+  const byStatus = await profilesByStatus();
+  let total = 0;
+  for (const n of byStatus.values()) total += n;
+  return { total, active: byStatus.get("active") ?? 0 };
+});
+
+/**
+ * Плитки обзора. Считаются только для /admin: группировка аккаунтов по ролям
+ * и открытия контактов нужны одной странице, а каркас с его бейджами висит на
+ * всех — включая карточку анкеты и очередь отзывов.
  */
 export const getAdminStats = cache(async (): Promise<AdminStats> => {
-  const [roleRows, statusRows, docRows, unlockRows, flaggedRows, pendingReviews] =
-    await Promise.all([
-      db.select({ role: user.role, n: count() }).from(user).groupBy(user.role),
-      db
-        .select({ status: specialistProfiles.status, n: count() })
-        .from(specialistProfiles)
-        .groupBy(specialistProfiles.status),
-      db
-        .select({ n: count() })
-        .from(documents)
-        .where(eq(documents.status, "pending")),
-      db
-        .select({
-          n: count(),
-          parents: sql<number>`count(distinct ${contactUnlocks.parentId})::int`,
-        })
-        .from(contactUnlocks),
-      db.select({ n: count() }).from(user).where(isNotNull(user.flaggedAt)),
-      getPendingReviewCount(),
-    ]);
+  const [nav, roleRows, unlockRows] = await Promise.all([
+    getAdminNavCounts(),
+    db.select({ role: user.role, n: count() }).from(user).groupBy(user.role),
+    db
+      .select({
+        n: count(),
+        parents: sql<number>`count(distinct ${contactUnlocks.parentId})::int`,
+      })
+      .from(contactUnlocks),
+  ]);
 
   const byRole = (role: string) => roleRows.find((r) => r.role === role)?.n ?? 0;
-  const byStatus = (status: string) =>
-    statusRows.find((r) => r.status === status)?.n ?? 0;
   const parents = byRole("parent");
   const unlockingParents = unlockRows[0]?.parents ?? 0;
 
   return {
+    ...nav,
     parents,
     specialists: byRole("specialist"),
-    pendingProfiles: byStatus("pending_review"),
-    pendingDocuments: docRows[0]?.n ?? 0,
     unlocks: unlockRows[0]?.n ?? 0,
     conversion: parents ? Math.round((unlockingParents / parents) * 100) : 0,
-    flagged: flaggedRows[0]?.n ?? 0,
-    pendingReviews,
-    usersTotal: roleRows.reduce((sum, r) => sum + r.n, 0),
-    profilesTotal: statusRows.reduce((sum, r) => sum + r.n, 0),
-    profilesActive: byStatus("active"),
   };
 });
 
@@ -522,14 +555,17 @@ export type AdminReviewQueueRow = {
   specialistSlug: string | null;
 };
 
-/** Отзывы, которые ждут модератора, — бейдж «Отзывы» и счётчик очереди. */
-export async function getPendingReviewCount(): Promise<number> {
+/**
+ * Отзывы, которые ждут модератора, — бейдж «Отзывы» и счётчик очереди.
+ * `cache`: на /admin/reviews это число просят и каркас, и страница.
+ */
+export const getPendingReviewCount = cache(async (): Promise<number> => {
   const [row] = await db
     .select({ n: count() })
     .from(reviews)
     .where(eq(reviews.status, "pending"));
   return row?.n ?? 0;
-}
+});
 
 /** Сколько отзывов показываем в очереди; число ждущих — getPendingReviewCount. */
 export const REVIEW_QUEUE_LIMIT = 200;

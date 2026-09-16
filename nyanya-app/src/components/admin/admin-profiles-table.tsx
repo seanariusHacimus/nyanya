@@ -6,9 +6,9 @@ import Form from "next/form";
 import { MagnifyingGlass, Plus } from "@phosphor-icons/react";
 import type {
   AdminProfileRow,
-  AdminStats,
   Page,
   ProfileFilter,
+  ProfileTotals,
 } from "@/lib/queries/admin";
 import { categories } from "@/lib/specialists-shared";
 import { VERIFICATION_LABEL } from "@/lib/verification";
@@ -40,12 +40,12 @@ const FILTERS: { key: ProfileFilter; label: string }[] = [
  */
 export function AdminProfilesTable({
   result,
-  stats,
+  totals,
   status,
   q,
 }: {
   result: Page<AdminProfileRow>;
-  stats: AdminStats;
+  totals: ProfileTotals;
   status: ProfileFilter;
   q: string;
 }) {
@@ -73,7 +73,7 @@ export function AdminProfilesTable({
           </h2>
           <div className="flex flex-wrap items-center gap-6">
             <p className="text-sm text-ink-soft">
-              Опубликовано: {stats.profilesActive} из {stats.profilesTotal}
+              Опубликовано: {totals.active} из {totals.total}
             </p>
             <Link
               href="/admin/new"
@@ -126,7 +126,7 @@ export function AdminProfilesTable({
         {shown && <p className="mt-4 text-sm text-ink-soft">{shown}</p>}
 
         {result.total === 0 ? (
-          stats.profilesTotal === 0 ? (
+          totals.total === 0 ? (
             <div className="mt-8 border border-line bg-paper px-5 py-10 text-center">
               <p className="text-sm text-ink-soft">
                 Анкет пока нет. Специалисты заполняют их сами, но вы можете
