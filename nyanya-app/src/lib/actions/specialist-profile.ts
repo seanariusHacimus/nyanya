@@ -460,5 +460,12 @@ export async function submitForModeration() {
   }
 
   revalidatePath("/specialist");
+  // Опубликованная анкета уходит отсюда в `pending_review`, то есть вон из
+  // каталога. Мастер такую кнопку не показывает (экран отправки собирается
+  // только для черновика и отклонённой), но действие — сетевой эндпоинт, и
+  // без сброса тега каталог до минуты держал бы карточку, которая ведёт на
+  // «страница не найдена». Список мест, обязанных сбросить кэш, должен быть
+  // полным: см. «Catalogue» в CLAUDE.md.
+  if (profile.status === "active") revalidateCatalog(profile.slug);
   return { ok: true as const };
 }

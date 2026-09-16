@@ -437,12 +437,15 @@ and 272 ms, now **121 784 bytes** and 11–14 ms — and the page no longer grow
   the card's rating at once. **`updateTag` may only be called from a server action**; from a route
   handler it throws, and such a caller would need `revalidateTag(CATALOG_TAG, { expire: 0 })`.
   **«Every action» is the whole list, and it is easy to shorten by accident**: besides the obvious
-  moderator paths, the cabinet's own `saveSpecialistProfile` and `deleteVerificationDocument` reset
-  it too (both `specialist-profile.ts`, only when the profile is `active`), and `reviewDocument`
-  resets it on **any** document decision, not only on the photo — `verification_level` drives the
-  badge, the default order and the «Только премиум-профили» filter. Without those three the
-  catalogue kept a deleted photo's `photo_key` (a broken image), the old price and the old badge for
-  up to a minute. **A new write to `specialist_profiles` outside this list is a stale catalogue.**
+  moderator paths, the cabinet's own `saveSpecialistProfile`, `deleteVerificationDocument` and
+  `submitForModeration` reset it too (all three in `specialist-profile.ts`, only when the profile
+  is `active`), and `reviewDocument` resets it on **any** document decision, not only on the photo —
+  `verification_level` drives the badge, the default order and the «Только премиум-профили» filter.
+  Without them the catalogue kept a deleted photo's `photo_key` (a broken image), the old price, the
+  old badge, or a card leading to «страница не найдена», for up to a minute. `submitForModeration`
+  is not reachable from the wizard for a published profile (the submit screen is built only for a
+  draft or a rejected one), but an action is a network endpoint and the list must hold anyway.
+  **A new write to `specialist_profiles` outside this list is a stale catalogue.**
   The price of the cache: a change made **outside** the actions (`scripts/*.mjs`, hand-written SQL)
   shows up in the catalogue up to 60 s later — and one request later still, because `unstable_cache`
   serves the expired entry once while it refreshes in the background (checked locally 2026-09-16:
