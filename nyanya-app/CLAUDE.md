@@ -253,14 +253,18 @@ the sweeps the application already does when someone happens to hit it. It conne
 **Nothing runs it on a schedule yet** (owner's step, not done: it needs a Railway service). When the
 owner wants it, in this order:
 
-1. Commit `nyanya-app/railway.cron.json` with
-   `{"$schema":"https://railway.com/railway.schema.json","build":{"builder":"RAILPACK","buildCommand":"echo cron: сборка Next не нужна"},"deploy":{"startCommand":"node scripts/db-cleanup.mjs --apply","cronSchedule":"0 22 * * *","restartPolicyType":"NEVER"}}`.
-   A separate file is not optional: a service pointed at `/nyanya-app` would otherwise pick up
-   `railway.json`, and config-as-code overrides the dashboard — the cron service would run the
-   migrations and start the Next server instead of the script.
-2. Railway → New Service → the same GitHub repository and branch `master` → Settings: Root Directory
-   `/nyanya-app`, Railway Config File `/nyanya-app/railway.cron.json`, name `nyanya-cron`, no public
-   domain; Variables: `DATABASE_URL = ${{Postgres.DATABASE_URL}}`.
+1. **Set it up in the dashboard, not in a config file.** Railway's docs now say plainly that
+   **«New services cannot opt into Config as Code»** and that existing files «stop being read on
+   2026-12-01» — so the `railway.cron.json` this section used to prescribe cannot be attached to a
+   new service at all, and the old worry that such a service would pick up `railway.json` and run
+   the migrations instead of the script no longer applies for the same reason (see «Railway —
+   deploy, liveness, service scripts» and runbook §7).
+2. Railway → New Service → the same GitHub repository and branch `master` → Settings: name
+   `nyanya-cron`, Root Directory `/nyanya-app`, no public domain, Watch Paths narrow enough that an
+   ordinary application commit does not rebuild it; Deploy: Start Command
+   `node scripts/db-cleanup.mjs --apply`, Cron Schedule `0 22 * * *`, Restart Policy `Never`;
+   Variables: `DATABASE_URL = ${{Postgres.DATABASE_URL}}`. A custom build command (the Next build is
+   useless here) is a dashboard field too.
 3. Before the first scheduled run, run it by hand without `--apply` and show the owner the numbers.
 4. After the first run check the service's log for the six «строк было … стало …» lines and confirm
    that `user`, `specialist_profiles`, `documents`, `reviews`, `contact_unlocks` and `favorites` did
