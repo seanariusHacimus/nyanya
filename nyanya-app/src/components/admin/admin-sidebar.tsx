@@ -31,8 +31,6 @@ export type AdminNavCounts = {
   pendingProfiles: number;
   pendingDocuments: number;
   pendingReviews: number;
-  profiles: number;
-  users: number;
 };
 
 export function AdminSidebar({ counts }: { counts: AdminNavCounts }) {

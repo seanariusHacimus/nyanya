@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, boolean, integer, bigint, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // Better Auth core + admin plugin + custom fields.
 // Column keys are camelCase so the Better Auth Drizzle adapter resolves them by key.
@@ -30,7 +31,15 @@ export const user = pgTable("user", {
    */
   flaggedAt: timestamp("flagged_at", { withTimezone: true }),
   flagReason: text("flag_reason"),
-});
+}, (t) => [
+  /**
+   * Поиск людей в админке по началу адреса (`searchUsers`, запрос со знаком
+   * «@»): `lower(email) like 'q%'`. `text_pattern_ops` обязателен — коллация
+   * базы не «C», и обычный btree префиксный LIKE не обслуживает; уникальный
+   * индекс `user_email_unique` для этого бесполезен.
+   */
+  index("user_email_lower_idx").on(sql`lower(${t.email}) text_pattern_ops`),
+]);
 
 // Индексы по user_id и identifier (миграция 0013): Better Auth ищет по ним сессии
 // при блокировке и отзыве, аккаунт при входе по паролю, код подтверждения при вводе.

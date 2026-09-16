@@ -233,6 +233,10 @@ export const documents = pgTable(
     // один актуальный файл на каждый шаг верификации
     unique("uniq_specialist_document_type").on(t.specialistId, t.type),
     index("documents_specialist_idx").on(t.specialistId),
+    // очередь модерации документов: where status = 'pending' order by created_at
+    index("documents_pending_created_idx")
+      .on(t.createdAt)
+      .where(sql`${t.status} = 'pending'`),
   ],
 );
 

@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getSessionUncached } from "@/lib/auth";
-import { getAdminData } from "@/lib/queries/admin";
+import { getAdminStats } from "@/lib/queries/admin";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 
 /**
@@ -12,6 +12,11 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
  * повторно при переходах внутри сегмента, и полагаться на него нельзя:
  * каждая страница раздела проверяет сессию и роль сама, и каждое серверное
  * действие тоже.
+ *
+ * Данных каркас берёт ровно столько, сколько показывает: четыре числа для
+ * бейджей. Сводку он делит со страницей через React `cache` внутри одного
+ * рендера — раньше и каркас, и страница вызывали общую `getAdminData`,
+ * которая выгружала все анкеты и все документы, то есть дважды на запрос.
  */
 export default async function AdminLayout({
   children,
@@ -24,7 +29,7 @@ export default async function AdminLayout({
   if (!session) redirect("/login?next=/admin");
   if (session.user.role !== "admin") notFound();
 
-  const data = await getAdminData();
+  const stats = await getAdminStats();
 
   return (
     <main className="flex-1">
@@ -33,12 +38,10 @@ export default async function AdminLayout({
         <div className="mt-6 grid gap-8 lg:grid-cols-[220px_1fr] lg:gap-12">
           <AdminSidebar
             counts={{
-              flagged: data.stats.flagged,
-              pendingProfiles: data.stats.pendingProfiles,
-              pendingDocuments: data.stats.pendingDocuments,
-              pendingReviews: data.stats.pendingReviews,
-              profiles: data.profiles.length,
-              users: data.usersTotal,
+              flagged: stats.flagged,
+              pendingProfiles: stats.pendingProfiles,
+              pendingDocuments: stats.pendingDocuments,
+              pendingReviews: stats.pendingReviews,
             }}
           />
           <div className="min-w-0">{children}</div>

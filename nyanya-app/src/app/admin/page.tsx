@@ -1,8 +1,15 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSessionUncached } from "@/lib/auth";
-import { getAdminData } from "@/lib/queries/admin";
-import { AdminView } from "@/components/admin-view";
+import {
+  getAdminStats,
+  getFlaggedUsers,
+  getModerationQueue,
+  PAGE_SIZE,
+} from "@/lib/queries/admin";
+import { AdminOverview } from "@/components/admin/admin-overview";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Админ-панель",
@@ -18,7 +25,21 @@ export default async function AdminPage() {
   if (!session) redirect("/login?next=/admin");
   if (session.user.role !== "admin") redirect("/");
 
-  const data = await getAdminData();
+  // не больше 50 анкет «Не в каталоге»: остальные — по ссылке на постраничный
+  // список, обзор не должен расти вместе с числом брошенных черновиков
+  const [stats, flagged, queue] = await Promise.all([
+    getAdminStats(),
+    getFlaggedUsers(),
+    getModerationQueue(PAGE_SIZE),
+  ]);
 
-  return <AdminView data={data} currentUserId={session.user.id} section="overview" />;
+  return (
+    <AdminOverview
+      stats={stats}
+      flagged={flagged.rows}
+      unlockDailyCap={flagged.dailyCap}
+      queue={queue}
+      currentUserId={session.user.id}
+    />
+  );
 }

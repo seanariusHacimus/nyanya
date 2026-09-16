@@ -99,6 +99,13 @@
       "when": 1789513177296,
       "tag": "0013_db-indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789519908412,
+      "tag": "0014_admin-search-indexes",
+      "breakpoints": true
     }
   ]
 }

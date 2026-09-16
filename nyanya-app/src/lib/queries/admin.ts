@@ -1,4 +1,18 @@
-import { and, asc, count, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { cache } from "react";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNotNull,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { db } from "@/db";
 import {
   contactUnlocks,
@@ -12,7 +26,7 @@ import type { CategoryKey } from "@/lib/specialists-shared";
 import {
   stepTitles,
   summarizeDocuments,
-  type DocumentStatus,
+  type DocumentRow,
 } from "@/lib/verification";
 import { parseUnlockLimits } from "@/lib/unlock-limits";
 
@@ -24,6 +38,23 @@ export type ProfileStatus =
   | "rejected";
 
 export type VerificationLevel = "unverified" | "verified" | "premium_verified";
+
+/**
+ * Что показывает список анкет: «все», «ждут решения» (всё, кроме
+ * опубликованных) или один конкретный статус. Приходит из адреса — `?status=`.
+ */
+export type ProfileFilter = "all" | "waiting" | ProfileStatus;
+
+/** Сколько строк на странице списка — анкеты, документы, люди. */
+export const PAGE_SIZE = 50;
+
+/** Одна страница списка вместе с общим числом строк — для «Показано A–B из N». */
+export type Page<T> = {
+  rows: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
 
 export type AdminStats = {
   parents: number;
@@ -37,6 +68,11 @@ export type AdminStats = {
   flagged: number;
   /** отзывы, которые ждут модератора в /admin/reviews */
   pendingReviews: number;
+  /** всего аккаунтов — подпись к поиску людей */
+  usersTotal: number;
+  /** всего анкет и сколько из них опубликовано — подпись к списку анкет */
+  profilesTotal: number;
+  profilesActive: number;
 };
 
 export type AdminProfileRow = {
@@ -80,7 +116,7 @@ export type AdminUserRow = {
   banned: boolean;
   banReason: string | null;
   createdAt: string;
-  /** отметка для разбора — см. `flagged` в AdminData */
+  /** отметка для разбора — см. `flagged` в AdminStats */
   flaggedAt: string | null;
 };
 
@@ -103,21 +139,6 @@ export type AdminFlaggedRow = {
   unlocksTotal: number;
 };
 
-export type AdminData = {
-  stats: AdminStats;
-  profiles: AdminProfileRow[];
-  documentQueue: AdminDocumentRow[];
-  users: AdminUserRow[];
-  usersTotal: number;
-  /** блок «Подозрительная активность» на обзоре, свежие отметки первыми */
-  flagged: AdminFlaggedRow[];
-  /** действующий суточный лимит открытий контактов — для подписи к блоку */
-  unlockDailyCap: number;
-};
-
-/** Сколько пользователей грузим в таблицу; фильтр по ним — на клиенте. */
-const USERS_LIMIT = 200;
-
 /** Сколько отмеченных аккаунтов показываем на обзоре; общее число — в stats.flagged. */
 const FLAGGED_LIMIT = 100;
 
@@ -132,51 +153,212 @@ const STATUS_ORDER = sql`case ${specialistProfiles.status}
   when 'hidden' then 3
   else 4 end`;
 
-export async function getAdminData(): Promise<AdminData> {
-  const [
-    roleRows,
-    statusRows,
-    pendingDocRows,
-    unlockRows,
-    unlockParentRows,
-    profileRows,
-    documentRows,
-    userRows,
-    userTotalRows,
-    allDocumentRows,
-    flaggedRows,
-    flaggedTotalRows,
-    pendingReviewTotal,
-  ] = await Promise.all([
-    db.select({ role: user.role, n: count() }).from(user).groupBy(user.role),
+/**
+ * Экранирование спецсимволов LIKE. Без него `?q=%` вернул бы всех, а `_`
+ * молча подменял бы любой символ.
+ */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+/**
+ * Сводка панели — четыре COUNT-запроса и ничего больше.
+ *
+ * `cache` из React делит результат между каркасом (`layout.tsx`, бейджи в
+ * сайдбаре) и самой страницей в пределах одного серверного рендера. Раньше
+ * обе стороны вызывали одну общую `getAdminData`, которая выгружала все
+ * анкеты, все документы и две сотни пользователей — дважды на каждый запрос.
+ */
+export const getAdminStats = cache(async (): Promise<AdminStats> => {
+  const [roleRows, statusRows, docRows, unlockRows, flaggedRows, pendingReviews] =
+    await Promise.all([
+      db.select({ role: user.role, n: count() }).from(user).groupBy(user.role),
+      db
+        .select({ status: specialistProfiles.status, n: count() })
+        .from(specialistProfiles)
+        .groupBy(specialistProfiles.status),
+      db
+        .select({ n: count() })
+        .from(documents)
+        .where(eq(documents.status, "pending")),
+      db
+        .select({
+          n: count(),
+          parents: sql<number>`count(distinct ${contactUnlocks.parentId})::int`,
+        })
+        .from(contactUnlocks),
+      db.select({ n: count() }).from(user).where(isNotNull(user.flaggedAt)),
+      getPendingReviewCount(),
+    ]);
+
+  const byRole = (role: string) => roleRows.find((r) => r.role === role)?.n ?? 0;
+  const byStatus = (status: string) =>
+    statusRows.find((r) => r.status === status)?.n ?? 0;
+  const parents = byRole("parent");
+  const unlockingParents = unlockRows[0]?.parents ?? 0;
+
+  return {
+    parents,
+    specialists: byRole("specialist"),
+    pendingProfiles: byStatus("pending_review"),
+    pendingDocuments: docRows[0]?.n ?? 0,
+    unlocks: unlockRows[0]?.n ?? 0,
+    conversion: parents ? Math.round((unlockingParents / parents) * 100) : 0,
+    flagged: flaggedRows[0]?.n ?? 0,
+    pendingReviews,
+    usersTotal: roleRows.reduce((sum, r) => sum + r.n, 0),
+    profilesTotal: statusRows.reduce((sum, r) => sum + r.n, 0),
+    profilesActive: byStatus("active"),
+  };
+});
+
+/**
+ * Документы только для показанных анкет — один GROUP BY вместо выгрузки всей
+ * таблицы. Раньше админка читала `documents` целиком на каждый запрос, чтобы
+ * посчитать «до премиума: x/y» у каждой анкеты.
+ */
+async function documentsByProfile(
+  ids: string[]
+): Promise<Map<string, DocumentRow[]>> {
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({
+      specialistId: documents.specialistId,
+      docs: sql<DocumentRow[]>`jsonb_agg(jsonb_build_object('type', ${documents.type}, 'status', ${documents.status}))`,
+    })
+    .from(documents)
+    .where(inArray(documents.specialistId, ids))
+    .groupBy(documents.specialistId);
+  return new Map(rows.map((r) => [r.specialistId, r.docs]));
+}
+
+/** Колонки строки анкеты — одинаковые в обзоре и в списке. */
+const profileColumns = {
+  id: specialistProfiles.id,
+  userId: specialistProfiles.userId,
+  fullName: specialistProfiles.fullName,
+  email: user.email,
+  category: specialistProfiles.category,
+  status: specialistProfiles.status,
+  verificationLevel: specialistProfiles.verificationLevel,
+  slug: specialistProfiles.slug,
+  moderationNote: specialistProfiles.moderationNote,
+  banned: user.banned,
+};
+
+type ProfileBase = {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  category: CategoryKey;
+  status: ProfileStatus;
+  verificationLevel: VerificationLevel;
+  slug: string | null;
+  moderationNote: string | null;
+  banned: boolean;
+};
+
+function toProfileRow(p: ProfileBase, docs: DocumentRow[]): AdminProfileRow {
+  const summary = summarizeDocuments(docs, p.category);
+  return {
+    ...p,
+    approvedDocuments: summary.approvedRequired.length,
+    photoPending: summary.photoPending,
+    requiredDocuments: summary.requiredCount,
+    blockingSteps: stepTitles(summary.blockingRequired),
+    approvedOptional: summary.approvedOptional.length,
+    optionalDocuments: summary.optionalCount,
+  };
+}
+
+async function withDocuments(rows: ProfileBase[]): Promise<AdminProfileRow[]> {
+  const docs = await documentsByProfile(rows.map((r) => r.id));
+  return rows.map((r) => toProfileRow(r, docs.get(r.id) ?? []));
+}
+
+/**
+ * «Не в каталоге» для обзора: всё, кроме опубликованного, — первые `limit`
+ * строк и сколько их всего. Полный постраничный список живёт на
+ * /admin/profiles?status=waiting, ссылка на него стоит под блоком.
+ */
+export async function getModerationQueue(
+  limit = PAGE_SIZE
+): Promise<{ rows: AdminProfileRow[]; total: number }> {
+  const where = ne(specialistProfiles.status, "active");
+  const [rows, totalRows] = await Promise.all([
     db
-      .select({ status: specialistProfiles.status, n: count() })
-      .from(specialistProfiles)
-      .groupBy(specialistProfiles.status),
-    db
-      .select({ n: count() })
-      .from(documents)
-      .where(eq(documents.status, "pending")),
-    db.select({ n: count() }).from(contactUnlocks),
-    db
-      .select({ n: sql<number>`count(distinct ${contactUnlocks.parentId})::int` })
-      .from(contactUnlocks),
-    db
-      .select({
-        id: specialistProfiles.id,
-        userId: specialistProfiles.userId,
-        fullName: specialistProfiles.fullName,
-        email: user.email,
-        category: specialistProfiles.category,
-        status: specialistProfiles.status,
-        verificationLevel: specialistProfiles.verificationLevel,
-        slug: specialistProfiles.slug,
-        moderationNote: specialistProfiles.moderationNote,
-        banned: user.banned,
-      })
+      .select(profileColumns)
       .from(specialistProfiles)
       .innerJoin(user, eq(user.id, specialistProfiles.userId))
-      .orderBy(STATUS_ORDER, asc(specialistProfiles.fullName)),
+      .where(where)
+      .orderBy(STATUS_ORDER, asc(specialistProfiles.fullName), asc(specialistProfiles.id))
+      .limit(limit),
+    db
+      .select({ n: count() })
+      .from(specialistProfiles)
+      .where(where),
+  ]);
+  return { rows: await withDocuments(rows), total: totalRows[0]?.n ?? 0 };
+}
+
+/**
+ * Страница списка анкет: фильтр по статусу и поиск по имени или почте — оба
+ * из адреса, оба уходят в один `where` — он же считает и строки, и их общее число.
+ */
+export async function getAdminProfilesPage(opts: {
+  page: number;
+  status: ProfileFilter;
+  q: string;
+}): Promise<Page<AdminProfileRow>> {
+  const conditions: SQL[] = [];
+  if (opts.status === "waiting") {
+    conditions.push(ne(specialistProfiles.status, "active"));
+  } else if (opts.status !== "all") {
+    conditions.push(eq(specialistProfiles.status, opts.status));
+  }
+  if (opts.q) {
+    const like = `%${escapeLike(opts.q)}%`;
+    const match = or(
+      ilike(specialistProfiles.fullName, like),
+      ilike(user.email, like)
+    );
+    if (match) conditions.push(match);
+  }
+  const where = conditions.length ? and(...conditions) : undefined;
+
+  const [rows, totalRows] = await Promise.all([
+    db
+      .select(profileColumns)
+      .from(specialistProfiles)
+      .innerJoin(user, eq(user.id, specialistProfiles.userId))
+      .where(where)
+      // вторичная сортировка по id обязательна: без неё строки с одинаковым
+      // именем прыгают между страницами
+      .orderBy(STATUS_ORDER, asc(specialistProfiles.fullName), asc(specialistProfiles.id))
+      .limit(PAGE_SIZE)
+      .offset((opts.page - 1) * PAGE_SIZE),
+    db
+      .select({ n: count() })
+      .from(specialistProfiles)
+      .innerJoin(user, eq(user.id, specialistProfiles.userId))
+      .where(where),
+  ]);
+
+  return {
+    rows: await withDocuments(rows),
+    total: totalRows[0]?.n ?? 0,
+    page: opts.page,
+    pageSize: PAGE_SIZE,
+  };
+}
+
+/** Очередь документов: только ждущие решения, самые давние первыми. */
+export async function getDocumentQueue(
+  page: number
+): Promise<Page<AdminDocumentRow>> {
+  const where = eq(documents.status, "pending");
+  const [rows, totalRows] = await Promise.all([
     db
       .select({
         id: documents.id,
@@ -192,8 +374,47 @@ export async function getAdminData(): Promise<AdminData> {
         specialistProfiles,
         eq(specialistProfiles.id, documents.specialistId)
       )
-      .where(eq(documents.status, "pending"))
-      .orderBy(asc(documents.createdAt)),
+      .where(where)
+      .orderBy(asc(documents.createdAt), asc(documents.id))
+      .limit(PAGE_SIZE)
+      .offset((page - 1) * PAGE_SIZE),
+    db.select({ n: count() }).from(documents).where(where),
+  ]);
+
+  return {
+    rows: rows.map((d) => ({ ...d, createdAt: d.createdAt.toISOString() })),
+    total: totalRows[0]?.n ?? 0,
+    page,
+    pageSize: PAGE_SIZE,
+  };
+}
+
+/**
+ * Поиск людей — на сервере, по адресу `?q=`. Раньше в браузер уходили двести
+ * самых старых аккаунтов и фильтровались там, поэтому после двухсотой
+ * регистрации новых было не найти.
+ *
+ * Со знаком «@» считаем, что ищут адрес, и берём начало строки — по индексу
+ * `user_email_lower_idx`. Иначе ищем вхождение в имя или адрес: это
+ * последовательный просмотр, но на нынешних объёмах он занимает миллисекунды
+ * (индекс триграмм потребовал бы CREATE EXTENSION — вернуться к этому,
+ * когда аккаунтов станет больше 20 000).
+ */
+export async function searchUsers(opts: {
+  q: string;
+  page: number;
+}): Promise<Page<AdminUserRow>> {
+  const term = opts.q.toLowerCase();
+  const where: SQL | undefined = !term
+    ? undefined
+    : term.includes("@")
+      ? sql`lower(${user.email}) like ${escapeLike(term) + "%"}`
+      : or(
+          ilike(user.name, `%${escapeLike(term)}%`),
+          ilike(user.email, `%${escapeLike(term)}%`)
+        );
+
+  const [rows, totalRows] = await Promise.all([
     db
       .select({
         id: user.id,
@@ -206,91 +427,57 @@ export async function getAdminData(): Promise<AdminData> {
         flaggedAt: user.flaggedAt,
       })
       .from(user)
-      .orderBy(asc(user.createdAt))
-      .limit(USERS_LIMIT),
-    db.select({ n: count() }).from(user),
-    db
-      .select({
-        specialistId: documents.specialistId,
-        type: documents.type,
-        status: documents.status,
-      })
-      .from(documents),
-    // отдельным запросом, а не из users: список пользователей обрезан по дате
-    // регистрации, и отмеченный аккаунт мог в него не попасть
-    db
-      .select({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        banned: user.banned,
-        createdAt: user.createdAt,
-        flaggedAt: user.flaggedAt,
-        flagReason: user.flagReason,
-        // подзапросы написаны целиком: в выборке из одной таблицы Drizzle
-        // опускает имя таблицы у колонок, и "id" внутри подзапроса оказался
-        // бы contact_unlocks.id
-        unlocks24h: sql<number>`(select count(*) from contact_unlocks cu where cu.parent_id = "user"."id" and cu.unlocked_at > now() - interval '24 hours')::int`,
-        unlocksTotal: sql<number>`(select count(*) from contact_unlocks cu where cu.parent_id = "user"."id")::int`,
-      })
-      .from(user)
-      .where(isNotNull(user.flaggedAt))
-      .orderBy(desc(user.flaggedAt))
-      .limit(FLAGGED_LIMIT),
-    db.select({ n: count() }).from(user).where(isNotNull(user.flaggedAt)),
-    getPendingReviewCount(),
+      .where(where)
+      // новые сверху: модератор ищет того, кто только что зарегистрировался
+      .orderBy(desc(user.createdAt), asc(user.id))
+      .limit(PAGE_SIZE)
+      .offset((opts.page - 1) * PAGE_SIZE),
+    db.select({ n: count() }).from(user).where(where),
   ]);
 
-  const byRole = (role: string) =>
-    roleRows.find((r) => r.role === role)?.n ?? 0;
-  const parents = byRole("parent");
-  const unlockingParents = unlockParentRows[0]?.n ?? 0;
-
-  // документы группируем в памяти: строк мало, а отдельный агрегирующий
-  // запрос на каждую анкету дал бы N+1
-  const docsByProfile = new Map<string, { type: string; status: DocumentStatus }[]>();
-  for (const d of allDocumentRows) {
-    const list = docsByProfile.get(d.specialistId) ?? [];
-    list.push({ type: d.type, status: d.status as DocumentStatus });
-    docsByProfile.set(d.specialistId, list);
-  }
-
   return {
-    stats: {
-      parents,
-      specialists: byRole("specialist"),
-      pendingProfiles:
-        statusRows.find((r) => r.status === "pending_review")?.n ?? 0,
-      pendingDocuments: pendingDocRows[0]?.n ?? 0,
-      unlocks: unlockRows[0]?.n ?? 0,
-      conversion: parents ? Math.round((unlockingParents / parents) * 100) : 0,
-      flagged: flaggedTotalRows[0]?.n ?? 0,
-      pendingReviews: pendingReviewTotal,
-    },
-    profiles: profileRows.map((p) => {
-      const summary = summarizeDocuments(docsByProfile.get(p.id) ?? [], p.category);
-      return {
-        ...p,
-        approvedDocuments: summary.approvedRequired.length,
-        photoPending: summary.photoPending,
-        requiredDocuments: summary.requiredCount,
-        blockingSteps: stepTitles(summary.blockingRequired),
-        approvedOptional: summary.approvedOptional.length,
-        optionalDocuments: summary.optionalCount,
-      };
-    }),
-    documentQueue: documentRows.map((d) => ({
-      ...d,
-      createdAt: d.createdAt.toISOString(),
-    })),
-    users: userRows.map((u) => ({
+    rows: rows.map((u) => ({
       ...u,
       createdAt: u.createdAt.toISOString(),
       flaggedAt: u.flaggedAt?.toISOString() ?? null,
     })),
-    usersTotal: userTotalRows[0]?.n ?? 0,
-    flagged: flaggedRows.flatMap((f) =>
+    total: totalRows[0]?.n ?? 0,
+    page: opts.page,
+    pageSize: PAGE_SIZE,
+  };
+}
+
+/**
+ * Блок «Подозрительная активность» на обзоре. Отдельным запросом, а не из
+ * списка людей: список постраничный, и отмеченный аккаунт в него мог не
+ * попасть. Общее число отмеченных — `stats.flagged`.
+ */
+export async function getFlaggedUsers(
+  limit = FLAGGED_LIMIT
+): Promise<{ rows: AdminFlaggedRow[]; dailyCap: number }> {
+  const rows = await db
+    .select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      banned: user.banned,
+      createdAt: user.createdAt,
+      flaggedAt: user.flaggedAt,
+      flagReason: user.flagReason,
+      // подзапросы написаны целиком: в выборке из одной таблицы Drizzle
+      // опускает имя таблицы у колонок, и "id" внутри подзапроса оказался
+      // бы contact_unlocks.id
+      unlocks24h: sql<number>`(select count(*) from contact_unlocks cu where cu.parent_id = "user"."id" and cu.unlocked_at > now() - interval '24 hours')::int`,
+      unlocksTotal: sql<number>`(select count(*) from contact_unlocks cu where cu.parent_id = "user"."id")::int`,
+    })
+    .from(user)
+    .where(isNotNull(user.flaggedAt))
+    .orderBy(desc(user.flaggedAt))
+    .limit(limit);
+
+  return {
+    rows: rows.flatMap((f) =>
       f.flaggedAt
         ? [
             {
@@ -301,7 +488,7 @@ export async function getAdminData(): Promise<AdminData> {
           ]
         : []
     ),
-    unlockDailyCap: parseUnlockLimits(process.env).dailyCap,
+    dailyCap: parseUnlockLimits(process.env).dailyCap,
   };
 }
 
