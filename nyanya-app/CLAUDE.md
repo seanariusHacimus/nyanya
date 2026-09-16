@@ -553,6 +553,15 @@ and 272 ms, now **121 784 bytes** and 11–14 ms — and the page no longer grow
   third one from a prefetched route. The category name is in the `H1`, which is computed on the
   server and is always right.
 
+**Only the unfiltered view is cached** (2026-09-16). `unstable_cache` writes one disk entry per
+argument set, the filtered key includes «Цена до» (nearly a billion values) and «Опыт от», and
+`/catalog` has no rate limit — hammering random parameters filled `.next/cache/fetch-cache` with
+4 KB files (checked locally: 60 distinct prices → 62 files). `getCatalogPage` therefore caches only
+`isDefaultCatalogView` requests, keyed by page alone, so the entry count is bounded by
+`CATALOG_MAX_PAGE`. A filtered request goes straight to Postgres: measured at 10 000 profiles,
+11 ms uncached against 6 ms on a cache hit — invisible next to the trip to Singapore, and the
+0015 indexes keep the query in milliseconds.
+
 ## Specialist availability
 
 A published specialist can pause their own listing from the cabinet — the switch writes

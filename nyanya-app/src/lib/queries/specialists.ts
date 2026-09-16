@@ -296,13 +296,63 @@ async function queryFeaturedSpecialist(): Promise<UiSpecialist | null> {
 const cacheOptions = { tags: [CATALOG_TAG], revalidate: 60 };
 
 const cachedCatalogPage = unstable_cache(
-  queryCatalogPage,
+  (page: number) => queryCatalogPage({ ...DEFAULT_FILTERS, page }),
   ["catalog-page"],
   cacheOptions
 );
 
+/**
+ * Кэшируется только вид БЕЗ фильтров — тот, на который приходит большинство.
+ *
+ * `unstable_cache` делает запись на каждый набор аргументов и кладёт её файлом
+ * на диск. Ключ отфильтрованной выдачи включает «Цену до» (почти миллиард
+ * значений) и «Опыт от», а у каталога нет ограничения частоты: перебор
+ * параметров в адресе набивал бы диск единственного контейнера файлами по
+ * 4 КБ (проверено локально: 60 разных цен — 62 файла). Здесь ключ — только
+ * номер страницы, значит записей не больше CATALOG_MAX_PAGE.
+ *
+ * Отфильтрованный запрос идёт прямо в базу. Цена невелика: при 10 000 анкет
+ * замер дал 11 мс без кэша против 6 мс с попаданием — на фоне дороги до
+ * Сингапура это незаметно, а индексы из 0015 держат запрос на уровне
+ * миллисекунд.
+ */
 export function getCatalogPage(filters: CatalogFilters): Promise<CatalogPage> {
-  return cachedCatalogPage(filters);
+  return isDefaultCatalogView(filters)
+    ? cachedCatalogPage(filters.page)
+    : queryCatalogPage(filters);
+}
+
+const DEFAULT_FILTERS: Omit<CatalogFilters, "page"> = {
+  category: undefined,
+  districtId: undefined,
+  lang: undefined,
+  price: undefined,
+  exp: undefined,
+  premium: false,
+  english: false,
+  car: false,
+  livein: false,
+  night: false,
+  newborn: false,
+  sort: "rating",
+};
+
+/** Ни одного сужения: ровно то, что видит человек, открывший /catalog. */
+function isDefaultCatalogView(f: CatalogFilters): boolean {
+  return (
+    f.category === undefined &&
+    f.districtId === undefined &&
+    f.lang === undefined &&
+    f.price === undefined &&
+    f.exp === undefined &&
+    !f.premium &&
+    !f.english &&
+    !f.car &&
+    !f.livein &&
+    !f.night &&
+    !f.newborn &&
+    f.sort === "rating"
+  );
 }
 
 /** Сколько анкет в каталоге — для «анкет в каталоге» на /about и пустого состояния. */
