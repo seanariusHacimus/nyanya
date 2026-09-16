@@ -28,10 +28,16 @@ export function Pager({
     query: { ...params, ...(n > 1 ? { page: String(n) } : {}) },
   });
 
+  // пустой результат объясняет сам список («Никого не найдено», «Ничего не
+  // найдено», «Очередь пуста») — листать там нечего
+  if (total === 0) return null;
+
   if (page > last) {
     return (
       <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-line pt-6 text-sm text-ink-soft">
-        <span>На этой странице пусто — всего страниц {last}.</span>
+        {/* «на этой странице пусто» уже сказал список — здесь только сколько
+            страниц есть и ссылка назад, чтобы не повторять одно дважды */}
+        <span>Всего страниц: {last}.</span>
         <Link href={href(1)} className={`${actionButton} inline-flex items-center`}>
           В начало списка
         </Link>

@@ -496,8 +496,8 @@ configured), so the lag can never exceed `maxAge`.
 
 Rewritten 2026-09-16 (migration 0014). Until then one function, `getAdminData()`, ran thirteen
 queries and pulled **every** profile, **every** document and the 200 oldest accounts — and both
-`layout.tsx` (for two badges) and the section's own `page.tsx` called it, so every admin page cost
-that twice. Locally with 2 000 synthetic accounts and 2 000 profiles the HTML of `/admin/profiles`
+`layout.tsx` (for the four sidebar badges) and the section's own `page.tsx` called it, so every
+admin page cost that twice. Locally with 2 000 synthetic accounts and 2 000 profiles the HTML of `/admin/profiles`
 was 4.98 МБ; the moderator could not find anyone who registered after the two-hundredth account,
 because the search filtered those 200 rows in the browser.
 
@@ -515,7 +515,9 @@ because the search filtered those 200 rows in the browser.
   to 100 chars, unknown status → «все»). That is what makes `router.refresh()` after a decision
   return the same screen instead of the top of the list, and a link to «всех, кто ждёт решения»
   forwardable. `revalidatePath("/admin")` in the actions does nothing for these dynamic pages;
-  `useAdminAction`'s `router.refresh()` is what updates them.
+  `useAdminAction`'s `router.refresh()` is what updates them. `Pager` says nothing when the result
+  is empty and does not repeat the list's own «на этой странице пусто» when the page is past the
+  last one — it adds «Всего страниц: N» and the link back.
 - **People are searched on the server** and sorted newest first. A query containing «@» is taken to
   be an address and matches the **start** of `lower(email)` through `user_email_lower_idx`
   (`text_pattern_ops`, because the database collation is not «C»); anything else matches a
