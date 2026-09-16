@@ -69,3 +69,8 @@ desktop.ini
 # Файл выдаётся владельцу площадки и хранится вне git.
 nyanya-accounts.xlsx
 *-accounts.xlsx
+
+# Дампы служебных скриптов: delete-accounts.mjs пишет delete-backup-*.json в
+# BACKUP_DIR, а по умолчанию — в текущий каталог. Внутри nyanya-app это уже
+# игнорируется; здесь — на случай запуска из корня репозитория.
+*-backup-*.json
