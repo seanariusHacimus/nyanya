@@ -318,8 +318,13 @@ duly drifted — the catalogue said «Проверена» while the admin said 
 **The trust index is gone from the interface** (owner decision, 2026-09-03). It was displayed on
 cards, profiles, the cabinet and three marketing pages, and it was never computed — every profile
 showed 0. `specialist_profiles.trust_score` still exists in the database, unread; nothing writes
-to it. What ranks the catalogue now is the families' rating, then the review count, then recency.
-Do not reintroduce the index without a formula that actually runs.
+to it. What ranks the catalogue now is `CATALOG_ORDER`: the profile's level first, then the
+families' rating, the review count, recency and `id` (see «Catalogue» below). **The level is the
+whole enum, not «premium or not»** — since 2026-09-16 the order is premium → standard → no badge,
+where «no badge» means a profile published without an approved photo. Until then the browser sorted
+the list itself and only lifted premium, so a photo-less profile rated 3.0 stood above a standard
+one rated 0.0; now it stands below it. Do not reintroduce the trust index without a formula that
+actually runs.
 
 The home page's `trustFeatures` block is rendered by **two** pages — the home page and `/about` —
 each with its own icon map keyed by `feature.icon`. Renaming a key means changing both maps; the
